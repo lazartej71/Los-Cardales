@@ -1,0 +1,232 @@
+/* =========================================================
+   Tabla de posiciones
+   ========================================================= */
+.tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.seccion .tabla-scroll, .panel .tabla-scroll { margin-inline: -16px; }
+@media (min-width: 960px) { .seccion .tabla-scroll { margin-inline: -20px; } }
+.tabla {
+  width: 100%; min-width: 330px; border-collapse: separate; border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tabla th, .tabla td {
+  padding: 10px 3px; text-align: center; white-space: nowrap;
+  border-bottom: 1px solid var(--linea); background: var(--superficie);
+}
+.tabla thead th {
+  padding-block: 8px; font-size: 12.5px; font-weight: 600; color: var(--tinta-suave);
+  border-bottom-color: var(--linea-fuerte); background: var(--superficie-2);
+}
+.tabla tbody tr:last-child > * { border-bottom: 0; }
+.tabla abbr { text-decoration: none; }
+.tabla td { font-family: var(--fuente-display); font-size: 17px; font-weight: 500; color: var(--tinta-2); }
+.tabla .col-pos { width: 44px; padding-left: 14px; position: sticky; left: 0; z-index: 1; }
+.tabla .col-equipo {
+  position: sticky; left: 44px; z-index: 1;
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis;
+  padding-left: 6px; padding-right: 8px; text-align: left;
+  font-family: var(--fuente); font-size: 15.5px; font-weight: 600; color: var(--tinta);
+}
+.tabla thead .col-equipo { font-size: 12.5px; color: var(--tinta-suave); }
+.tabla .col-pts { padding-right: 14px; font-size: 19px; font-weight: 700; color: var(--tinta); }
+.tabla thead .col-pts { font-size: 12.5px; font-weight: 700; color: var(--tinta); }
+.fila--top > * { background: var(--fila-top); }
+.fila--flash > * { animation: destello 1.8s ease-out; }
+@keyframes destello { from { background-color: var(--flash); } }
+.pos {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  font-family: var(--fuente-display); font-weight: 700; font-size: 16px; color: var(--tinta-suave);
+}
+.pos--1 { background: var(--oro); color: var(--sobre-oro); }
+.pos--2 { background: var(--naranja); color: var(--sobre-marca); }
+
+.notas {
+  list-style: none; margin: 12px 0 0; padding: 10px 12px; display: grid; gap: 6px;
+  background: var(--superficie-2); border-radius: var(--radio-chico);
+  font-size: 14px; color: var(--tinta-2);
+}
+.notas li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; }
+.notas svg { margin-top: 1px; color: var(--tinta-suave); }
+
+/* =========================================================
+   Fixture y resultados
+   ========================================================= */
+.fecha-bloque + .fecha-bloque { margin-top: 18px; }
+.fecha-bloque__cab {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--linea-fuerte);
+}
+.fecha-bloque__titulo { font-family: var(--fuente-titulo); font-weight: 400; font-size: 16px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--marca-fuerte); }
+.lista-partidos { list-style: none; margin: 0; padding: 0; }
+.lista-partidos li + li { border-top: 1px solid var(--linea); }
+.partido-linea {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; gap: 10px; padding-block: 11px;
+}
+.partido-linea__equipo { font-weight: 600; font-size: 15.5px; overflow-wrap: anywhere; }
+.partido-linea__equipo--local { text-align: right; }
+.es-perdedor { color: var(--tinta-suave); font-weight: 500; }
+.partido-linea__centro { display: grid; justify-items: center; gap: 4px; }
+.marcador {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 66px; padding: 4px 10px; border-radius: 8px;
+  background: var(--marcador); color: var(--sobre-marcador);
+  font-family: var(--fuente-titulo); font-weight: 400; font-size: 18px; line-height: 1.2;
+  border: 1px solid var(--linea-fuerte);
+  font-variant-numeric: tabular-nums;
+}
+.marcador__sep { opacity: 0.55; }
+.marcador--vs {
+  background: transparent; color: var(--tinta-suave); border: 1px dashed var(--linea-fuerte);
+  font-size: 16px; font-weight: 600;
+}
+
+.resumen-fecha { margin-top: 10px; font-size: 14px; color: var(--tinta-suave); }
+.resultados-lista { display: grid; gap: 10px; margin-top: 12px; }
+@media (min-width: 560px) { .resultados-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.resultado { overflow: hidden; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; }
+.resultado__fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 12px; }
+.resultado__fila + .resultado__fila { border-top: 1px solid var(--linea); }
+.resultado__equipo { min-width: 0; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.resultado__fila--perdedor .resultado__equipo { color: var(--tinta-suave); font-weight: 500; }
+.resultado__goles {
+  flex: none; display: grid; place-items: center; width: 44px; height: 42px; border-radius: 7px;
+  background: var(--marcador); color: var(--sobre-marcador);
+  font-family: var(--fuente-titulo); font-weight: 400; font-size: 24px; line-height: 1;
+  border: 1px solid var(--linea-fuerte);
+  font-variant-numeric: tabular-nums;
+}
+.resultado__fila--perdedor .resultado__goles { opacity: 0.72; }
+.resultado--pendiente .resultado__goles { background: var(--superficie-2); color: var(--tinta-suave); border: 1px dashed var(--linea-fuerte); font-size: 20px; }
+.resultado__pie {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 12px; background: var(--superficie-2); border-top: 1px solid var(--linea);
+  font-size: 13px; font-weight: 600; color: var(--tinta-suave);
+}
+
+/* Etiquetas de estado */
+.pill {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+}
+.pill--ok, .pill--jugada, .pill--habilitado { background: var(--exito-suave); color: var(--exito); }
+.pill--pendiente { background: var(--info-suave); color: var(--info); }
+.pill--parcial { background: var(--superficie-2); color: var(--tinta-2); border: 1px solid var(--linea-fuerte); }
+.pill--suspendido { background: var(--roja-suave); color: var(--roja); }
+.punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.punto--jugada { background: var(--exito); }
+.punto--pendiente { background: var(--info); }
+.punto--parcial { background: linear-gradient(90deg, var(--exito) 50%, var(--info) 50%); }
+
+/* =========================================================
+   Botones y formularios
+   ========================================================= */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 18px; border-radius: var(--radio-chico); border: 1px solid transparent;
+  font-size: 16px; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn--primario { background: var(--degrade-boton); color: var(--sobre-marca); }
+.btn--primario:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 16px rgba(255, 140, 0, 0.3); }
+.btn--secundario { background: var(--superficie); color: var(--tinta); border-color: var(--linea-fuerte); }
+.btn--secundario:hover:not(:disabled) { background: var(--superficie-2); }
+.btn--fantasma { background: transparent; color: var(--tinta-2); }
+.btn--fantasma:hover:not(:disabled) { background: var(--superficie-2); }
+.btn--peligro { background: var(--roja); color: var(--sobre-roja); }
+.btn--texto-peligro { color: var(--roja); }
+.btn--whatsapp { background: var(--whatsapp); color: var(--sobre-whatsapp); }
+.btn--whatsapp:hover { filter: brightness(1.08); }
+.btn--chico { min-height: 40px; padding: 0 12px; font-size: 14.5px; }
+.btn--bloque { width: 100%; }
+.btn-icono {
+  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px;
+  border: 1px solid var(--linea-fuerte); background: var(--superficie); color: var(--tinta);
+}
+.btn-icono:hover:not(:disabled) { background: var(--superficie-2); }
+.btn-icono:disabled { opacity: 0.35; cursor: not-allowed; }
+.enlace {
+  border: 0; background: none; padding: 4px 2px; color: var(--marca); font-size: 14.5px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+.campo { display: grid; gap: 6px; min-width: 0; }
+.campo__label { font-size: 14.5px; font-weight: 600; color: var(--tinta-2); }
+.campo__ayuda { font-size: 13px; color: var(--tinta-suave); }
+.campo__error { font-size: 14px; font-weight: 600; color: var(--roja); }
+.input {
+  width: 100%; min-height: 48px; padding: 10px 12px; border-radius: var(--radio-chico);
+  border: 1px solid var(--linea-fuerte); background: var(--superficie); color: var(--tinta); font-size: 16px;
+}
+.input:focus { border-color: var(--marca); }
+.input[aria-invalid="true"] { border-color: var(--roja); }
+
+.stepper {
+  display: inline-grid; grid-template-columns: 46px 58px 46px; flex: none;
+  border: 1px solid var(--linea-fuerte); border-radius: 12px; overflow: hidden; background: var(--superficie);
+}
+.stepper--ancho { grid-template-columns: 46px minmax(104px, 1fr) 46px; }
+.stepper__btn { min-height: 48px; display: grid; place-items: center; border: 0; background: var(--superficie-2); color: var(--tinta); }
+.stepper__btn:hover:not(:disabled) { background: var(--marca-suave); }
+.stepper__btn:disabled { color: var(--linea-fuerte); cursor: not-allowed; }
+.stepper__btn:focus-visible, .stepper__input:focus-visible { outline-offset: -3px; }
+.stepper__input {
+  width: 100%; min-width: 0; padding: 0; border: 0; border-inline: 1px solid var(--linea);
+  background: var(--superficie); color: var(--tinta); text-align: center;
+  font-family: var(--fuente-titulo); font-weight: 400; font-size: 22px;
+}
+.stepper--ancho .stepper__input { font-size: 22px; }
+.stepper__input::placeholder { color: var(--tinta-suave); font-size: 17px; font-weight: 600; }
+.stepper__input[aria-invalid="true"] { background: var(--roja-suave); }
+
+/* Avisos flotantes */
+.toast-zona {
+  position: fixed; left: 0; right: 0; z-index: 60; pointer-events: none;
+  bottom: calc(var(--nav-alto) + 16px + env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: center; padding-inline: 16px;
+}
+.toast {
+  pointer-events: auto; display: flex; align-items: center; gap: 10px; max-width: 480px;
+  padding: 12px 16px; border-radius: 12px; background: var(--tinta); color: var(--superficie);
+  font-size: 15px; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  animation: toast-entra 0.22s ease-out;
+}
+.toast svg { flex: none; color: var(--toast-icono); }
+@keyframes toast-entra { from { transform: translateY(8px); opacity: 0; } }
+@media (min-width: 960px) { .toast-zona { bottom: 24px; } }
+
+.vacio { display: grid; justify-items: center; gap: 10px; padding: 28px 16px; text-align: center; color: var(--tinta-2); }
+.fallo { max-width: 420px; margin: 15vh auto 0; padding-inline: 16px; display: grid; gap: 12px; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* Carga inicial */
+.cargando {
+  min-height: 60vh; display: grid; place-items: center; align-content: center; gap: 14px;
+  color: var(--tinta-suave); font-size: 15px;
+}
+.cargando__giro {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--linea-fuerte); border-top-color: var(--marca);
+  animation: girar 0.9s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* Postergados, fecha cargada como tabla y rival de otra zona */
+.pill--postergado, .pill--postergada { background: var(--marca-suave); color: var(--marca-fuerte); }
+.nota-fecha {
+  margin-top: 8px; padding: 8px 12px; border-radius: var(--radio-chico);
+  background: var(--superficie-2); color: var(--tinta-2); font-size: 14px;
+}
+.vacio-texto { padding-block: 12px; color: var(--tinta-suave); font-size: 15px; }
+.partido-linea__zona, .resultado__equipo .partido-linea__zona {
+  display: block; font-size: 12px; font-weight: 500; color: var(--tinta-suave);
+}
+
+/* W.O.: partido ganado porque el rival no se presentó */
+.pill--wo { background: var(--info-suave); color: var(--info); }
