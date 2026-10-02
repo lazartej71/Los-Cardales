@@ -68,17 +68,17 @@ Los datos iniciales salen de `Excel/TABLAS GP FECHA N1.xlsx` (`npm run importar`
 - **Fecha 1:** se carga como tabla inicial, con PJ, PG, PE, PP y goles por equipo.
 - **Postergados:** los 5 partidos postergados de la fecha 1 quedan cargados como partidos.
 
-**Crear una cuenta de admin:**
+**Crear una cuenta de admin:** en el panel se ingresa con un usuario (por ejemplo `franco1`) y la contraseña. Por dentro, la app lo convierte en el email `franco1@loscardalesfutbol.com`, que no necesita existir. Si alguien escribe un email completo, se usa tal cual.
 
 1. En Supabase, **Authentication → Sign In / Providers**: el registro público (*Allow new users to sign up*) tiene que estar desactivado.
-2. En **Authentication → Users → Add user → Create new user**, cargar el email y la contraseña, con *Auto Confirm User*.
+2. En **Authentication → Users → Add user → Create new user**, cargar como email `usuario@loscardalesfutbol.com` (en minúsculas) y la contraseña, con *Auto Confirm User*.
 3. En el SQL Editor:
    ```sql
    insert into public.administradores (user_id, nombre)
-   select id, 'Nombre de la persona' from auth.users where email = 'email@de.la.cuenta';
+   select id, 'Nombre de la persona' from auth.users where email = 'usuario@loscardalesfutbol.com';
    ```
 
-**Quitar a un admin:** `delete from public.administradores where user_id = (select id from auth.users where email = '...');`
+**Quitar a un admin:** `delete from public.administradores where user_id = (select id from auth.users where email = 'usuario@loscardalesfutbol.com');`
 
 ## Publicación
 

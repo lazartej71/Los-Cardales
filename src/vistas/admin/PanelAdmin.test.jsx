@@ -191,9 +191,10 @@ describe('panel de administración', () => {
 });
 
 describe('login', () => {
-  it('pide email y contraseña, sin credenciales de prueba', () => {
+  it('pide usuario y contraseña, sin credenciales de prueba', () => {
     const html = renderToString(<PantallaLogin nombreCampeonato="Copa GP" onIngresar={nada} onVolver={nada} />);
-    expect(html).toContain('type="email"');
+    expect(html).toContain('>Usuario</label>');
+    expect(html).not.toContain('type="email"');
     expect(html).toContain('type="password"');
     expect(html).not.toContain('1234');
   });

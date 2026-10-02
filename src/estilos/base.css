@@ -130,7 +130,6 @@ p { margin: 0; }
   font-family: var(--fuente-titulo); font-weight: 400;
   font-size: clamp(18px, 5vw, 24px); line-height: 1.1; letter-spacing: 0.03em; text-transform: uppercase;
 }
-.cabecera__sub { font-size: 14.5px; color: var(--tinta-suave); }
 @media (min-width: 960px) {
   .cabecera__inner { padding-block: 30px 32px; }
   .cabecera__logo { width: 240px; }

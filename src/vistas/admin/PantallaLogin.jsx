@@ -1,24 +1,24 @@
 /**
- * Ingreso de los admins con email y contraseña (Supabase Auth).
+ * Ingreso de los admins con usuario y contraseña (Supabase Auth).
  */
 
 import { useState } from 'react';
 import { Logo } from '../../componentes/Logo.jsx';
 
 export function PantallaLogin({ nombreCampeonato, onIngresar, onVolver }) {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
   const [ingresando, setIngresando] = useState(false);
 
   const ingresar = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !contrasena) {
-      setError('Completá el email y la contraseña.');
+    if (!usuario.trim() || !contrasena) {
+      setError('Completá el usuario y la contraseña.');
       return;
     }
     setIngresando(true);
-    const resultado = await onIngresar(email, contrasena);
+    const resultado = await onIngresar(usuario, contrasena);
     setIngresando(false);
     if (resultado.error) setError(resultado.error);
   };
@@ -30,18 +30,18 @@ export function PantallaLogin({ nombreCampeonato, onIngresar, onVolver }) {
         <h1 className="login__titulo">Ingreso de administración</h1>
         {nombreCampeonato && <p className="login__sub">{nombreCampeonato}</p>}
         <div className="campo">
-          <label className="campo__label" htmlFor="login-email">Email</label>
+          <label className="campo__label" htmlFor="login-usuario">Usuario</label>
           <input
-            id="login-email"
+            id="login-usuario"
             className="input"
-            type="email"
+            type="text"
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
-            value={email}
+            value={usuario}
             aria-invalid={Boolean(error) || undefined}
             onChange={(e) => {
-              setEmail(e.target.value);
+              setUsuario(e.target.value);
               setError('');
             }}
           />

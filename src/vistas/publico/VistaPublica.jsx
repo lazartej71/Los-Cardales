@@ -76,7 +76,6 @@ export function VistaPublica({ db, ui, setUi }) {
         <div className="contenedor cabecera__inner">
           <Logo className="cabecera__logo" />
           <h1 className="cabecera__titulo">{db.configuracion.nombreCampeonato}</h1>
-          <p className="cabecera__sub">Posiciones, fixture y resultados</p>
         </div>
       </header>
 
