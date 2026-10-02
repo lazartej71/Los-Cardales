@@ -1,0 +1,158 @@
+import { describe, expect, it, vi } from 'vitest';
+import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
+import { crearRepositorioMemoria } from './repositorioMemoria.js';
+
+// Lo mismo que devuelve la base real a cualquiera (sin expulsiones ni delegados)
+function publicoDeEjemplo() {
+  const datos = crearDatosEjemplo();
+  return {
+    categorias: datos.categorias,
+    zonas: datos.zonas,
+    equipos: datos.equipos.map(({ id, zonaId, nombre }) => ({ id, zonaId, nombre })),
+    tablaInicial: datos.tablaInicial,
+    partidos: datos.partidos,
+    configuracion: datos.configuracion,
+  };
+}
+
+function armar() {
+  const inicial = publicoDeEjemplo();
+  const cargar = vi.fn(async () => inicial);
+  const crearRepositorio = crearRepositorioMemoria(cargar);
+  return { inicial, cargar, repo: crearRepositorio('simulacion'), crearRepositorio };
+}
+
+describe('base en memoria de la simulación', () => {
+  it('arranca con los datos reales y los lee una sola vez', async () => {
+    const { inicial, cargar, repo, crearRepositorio } = armar();
+    // Los partidos salen ordenados por fecha, como en la base real
+    const partidos = [...inicial.partidos].sort((a, b) => a.fecha - b.fecha || a.id - b.id);
+    expect(await repo.leerPublico()).toEqual({ ...inicial, partidos });
+    await crearRepositorio(null).leerPublico();
+    expect(cargar).toHaveBeenCalledTimes(1);
+  });
+
+  it('crea un partido con los valores por defecto de la base y un id nuevo', async () => {
+    const { inicial, repo } = armar();
+    const maximo = Math.max(...inicial.partidos.map((p) => p.id));
+    const [a, b] = inicial.equipos;
+    const creado = await repo.insertar('partidos', { categoria_id: 1, fecha: 9, local_id: a.id, visitante_id: b.id });
+    expect(creado).toEqual({
+      id: maximo + 1,
+      categoriaId: 1,
+      fecha: 9,
+      localId: a.id,
+      visitanteId: b.id,
+      golesLocal: null,
+      golesVisitante: null,
+      postergado: false,
+      ausente: null,
+    });
+    expect((await repo.leerPublico()).partidos.at(-1)).toEqual(creado);
+  });
+
+  it('carga el resultado y borra partidos', async () => {
+    const { inicial, repo } = armar();
+    const id = inicial.partidos[0].id;
+    await repo.actualizar('partidos', id, { goles_local: 3, goles_visitante: 1, postergado: false });
+    expect((await repo.leerPublico()).partidos.find((p) => p.id === id)).toMatchObject({ golesLocal: 3, golesVisitante: 1 });
+    await repo.borrar('partidos', id);
+    expect((await repo.leerPublico()).partidos.some((p) => p.id === id)).toBe(false);
+  });
+
+  it('las expulsiones y los delegados solo los ve el panel', async () => {
+    const { inicial, repo } = armar();
+    const partido = inicial.partidos[0];
+    const expulsion = await repo.insertar('expulsiones', {
+      partido_id: partido.id,
+      equipo_id: partido.localId,
+      numero_camiseta: 10,
+      nombre_jugador: '',
+    });
+    await repo.guardarDelegado({ equipo_id: partido.localId, nombre: 'Ana', telefono: '5491151001234' });
+
+    const admin = await repo.leerAdmin();
+    expect(admin.expulsiones).toEqual([
+      { id: 1, partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 10, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0 },
+    ]);
+    expect(expulsion.id).toBe(1);
+    expect(admin.equipos.find((e) => e.id === partido.localId)).toMatchObject({ delegado: 'Ana', telefonoDelegado: '5491151001234' });
+    expect(admin.equipos.find((e) => e.id !== partido.localId)).toMatchObject({ delegado: '', telefonoDelegado: '' });
+
+    const publico = await repo.leerPublico();
+    expect(publico.expulsiones).toBeUndefined();
+    expect(JSON.stringify(publico)).not.toMatch(/telefono|5491151001234/);
+  });
+
+  it('cambia el nombre de un equipo y la configuración', async () => {
+    const { inicial, repo } = armar();
+    await repo.actualizar('equipos', inicial.equipos[0].id, { nombre: 'Nuevo nombre' });
+    await repo.actualizar('configuracion', 1, { nombre_campeonato: 'Copa Prueba', criterios_desempate: ['dg', 'puntos', 'gf', 'enfrentamiento'] });
+    const publico = await repo.leerPublico();
+    expect(publico.equipos[0].nombre).toBe('Nuevo nombre');
+    expect(publico.configuracion).toEqual({
+      nombreCampeonato: 'Copa Prueba',
+      criteriosDesempate: ['dg', 'puntos', 'gf', 'enfrentamiento'],
+      arancel: 105000,
+    });
+  });
+
+  it('no toca los datos que recibió ni deja modificar lo que devuelve', async () => {
+    const { inicial, repo } = armar();
+    const copia = structuredClone(inicial);
+    const leido = await repo.leerPublico();
+    leido.partidos[0].golesLocal = 99;
+    await repo.actualizar('partidos', inicial.partidos[1].id, { goles_local: 0, goles_visitante: 0, postergado: false });
+    expect(inicial).toEqual(copia);
+    expect((await repo.leerPublico()).partidos[0].golesLocal).toBe(copia.partidos[0].golesLocal);
+  });
+
+  it('las tarjetas y los movimientos arrancan vacíos y solo los ve el panel', async () => {
+    const { inicial, repo } = armar();
+    const partido = inicial.partidos[0];
+    const tarjeta = await repo.insertar('tarjetas', {
+      partido_id: partido.id,
+      equipo_id: partido.localId,
+      numero_camiseta: 7,
+    });
+    const pago = await repo.insertar('movimientos', {
+      tipo: 'pago',
+      equipo_id: partido.localId,
+      partido_id: partido.id,
+      monto: 95000,
+      metodo: 'efectivo',
+      fecha: '2026-10-15',
+    });
+    expect(tarjeta).toEqual({ id: 1, partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 7, nombreJugador: '' });
+    expect(pago).toEqual({
+      id: 1,
+      tipo: 'pago',
+      equipoId: partido.localId,
+      partidoId: partido.id,
+      monto: 95000,
+      metodo: 'efectivo',
+      fecha: '2026-10-15',
+      nota: '',
+    });
+    const admin = await repo.leerAdmin();
+    expect(admin.tarjetas).toEqual([tarjeta]);
+    expect(admin.movimientos).toEqual([pago]);
+    const publico = await repo.leerPublico();
+    expect(publico.tarjetas).toBeUndefined();
+    expect(publico.movimientos).toBeUndefined();
+  });
+
+  it('cualquier sesión cuenta como admin', async () => {
+    const { repo, crearRepositorio } = armar();
+    expect(await repo.usuarioActual()).toEqual({ id: 'simulacion' });
+    expect(await repo.esAdmin()).toBe(true);
+    expect(await crearRepositorio(null).usuarioActual()).toBeNull();
+  });
+
+  it('si no pudo leer los datos reales, lo vuelve a intentar en el próximo pedido', async () => {
+    const cargar = vi.fn().mockRejectedValueOnce(new Error('sin conexión')).mockResolvedValueOnce(publicoDeEjemplo());
+    const repo = crearRepositorioMemoria(cargar)('simulacion');
+    await expect(repo.leerPublico()).rejects.toThrow('sin conexión');
+    expect((await repo.leerPublico()).equipos).toHaveLength(32);
+  });
+});
