@@ -9,10 +9,10 @@ import { Segmentado } from '../../componentes/Segmentado.jsx';
 import {
   agruparPorFecha,
   equiposDeZona,
+  fechaEnJuego,
   fechasConTablaInicial,
   partidosDeEquipos,
   tieneTablaInicial,
-  ultimaFechaJugada,
   zonaElegida,
   zonasDeCategoria,
 } from '../../logica/consultas.js';
@@ -59,7 +59,9 @@ export function VistaPublica({ db, ui, setUi }) {
     };
   }, [db.equipos, db.zonas, zona]);
 
-  const fechaActual = fechas.some((f) => f.fecha === ui.fecha) ? ui.fecha : ultimaFechaJugada(fechas);
+  // Resultados arranca en la fecha que se está jugando (salvo que la persona haya elegido otra)
+  const enJuego = fechaEnJuego(fechas);
+  const fechaActual = fechas.some((f) => f.fecha === ui.fecha) ? ui.fecha : enJuego;
 
   // Al cambiar de sección la vista queda justo debajo de la portada, con el contenido a la vista
   const refPortada = useRef(null);
@@ -115,8 +117,10 @@ export function VistaPublica({ db, ui, setUi }) {
                 conTablaInicial={conTablaInicial}
               />
               <SeccionFixture
+                key={zona.id}
                 activa={ui.seccion === 'fixture'}
                 fechas={fechas}
+                fechaEnJuego={enJuego}
                 info={info}
                 conTablaInicial={conTablaInicial}
               />

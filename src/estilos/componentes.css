@@ -56,6 +56,12 @@
   padding-bottom: 6px; border-bottom: 1px solid var(--linea-fuerte);
 }
 .fecha-bloque__titulo { font-family: var(--fuente-titulo); font-weight: 400; font-size: 16px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--marca-fuerte); }
+/* Fecha plegable del fixture: la flecha indica si está abierta */
+summary.fecha-bloque__cab { min-height: 44px; cursor: pointer; list-style: none; }
+summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
+.fecha-bloque__titulo::before { content: "▸ "; color: var(--tinta-suave); }
+.fecha-bloque[open] .fecha-bloque__titulo::before { content: "▾ "; }
+.fecha-bloque:not([open]) .fecha-bloque__cab { border-bottom-color: var(--linea); }
 .lista-partidos { list-style: none; margin: 0; padding: 0; }
 .lista-partidos li + li { border-top: 1px solid var(--linea); }
 .partido-linea {

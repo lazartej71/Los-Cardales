@@ -65,7 +65,8 @@ export function SeccionPosiciones({ activa, filas, criterios, partidos, conTabla
   );
 }
 
-export function SeccionFixture({ activa, fechas, info, conTablaInicial }) {
+// Cada fecha se pliega: viene abierta solo la que se está jugando
+export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial }) {
   return (
     <section className={`seccion seccion--fixture${activa ? ' seccion--activa' : ''}`} aria-labelledby="titulo-fixture">
       <div className="seccion__cab">
@@ -76,11 +77,11 @@ export function SeccionFixture({ activa, fechas, info, conTablaInicial }) {
         const esFechaInicial = fecha === 1 && conTablaInicial;
         const estado = esFechaInicial ? 'jugada' : estadoFecha(partidos);
         return (
-          <div key={fecha} className="fecha-bloque">
-            <div className="fecha-bloque__cab">
-              <h3 className="fecha-bloque__titulo">Fecha {fecha}</h3>
+          <details key={fecha} className="fecha-bloque" open={fecha === fechaEnJuego}>
+            <summary className="fecha-bloque__cab">
+              <h3 className="fecha-bloque__titulo">{`Fecha ${fecha}`}</h3>
               <Pill tipo={estado}>{ETIQUETA_ESTADO_FECHA[estado]}</Pill>
-            </div>
+            </summary>
             {esFechaInicial && <NotaFechaInicial hayPostergados={partidos.length > 0} />}
             {partidos.length > 0 && (
               <ul className="lista-partidos">
@@ -91,7 +92,7 @@ export function SeccionFixture({ activa, fechas, info, conTablaInicial }) {
                 ))}
               </ul>
             )}
-          </div>
+          </details>
         );
       })}
     </section>

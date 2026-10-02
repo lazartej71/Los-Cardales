@@ -75,10 +75,12 @@ export const ETIQUETA_ESTADO_FECHA = {
   postergada: 'Postergada',
 };
 
-export function ultimaFechaJugada(fechas) {
-  const jugadas = fechas.filter((f) => f.partidos.some(tieneResultado));
-  if (jugadas.length) return jugadas[jugadas.length - 1].fecha;
-  return fechas.length ? fechas[0].fecha : 1;
+// La fecha que se está jugando: la primera con partidos pendientes de carga (sin contar los
+// postergados, que no la frenan); si todo está cargado, la última.
+export function fechaEnJuego(fechas) {
+  const conPendientes = fechas.find((f) => f.partidos.some((p) => !p.postergado && !tieneResultado(p)));
+  if (conPendientes) return conPendientes.fecha;
+  return fechas.length ? fechas[fechas.length - 1].fecha : 1;
 }
 
 // Todo lo que hace falta para mostrar una expulsión

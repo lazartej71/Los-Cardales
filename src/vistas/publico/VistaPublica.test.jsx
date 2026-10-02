@@ -108,4 +108,27 @@ describe('VistaPublica', () => {
       'Ganó CERRAJERIA F.C por W.O.: no se presentó PUMAS F.C'
     );
   });
+
+  // Zona única con la fecha 1 cargada como tabla (y un postergado) y la fecha 2 armada, sin resultados
+  const conFecha2Armada = () => ({
+    ...zonaUnica,
+    partidos: [
+      ...zonaUnica.partidos,
+      { id: 2, categoriaId: 5, fecha: 2, localId: 1, visitanteId: 2, golesLocal: null, golesVisitante: null, postergado: false },
+      { id: 3, categoriaId: 5, fecha: 2, localId: 3, visitanteId: 4, golesLocal: null, golesVisitante: null, postergado: false },
+    ],
+  });
+
+  it('resultados arranca en la fecha en juego aunque la fecha 1 tenga un postergado', () => {
+    expect(dibujar(conFecha2Armada(), { seccion: 'resultados' })).toMatch(/aria-pressed="true"[^>]*>Fecha 2</);
+  });
+
+  it('el fixture muestra abierta solo la fecha en juego y las demás plegadas', () => {
+    const html = dibujar(conFecha2Armada(), { seccion: 'fixture' });
+    expect(html).toContain(
+      '<details class="fecha-bloque" open=""><summary class="fecha-bloque__cab"><h3 class="fecha-bloque__titulo">Fecha 2</h3>'
+    );
+    expect(html).toContain('<details class="fecha-bloque"><summary class="fecha-bloque__cab"><h3 class="fecha-bloque__titulo">Fecha 1</h3>');
+    expect(html.match(/<details[^>]* open=""/g)).toHaveLength(1);
+  });
 });
