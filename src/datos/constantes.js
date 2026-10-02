@@ -30,3 +30,9 @@ export const CRITERIOS = {
 };
 
 export const CRITERIOS_POR_DEFECTO = ['puntos', 'dg', 'gf', 'enfrentamiento'];
+
+// Predios donde se juega y sus canchas (la migración 3 repite estas listas en la base)
+export const PREDIOS = [
+  { id: 'los_cardales', nombre: 'Los Cardales', canchas: [1, 2, 3, 4, 5, 6, 7] },
+  { id: 'cura_borges', nombre: 'Cura Borges', canchas: [1, 4, 5, 7, 8, 9] },
+];
