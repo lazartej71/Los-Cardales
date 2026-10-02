@@ -47,8 +47,21 @@ describe('base en memoria de la simulación', () => {
       golesVisitante: null,
       postergado: false,
       ausente: null,
+      predio: null,
+      cancha: null,
+      hora: null,
     });
     expect((await repo.leerPublico()).partidos.at(-1)).toEqual(creado);
+  });
+
+  it('guarda el lugar y la hora del partido', async () => {
+    const { inicial, repo } = armar();
+    const [a, b] = inicial.equipos;
+    const lugar = { predio: 'cura_borges', cancha: 9, hora: '15:10' };
+    const creado = await repo.insertar('partidos', { categoria_id: 1, fecha: 9, local_id: a.id, visitante_id: b.id, ...lugar });
+    expect(creado).toMatchObject(lugar);
+    await repo.actualizar('partidos', creado.id, { cancha: 8 });
+    expect((await repo.leerPublico()).partidos.find((p) => p.id === creado.id)).toMatchObject({ ...lugar, cancha: 8 });
   });
 
   it('carga el resultado y borra partidos', async () => {

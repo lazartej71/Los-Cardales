@@ -5,12 +5,20 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { normalizarHora } from '../src/logica/lugar.js';
 
 // goles_local → golesLocal
 export const aCamel = (fila) =>
   Object.fromEntries(
     Object.entries(fila).map(([clave, valor]) => [clave.replace(/_([a-z])/g, (_, letra) => letra.toUpperCase()), valor])
   );
+
+// Un partido de la base, con lugar y hora aunque la migración 3 todavía no se haya corrido
+// (por eso se lee con select('*')). Postgres devuelve la hora con segundos: "13:40:00" → "13:40".
+export function normalizarPartido(fila) {
+  const partido = { predio: null, cancha: null, hora: null, ...aCamel(fila) };
+  return { ...partido, hora: partido.hora === null ? null : normalizarHora(partido.hora) };
+}
 
 /**
  * Lo que recibe el panel: lo público más el delegado de cada equipo y las expulsiones.
@@ -53,7 +61,7 @@ export function crearRepositorioSupabase({ url, clave }) {
         ejecutar(
           cliente
             .from('partidos')
-            .select('id, categoria_id, fecha, local_id, visitante_id, goles_local, goles_visitante, postergado, ausente')
+            .select('*')
             .order('fecha')
             .order('id')
         ),
@@ -66,7 +74,7 @@ export function crearRepositorioSupabase({ url, clave }) {
         zonas: zonas.map(aCamel),
         equipos: equipos.map(aCamel),
         tablaInicial: tablaInicial.map(aCamel),
-        partidos: partidos.map(aCamel),
+        partidos: partidos.map(normalizarPartido),
         configuracion: aCamel(configuracion),
       };
     }
