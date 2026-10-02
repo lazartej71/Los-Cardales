@@ -49,6 +49,7 @@ beforeAll(async () => {
   await db.exec(leer('./esquema.sql'));
   await db.exec(leer('./datos-iniciales.sql'));
   await db.exec(leer('./migracion-2-cuentas.sql'));
+  await db.exec(leer('./migracion-3-predios.sql'));
   await db.exec(`
     insert into auth.users values ('${ADMIN}', 'admin@prueba.com'), ('${OTRO}', 'otro@prueba.com');
     insert into public.administradores (user_id, nombre) values ('${ADMIN}', 'Prueba');
@@ -167,5 +168,46 @@ describe('migración 2: tarjetas, W.O. y cuentas', () => {
     await expect(db.exec(leer('./migracion-2-cuentas.sql'))).rejects.toThrow(/already exists/);
     await db.exec('rollback');
     expect(await uno('select count(*)::int as n from public.movimientos')).toEqual(antes);
+  });
+});
+
+describe('migración 3: predio, cancha y hora', () => {
+  // Dos partidos nuevos de la fecha 30, sin resultado
+  const crear = (local, visitante, lugar) =>
+    comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id, predio, cancha, hora)
+      values (1, 30, ${local}, ${visitante}, ${lugar}) returning id`);
+
+  it('los partidos que ya estaban quedan sin lugar ni hora', async () => {
+    expect(await uno('select count(*)::int as n from public.partidos where predio is null and cancha is null and hora is null'))
+      .toEqual(await uno('select count(*)::int as n from public.partidos'));
+  });
+
+  it('el admin carga un partido con lugar y hora', async () => {
+    const { filas, error } = await crear(1, 2, `'los_cardales', 2, '13:40'`);
+    expect(error).toBeUndefined();
+    expect(await uno(`select predio, cancha, hora::text from public.partidos where id = ${filas[0].id}`)).toEqual({
+      predio: 'los_cardales',
+      cancha: 2,
+      hora: '13:40:00',
+    });
+  });
+
+  it('rechaza una cancha que no es del predio, un predio desconocido o el lugar a medias', async () => {
+    expect((await crear(3, 4, `'los_cardales', 9, '13:40'`)).error).toMatch(/partidos_cancha_check/);
+    expect((await crear(3, 4, `'otro', 1, '13:40'`)).error).toMatch(/partidos_(predio|cancha)_check/);
+    expect((await crear(3, 4, `null, null, '13:40'`)).error).toMatch(/partidos_lugar_completo_check/);
+    expect((await crear(3, 4, `'cura_borges', 9, '13:40'`)).error).toBeUndefined();
+  });
+
+  it('no deja dos partidos en la misma cancha a la misma hora, salvo que uno esté postergado', async () => {
+    expect((await crear(5, 6, `'los_cardales', 2, '13:40'`)).error).toMatch(/partidos_cancha_ocupada_idx/);
+    await comoAdmin(`update public.partidos set postergado = true where fecha = 30 and predio = 'los_cardales'`);
+    expect((await crear(5, 6, `'los_cardales', 2, '13:40'`)).error).toBeUndefined();
+  });
+
+  it('si la migración se corre dos veces, falla al principio y no cambia nada', async () => {
+    await expect(db.exec(leer('./migracion-3-predios.sql'))).rejects.toThrow(/already exists/);
+    await db.exec('rollback');
+    expect(await uno(`select count(*)::int as n from public.partidos where fecha = 30`)).toEqual({ n: 3 });
   });
 });
