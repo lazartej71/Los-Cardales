@@ -6,6 +6,8 @@ import { PREDIOS } from '../datos/constantes.js';
 
 const predioPorId = (id) => PREDIOS.find((p) => p.id === id) || null;
 
+export const nombrePredio = (predioId) => predioPorId(predioId)?.nombre ?? '';
+
 export const canchasDe = (predioId) => predioPorId(predioId)?.canchas ?? [];
 
 // "9:05", "09:05" o "09:05:00" (como la devuelve Postgres) → "09:05"; cualquier otra cosa → null

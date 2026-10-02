@@ -23,14 +23,43 @@ const nuevo = (cambios = {}) => ({
   fecha: 4,
   localId: equipo('Libre A1'),
   visitanteId: equipo('Libre B1'),
+  predio: 'los_cardales',
+  cancha: 2,
+  hora: '13:40',
   ...cambios,
+});
+const LUGAR = { predio: 'los_cardales', cancha: 2, hora: '13:40' };
+// Los datos de ejemplo con un partido más en la fecha 4, en la cancha 2 de Los Cardales a las 13:40
+const conOcupada = (cambios = {}) => ({
+  ...datos,
+  partidos: [
+    ...datos.partidos,
+    { id: 500, categoriaId: 2, fecha: 4, localId: equipo('+35 A1'), visitanteId: equipo('+35 A2'), golesLocal: null, golesVisitante: null, postergado: false, ...LUGAR, ...cambios },
+  ],
 });
 
 describe('validarPartidoNuevo', () => {
   it('acepta un partido entre zonas de la misma categoría', () => {
     expect(validarPartidoNuevo(datos, nuevo())).toEqual({
-      valor: { categoria_id: 1, fecha: 4, local_id: equipo('Libre A1'), visitante_id: equipo('Libre B1') },
+      valor: { categoria_id: 1, fecha: 4, local_id: equipo('Libre A1'), visitante_id: equipo('Libre B1'), ...LUGAR },
     });
+  });
+
+  it('pide el lugar y la hora', () => {
+    expect(validarPartidoNuevo(datos, nuevo({ predio: undefined })).error).toBe('Elegí el predio.');
+    expect(validarPartidoNuevo(datos, nuevo({ cancha: 9 })).error).toBe('Elegí una cancha de Los Cardales.');
+    expect(validarPartidoNuevo(datos, nuevo({ hora: '1340' })).error).toBe('Escribí la hora como 13:40.');
+  });
+
+  it('no deja dos partidos en la misma cancha a la misma hora de la misma fecha', () => {
+    const resultado = validarPartidoNuevo(conOcupada(), nuevo());
+    expect(resultado.estado).toBe(409);
+    expect(resultado.error).toBe('La cancha 2 de Los Cardales ya tiene un partido a las 13:40 en la fecha 4.');
+    expect(validarPartidoNuevo(conOcupada(), nuevo({ hora: '15:10' })).valor).toBeTruthy();
+  });
+
+  it('un postergado no ocupa la cancha', () => {
+    expect(validarPartidoNuevo(conOcupada({ postergado: true }), nuevo()).valor).toBeTruthy();
   });
 
   it('rechaza un equipo de otra categoría', () => {
@@ -82,6 +111,21 @@ describe('validarCambioPartido', () => {
 
   it('responde 404 si el partido no existe', () => {
     expect(validarCambioPartido(datos, 9999, { postergado: true }).estado).toBe(404);
+  });
+
+  it('cambia el lugar y la hora', () => {
+    expect(validarCambioPartido(datos, pendiente.id, { predio: 'cura_borges', cancha: 9, hora: '9:05' })).toEqual({
+      valor: { predio: 'cura_borges', cancha: 9, hora: '09:05' },
+    });
+    expect(validarCambioPartido(datos, pendiente.id, { predio: 'cura_borges', cancha: 2, hora: '13:40' }).error).toBe(
+      'Elegí una cancha de Cura Borges.'
+    );
+  });
+
+  it('al cambiar el lugar no choca consigo mismo, pero sí con otro partido', () => {
+    expect(validarCambioPartido(conOcupada(), 500, LUGAR)).toEqual({ valor: LUGAR });
+    const enFecha4 = { ...conOcupada(), partidos: [...conOcupada().partidos, { ...pendiente, id: 501, fecha: 4 }] };
+    expect(validarCambioPartido(enFecha4, 501, LUGAR).estado).toBe(409);
   });
 });
 

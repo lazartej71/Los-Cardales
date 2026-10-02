@@ -7,6 +7,7 @@
 
 import { CRITERIOS } from '../src/datos/constantes.js';
 import { pagoDePartido } from '../src/logica/cuentas.js';
+import { nombrePredio, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
 
@@ -34,6 +35,26 @@ function categoriaDeEquipo(datos, equipoId) {
   return zona ? zona.categoriaId : null;
 }
 
+// Lugar y hora válidos y con la cancha libre en esa fecha (los postergados no la ocupan)
+function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
+  const lugar = validarLugar(cuerpo);
+  if (lugar.error) return fallo(lugar.error);
+  const { predio, cancha, hora } = lugar.valor;
+  const ocupada = datos.partidos.some(
+    (p) =>
+      p.id !== partidoId &&
+      !p.postergado &&
+      p.fecha === fecha &&
+      p.predio === predio &&
+      p.cancha === cancha &&
+      p.hora === hora
+  );
+  if (ocupada) {
+    return fallo(`La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`, 409);
+  }
+  return lugar;
+}
+
 export function validarPartidoNuevo(datos, cuerpo) {
   const { categoriaId, fecha, localId, visitanteId } = cuerpo || {};
   if (!datos.categorias.some((c) => c.id === categoriaId)) return fallo('Elegí una categoría válida.');
@@ -55,7 +76,9 @@ export function validarPartidoNuevo(datos, cuerpo) {
       return fallo(`${nombre} ya tiene un partido en la fecha ${fecha}.`, 409);
     }
   }
-  return { valor: { categoria_id: categoriaId, fecha, local_id: localId, visitante_id: visitanteId } };
+  const lugar = validarLugarLibre(datos, fecha, cuerpo);
+  if (lugar.error) return lugar;
+  return { valor: { categoria_id: categoriaId, fecha, local_id: localId, visitante_id: visitanteId, ...lugar.valor } };
 }
 
 export function validarCambioPartido(datos, partidoId, cuerpo) {
@@ -88,6 +111,9 @@ export function validarCambioPartido(datos, partidoId, cuerpo) {
     return {
       valor: { goles_local: c.golesLocal, goles_visitante: c.golesVisitante, postergado: false, ausente: null },
     };
+  }
+  if ('predio' in c || 'cancha' in c || 'hora' in c) {
+    return validarLugarLibre(datos, partido.fecha, c, partidoId);
   }
   if ('postergado' in c) {
     if (typeof c.postergado !== 'boolean') return fallo('Indicá si el partido queda postergado o no.');

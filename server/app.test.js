@@ -101,11 +101,16 @@ describe('API de admin', () => {
   it('crea un partido válido', async () => {
     const { app, guardados, datos } = armar();
     const [local, visitante] = datos.equipos; // Libre A1 y Libre A2
-    const cuerpo = { categoriaId: 1, fecha: 4, localId: local.id, visitanteId: visitante.id };
+    const lugar = { predio: 'cura_borges', cancha: 4, hora: '15:10' };
+    const cuerpo = { categoriaId: 1, fecha: 4, localId: local.id, visitanteId: visitante.id, ...lugar };
     const respuesta = await pedir(app, '/admin/partidos', { metodo: 'POST', cuerpo });
     expect(respuesta.status).toBe(201);
     expect(guardados).toEqual([
-      { accion: 'insertar', tabla: 'partidos', fila: { categoria_id: 1, fecha: 4, local_id: local.id, visitante_id: visitante.id } },
+      {
+        accion: 'insertar',
+        tabla: 'partidos',
+        fila: { categoria_id: 1, fecha: 4, local_id: local.id, visitante_id: visitante.id, ...lugar },
+      },
     ]);
   });
 
@@ -260,15 +265,16 @@ describe('API de la simulación (base en memoria)', () => {
     };
     const app = crearApp({ crearRepositorio: crearRepositorioMemoria(async () => publico) });
     const [a, b, c] = datos.equipos; // Libre A1, A2 y A3
-    const cuerpo = { categoriaId: 1, fecha: 9, localId: a.id, visitanteId: b.id };
+    const lugar = { predio: 'los_cardales', cancha: 2, hora: '13:40' };
+    const cuerpo = { categoriaId: 1, fecha: 9, localId: a.id, visitanteId: b.id, ...lugar };
 
     expect((await pedir(app, '/admin/partidos', { metodo: 'POST', cuerpo, token: 'simulacion' })).status).toBe(201);
-    const repetido = { categoriaId: 1, fecha: 9, localId: c.id, visitanteId: a.id };
+    const repetido = { categoriaId: 1, fecha: 9, localId: c.id, visitanteId: a.id, ...lugar, hora: '15:10' };
     expect((await pedir(app, '/admin/partidos', { metodo: 'POST', cuerpo: repetido, token: 'simulacion' })).status).toBe(409);
 
     const vista = await (await pedir(app, '/publico', { token: null })).json();
     expect(vista.partidos.filter((p) => p.fecha === 9)).toEqual([
-      expect.objectContaining({ localId: a.id, visitanteId: b.id, golesLocal: null, postergado: false }),
+      expect.objectContaining({ localId: a.id, visitanteId: b.id, golesLocal: null, postergado: false, ...lugar }),
     ]);
     // Los datos de partida no se tocan
     expect(publico.partidos.some((p) => p.fecha === 9)).toBe(false);
