@@ -79,3 +79,18 @@ describe('aviso por WhatsApp de una roja', () => {
     expect(html).toContain('Cargá el WhatsApp del delegado en Equipos');
   });
 });
+
+describe('lugar y hora en el editor', () => {
+  it('muestra el lugar cargado para cambiarlo', () => {
+    const html = dibujar({ predio: 'los_cardales', cancha: 2, hora: '13:40' });
+    expect(html).toContain('Lugar y hora');
+    expect(html).toContain('value="13:40"');
+    expect(html).toContain('Guardar lugar');
+  });
+
+  it('un partido sin lugar trae los campos vacíos para completarlo', () => {
+    const html = dibujar({ predio: null, cancha: null, hora: null });
+    expect(html).toContain('Lugar y hora');
+    expect(html).toContain('Primero elegí el predio');
+  });
+});

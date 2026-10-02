@@ -29,6 +29,7 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
       ejecutar(() => cliente.actualizarPartido(token, id, { golesLocal: null, golesVisitante: null }), mensaje),
     marcarPostergado: (id, postergado, mensaje) =>
       ejecutar(() => cliente.actualizarPartido(token, id, { postergado }), mensaje),
+    guardarLugar: (id, lugar, mensaje) => ejecutar(() => cliente.actualizarPartido(token, id, lugar), mensaje),
     marcarAusente: (id, ausente, mensaje) => ejecutar(() => cliente.actualizarPartido(token, id, { ausente }), mensaje),
     borrarPartido: (id, mensaje) => ejecutar(() => cliente.borrarPartido(token, id), mensaje),
     crearTarjeta: (datos, mensaje) => ejecutar(() => cliente.crearTarjeta(token, datos), mensaje),

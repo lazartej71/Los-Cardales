@@ -1,12 +1,16 @@
 /**
- * Formulario para agregar un partido a la fecha: local y visitante de cualquier zona de la categoría.
+ * Formulario para agregar un partido a la fecha: local y visitante de cualquier zona de la categoría,
+ * predio, cancha y hora.
  */
 
 import { useState } from 'react';
+import { validarLugar } from '../../logica/lugar.js';
+import { CamposLugar, LUGAR_VACIO, lugarParaGuardar } from './CamposLugar.jsx';
 
 export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, acciones }) {
   const [localId, setLocalId] = useState('');
   const [visitanteId, setVisitanteId] = useState('');
+  const [lugar, setLugar] = useState(LUGAR_VACIO);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
@@ -21,16 +25,23 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
       setError('Elegí el equipo local y el visitante.');
       return;
     }
+    const validado = validarLugar(lugarParaGuardar(lugar));
+    if (validado.error) {
+      setError(validado.error);
+      return;
+    }
     setError('');
     setGuardando(true);
     const creado = await acciones.crearPartido(
-      { categoriaId: categoria.id, fecha, localId: Number(localId), visitanteId: Number(visitanteId) },
+      { categoriaId: categoria.id, fecha, localId: Number(localId), visitanteId: Number(visitanteId), ...validado.valor },
       `Partido agregado: ${nombreDe(localId)} vs ${nombreDe(visitanteId)}.`
     );
     setGuardando(false);
+    // Quedan el predio y la hora, para cargar rápido los otros partidos de ese turno
     if (creado) {
       setLocalId('');
       setVisitanteId('');
+      setLugar((l) => ({ ...l, cancha: '' }));
     }
   };
 
@@ -96,6 +107,15 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
           </select>
         </div>
       </div>
+      <CamposLugar
+        idBase={`nuevo-${fecha}`}
+        lugar={lugar}
+        invalido={Boolean(error) && Boolean(localId && visitanteId)}
+        onCambiar={(nuevo) => {
+          setLugar(nuevo);
+          setError('');
+        }}
+      />
       {error && (
         <p className="campo__error" role="alert">
           {error}

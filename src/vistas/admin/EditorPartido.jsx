@@ -1,5 +1,5 @@
 /**
- * Un partido en el panel: resultado (o W.O.), postergar o borrar, tarjetas y arancel.
+ * Un partido en el panel: resultado (o W.O.), postergar o borrar, lugar y hora, tarjetas y arancel.
  */
 
 import { useState } from 'react';
@@ -10,6 +10,7 @@ import { estadoPartido } from '../../logica/consultas.js';
 import { tieneResultado } from '../../logica/tabla.js';
 import { validarGoles } from '../../logica/validaciones.js';
 import { BloqueArancel } from './BloqueArancel.jsx';
+import { BloqueLugar } from './BloqueLugar.jsx';
 import { BloqueTarjetas } from './BloqueTarjetas.jsx';
 
 export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal, zonaVisitante, acciones, onCambio }) {
@@ -177,6 +178,7 @@ export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal
         </div>
       )}
 
+      <BloqueLugar partido={partido} acciones={acciones} />
       <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
       <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
     </article>

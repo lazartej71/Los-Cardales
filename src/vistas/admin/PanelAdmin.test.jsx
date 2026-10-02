@@ -42,6 +42,13 @@ describe('panel de administración', () => {
     expect(html).toContain('Agregar partido');
   });
 
+  it('al agregar un partido pide el predio, la cancha y la hora', () => {
+    const html = dibujar('resultados', { fecha: 4 });
+    expect(html).toMatch(/Agregar partido a la fecha (<!-- -->)?4/);
+    expect(html).toContain('Cura Borges');
+    expect(html).toContain('placeholder="13:40"');
+  });
+
   // Fecha 3 de Libre en los datos de ejemplo: 5 (A1-A4), 6 (A2-A3), 11 (B1-B4) y 12 (B2-B3), sin resultado
   const fecha3ConUnoCargadoYUnoPostergado = () => {
     const db = crearDatosEjemplo();

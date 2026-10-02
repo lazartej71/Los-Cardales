@@ -25,6 +25,13 @@ function armar(fallo) {
 }
 
 describe('acciones del panel', () => {
+  it('guarda el lugar y la hora de un partido', async () => {
+    const { acciones, cliente } = armar();
+    const lugar = { predio: 'cura_borges', cancha: 9, hora: '15:10' };
+    await acciones.guardarLugar(1, lugar, 'Lugar guardado.');
+    expect(cliente.actualizarPartido).toHaveBeenCalledWith('tok', 1, lugar);
+  });
+
   it('guarda, vuelve a pedir los datos y avisa', async () => {
     const { acciones, avisos, recargar, cliente } = armar();
     expect(await acciones.guardarResultado(1, 2, 0, 'Resultado guardado.')).toEqual({ id: 1 });

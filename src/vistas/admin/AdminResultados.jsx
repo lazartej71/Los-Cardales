@@ -122,7 +122,7 @@ export function AdminResultados({ db, acciones, filtro, fecha: fechaElegida, onF
       onTocar={() => onAbrir(abierto === p.id ? null : p.id)}
     >
       <EditorPartido
-        key={`${p.id}-${p.golesLocal}-${p.golesVisitante}-${p.postergado}-${p.ausente}`}
+        key={`${p.id}-${p.golesLocal}-${p.golesVisitante}-${p.postergado}-${p.ausente}-${p.predio}-${p.cancha}-${p.hora}`}
         db={db}
         partido={p}
         numero={numeroDe.get(p.id)}
