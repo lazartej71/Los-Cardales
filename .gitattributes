@@ -1,0 +1,8 @@
+# Texto con finales de línea LF en el repositorio, en cualquier sistema
+* text=auto eol=lf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.ico binary
+*.xlsx binary
