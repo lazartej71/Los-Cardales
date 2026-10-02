@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fechaEnJuego } from './consultas.js';
+import { fechaEnJuego, partidosDeCategoria } from './consultas.js';
 
 let ultimoId = 0;
 const pendiente = (fecha, cambios = {}) => ({
@@ -30,5 +30,17 @@ describe('fechaEnJuego', () => {
   it('si todo está cargado es la última, y sin fechas es la 1', () => {
     expect(fechaEnJuego(fechas([1, [jugado(1)]], [2, [jugado(2)]]))).toBe(2);
     expect(fechaEnJuego([])).toBe(1);
+  });
+});
+
+describe('orden de los partidos', () => {
+  it('dentro de cada fecha van por hora y los que no tienen hora al final', () => {
+    const partidos = [
+      { id: 1, categoriaId: 1, fecha: 2, hora: null },
+      { id: 2, categoriaId: 1, fecha: 2, hora: '15:10' },
+      { id: 3, categoriaId: 1, fecha: 2, hora: '13:40' },
+      { id: 4, categoriaId: 1, fecha: 1, hora: '18:00' },
+    ];
+    expect(partidosDeCategoria(partidos, 1).map((p) => p.id)).toEqual([4, 3, 2, 1]);
   });
 });

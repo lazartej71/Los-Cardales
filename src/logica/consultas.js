@@ -4,7 +4,10 @@
 
 import { tieneResultado } from './tabla.js';
 
-const porFechaEId = (a, b) => a.fecha - b.fecha || a.id - b.id;
+// Por fecha y, dentro de cada fecha, por hora (los que no tienen hora van al final)
+const SIN_HORA = '99:99';
+const porFechaHoraEId = (a, b) =>
+  a.fecha - b.fecha || (a.hora ?? SIN_HORA).localeCompare(b.hora ?? SIN_HORA) || a.id - b.id;
 
 // Estado de un partido para mostrar en el panel: [tipo de la píldora, texto]
 export function estadoPartido(partido) {
@@ -27,12 +30,12 @@ export function zonaElegida(zonas, categoriaId, zonaId) {
 export const equiposDeZona = (equipos, zonaId) => equipos.filter((e) => e.zonaId === zonaId);
 
 export const partidosDeCategoria = (partidos, categoriaId) =>
-  partidos.filter((p) => p.categoriaId === categoriaId).sort(porFechaEId);
+  partidos.filter((p) => p.categoriaId === categoriaId).sort(porFechaHoraEId);
 
 // Partidos en los que juega alguno de los equipos (incluye los cruces con otras zonas)
 export function partidosDeEquipos(partidos, equipos) {
   const ids = new Set(equipos.map((e) => e.id));
-  return partidos.filter((p) => ids.has(p.localId) || ids.has(p.visitanteId)).sort(porFechaEId);
+  return partidos.filter((p) => ids.has(p.localId) || ids.has(p.visitanteId)).sort(porFechaHoraEId);
 }
 
 // ¿Algún equipo trae partidos de la tabla inicial? (la fecha 1 se cargó sin detalle)
