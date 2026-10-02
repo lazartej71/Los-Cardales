@@ -3,7 +3,8 @@
 App web mobile-first del campeonato de fútbol amateur, con cinco categorías: Libre, +30, +35, +40 y +45.
 
 - **Vista pública:** tabla de posiciones que se calcula sola, fixture y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
-- **Panel de administración:** se abre agregando `#admin` a la dirección (por ejemplo `https://…/#admin`). Desde ahí:
+- **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`).
+- **Panel de administración:** se abre en `/admin` (por ejemplo `https://www.loscardalesfutbol.com/admin`; el link viejo `/#admin` lleva ahí). Desde ahí:
   - se arman los partidos de cada fecha;
   - en cada partido se cargan el resultado (o el W.O.), las amarillas, las rojas (con aviso al delegado por WhatsApp) y lo que pagó cada equipo;
   - en **Cuentas** se ve cuánto debe cada equipo y se anotan pagos sueltos y deudas anteriores;
@@ -43,7 +44,7 @@ npm run importar  # regenera supabase/datos-iniciales.sql desde el Excel
 ```
 src/                 la app
   api/               pedidos a /api y login con Supabase
-  hooks/             sesión, datos, cambios, #admin
+  hooks/             sesión, datos, cambios, /admin
   logica/            funciones puras: tabla, consultas, expulsiones, validaciones
   vistas/publico/    vista pública
   vistas/admin/      panel

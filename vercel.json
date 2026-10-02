@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/api/:ruta*", "destination": "/api?__ruta=:ruta*" }]
+  "rewrites": [
+    { "source": "/api/:ruta*", "destination": "/api?__ruta=:ruta*" },
+    { "source": "/admin", "destination": "/index.html" }
+  ]
 }

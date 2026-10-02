@@ -1,5 +1,5 @@
 /**
- * Raíz de la app: sesión, datos y elección entre la vista pública y el panel (#admin).
+ * Raíz de la app: sesión, datos y elección entre la vista pública y el panel (/admin).
  * En la simulación (npm run simulacion) suma un cartel fijo: lo cargado no llega a la base real.
  */
 
@@ -10,7 +10,7 @@ import { LimiteDeError } from './componentes/LimiteDeError.jsx';
 import { Toast } from './componentes/Toast.jsx';
 import { useAcciones } from './hooks/useAcciones.js';
 import { useDatos } from './hooks/useDatos.js';
-import { useHashAdmin } from './hooks/useHashAdmin.js';
+import { useRutaAdmin } from './hooks/useRutaAdmin.js';
 import { useSesion } from './hooks/useSesion.js';
 import { useToast } from './hooks/useToast.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
@@ -19,7 +19,7 @@ import { VistaPublica } from './vistas/publico/VistaPublica.jsx';
 
 export function App({ simulacion = SIMULACION }) {
   const [toast, avisar] = useToast();
-  const { enAdmin, salirDelPanel } = useHashAdmin();
+  const { enAdmin, salirDelPanel } = useRutaAdmin();
   const { sesion, cargando: cargandoSesion, ingresar, salir } = useSesion({ simulacion });
   const token = sesion ? sesion.access_token : null;
   const modo = enAdmin && token ? 'admin' : 'publico';
