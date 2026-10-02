@@ -1,0 +1,130 @@
+/**
+ * Estructura del panel de administración.
+ */
+
+import { useEffect } from 'react';
+import { Icono } from '../../componentes/Icono.jsx';
+import { Logo } from '../../componentes/Logo.jsx';
+import { zonaElegida } from '../../logica/consultas.js';
+import { estadoExpulsion } from '../../logica/expulsiones.js';
+import { AdminConfiguracion } from './AdminConfiguracion.jsx';
+import { AdminCuentas } from './AdminCuentas.jsx';
+import { AdminEquipos } from './AdminEquipos.jsx';
+import { AdminResultados } from './AdminResultados.jsx';
+import { AdminSanciones } from './AdminSanciones.jsx';
+
+const SECCIONES_ADMIN = [
+  { id: 'resultados', etiqueta: 'Partidos', titulo: 'Partidos y resultados', icono: 'marcador' },
+  { id: 'cuentas', etiqueta: 'Cuentas', titulo: 'Cuentas de los equipos', icono: 'plata' },
+  { id: 'sanciones', etiqueta: 'Suspendidos', titulo: 'Expulsados y suspendidos', icono: 'candado' },
+  { id: 'equipos', etiqueta: 'Equipos', titulo: 'Equipos y delegados', icono: 'camiseta' },
+  { id: 'configuracion', etiqueta: 'Ajustes', titulo: 'Configuración', icono: 'ajustes' },
+];
+
+export function PanelAdmin({ db, acciones, ui, setUi, onVerSitio, onSalir }) {
+  const cambiar = (cambios) => setUi((u) => ({ ...u, ...cambios }));
+  const actual = SECCIONES_ADMIN.find((s) => s.id === ui.seccion) || SECCIONES_ADMIN[0];
+  const pendientesTribunal = db.expulsiones.filter((e) => estadoExpulsion(e).tipo === 'pendiente').length;
+  const categorias = [...db.categorias].sort((a, b) => a.orden - b.orden);
+  const categoria = categorias.find((c) => c.id === ui.categoriaId) || categorias[0] || null;
+  const zona = categoria ? zonaElegida(db.zonas, categoria.id, ui.zonaId) : null;
+  const equipoCuentaId = ui.equipoCuentaId ?? null;
+
+  // Categoría y zona elegidas: se comparten entre las secciones del panel
+  const filtro = {
+    categoriaId: categoria ? categoria.id : null,
+    zonaId: zona ? zona.id : null,
+    onCategoria: (id) => cambiar({ categoriaId: id, zonaId: null, fecha: null, equipoCuentaId: null }),
+    onZona: (id) => cambiar({ zonaId: id }),
+  };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [actual.id, equipoCuentaId]);
+
+  const comunes = { db, acciones, filtro };
+  let contenido;
+  if (!categoria || !zona) {
+    contenido = <p className="vacio-texto">Todavía no hay categorías cargadas en la base.</p>;
+  } else if (actual.id === 'resultados') {
+    contenido = (
+      <AdminResultados
+        {...comunes}
+        fecha={ui.fecha}
+        onFecha={(fecha) => cambiar({ fecha })}
+        abierto={ui.partidoAbiertoId ?? null}
+        onAbrir={(id) => cambiar({ partidoAbiertoId: id })}
+      />
+    );
+  } else if (actual.id === 'cuentas') {
+    contenido = (
+      <AdminCuentas
+        {...comunes}
+        equipoId={equipoCuentaId}
+        onEquipo={(id) => cambiar({ equipoCuentaId: id })}
+        busqueda={ui.busquedaCuentas ?? ''}
+        onBuscar={(texto) => cambiar({ busquedaCuentas: texto })}
+      />
+    );
+  } else if (actual.id === 'sanciones') {
+    contenido = <AdminSanciones {...comunes} onIrACargar={() => cambiar({ seccion: 'resultados' })} />;
+  } else if (actual.id === 'equipos') {
+    contenido = <AdminEquipos {...comunes} />;
+  } else {
+    contenido = <AdminConfiguracion {...comunes} />;
+  }
+
+  return (
+    <div className="admin">
+      <header className="admin-cabecera">
+        <div className="contenedor admin-cabecera__inner">
+          <div className="admin-cabecera__marca">
+            <Logo className="admin-cabecera__logo" />
+            <div>
+              <p className="admin-cabecera__sub">{db.configuracion.nombreCampeonato}</p>
+              <h1 className="admin-cabecera__titulo">Panel de administración</h1>
+            </div>
+          </div>
+          <div className="admin-cabecera__acciones">
+            <button type="button" className="btn-cabecera" onClick={onVerSitio}>
+              <Icono nombre="ojo" tamano={18} />
+              <span>Ver sitio</span>
+            </button>
+            <button type="button" className="btn-cabecera" onClick={onSalir}>
+              <Icono nombre="salir" tamano={18} />
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="contenedor admin-layout">
+        <nav className="admin-nav" aria-label="Secciones del panel">
+          {SECCIONES_ADMIN.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="nav-inferior__btn"
+              aria-current={actual.id === s.id ? 'page' : undefined}
+              onClick={() => cambiar({ seccion: s.id })}
+            >
+              <Icono nombre={s.icono} tamano={22} />
+              <span>{s.etiqueta}</span>
+              {s.id === 'sanciones' && pendientesTribunal > 0 && (
+                <span className="admin-nav__badge">
+                  {pendientesTribunal}
+                  <span className="visualmente-oculto"> pendientes de tribunal</span>
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <main className="admin-main">
+          <h2 className="admin-main__titulo">{actual.titulo}</h2>
+          {contenido}
+        </main>
+      </div>
+    </div>
+  );
+}
