@@ -116,6 +116,27 @@ export function crearRepositorioSupabase({ url, clave }) {
         return (await ejecutar(cliente.rpc('es_admin'))) === true;
       },
 
+      // La fila propia de administradores (la regla de la base deja leer solo esa).
+      // Si la migración 5 todavía no se corrió, no hay columna rol: es un admin común.
+      async rol() {
+        const { data, error } = await cliente.from('administradores').select('rol').maybeSingle();
+        return !error && data?.rol === 'superadmin' ? 'superadmin' : 'admin';
+      },
+
+      // Hasta 500 registros del rango, del más nuevo al más viejo (la base solo se los da al superadmin)
+      async leerActividad({ desde, hasta }) {
+        const filas = await ejecutar(
+          cliente
+            .from('actividad')
+            .select('id, creado_en, quien, accion, tabla, fila, cambios')
+            .gte('creado_en', desde)
+            .lt('creado_en', hasta)
+            .order('id', { ascending: false })
+            .limit(500)
+        );
+        return filas.map((e) => ({ ...aCamel(e), fila: e.fila ? aCamel(e.fila) : {} }));
+      },
+
       async insertar(tabla, fila) {
         return aCamel(await ejecutar(cliente.from(tabla).insert(fila).select().single()));
       },

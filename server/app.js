@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono';
+import { rangoDelDia } from '../src/logica/actividad.js';
 import {
   validarBorradoExpulsion,
   validarBorradoMovimiento,
@@ -91,7 +92,20 @@ export function crearApp({ crearRepositorio }) {
     });
   };
 
-  admin.get('/datos', async (c) => c.json(await c.get('repositorio').leerAdmin()));
+  admin.get('/datos', async (c) => {
+    const repo = c.get('repositorio');
+    const [datos, rol] = await Promise.all([repo.leerAdmin(), repo.rol()]);
+    return c.json({ ...datos, rol });
+  });
+
+  // Registro de actividad de un día (hora de Argentina): solo para el superadmin
+  admin.get('/actividad', async (c) => {
+    const repo = c.get('repositorio');
+    if ((await repo.rol()) !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
+    const rango = rangoDelDia(c.req.query('dia'));
+    if (!rango) return c.json({ error: 'Elegí un día válido.' }, 400);
+    return c.json(await repo.leerActividad(rango));
+  });
 
   admin.post('/partidos', async (c) => {
     const repo = c.get('repositorio');

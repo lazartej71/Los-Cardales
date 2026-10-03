@@ -4,9 +4,10 @@ import { crearApp } from './app.js';
 import { crearRepositorioMemoria } from './repositorioMemoria.js';
 
 // Repositorio en memoria: registra lo que la API intenta guardar
-function armar({ admin = true } = {}) {
+function armar({ admin = true, rol = 'admin' } = {}) {
   const datos = crearDatosEjemplo();
   const guardados = [];
+  const pedidosActividad = [];
   const publico = () => ({
     categorias: datos.categorias,
     zonas: datos.zonas,
@@ -20,6 +21,11 @@ function armar({ admin = true } = {}) {
     leerAdmin: async () => datos,
     usuarioActual: async () => (token === 'token-valido' ? { id: 'u1' } : null),
     esAdmin: async () => admin,
+    rol: async () => rol,
+    leerActividad: async (rango) => {
+      pedidosActividad.push(rango);
+      return [{ id: 1, quien: 'Franco', accion: 'alta', tabla: 'tarjetas', fila: {}, cambios: null }];
+    },
     insertar: async (tabla, fila) => {
       guardados.push({ accion: 'insertar', tabla, fila });
       return { id: 500, ...fila };
@@ -35,7 +41,7 @@ function armar({ admin = true } = {}) {
       guardados.push({ accion: 'delegado', fila });
     },
   });
-  return { app: crearApp({ crearRepositorio }), guardados, datos };
+  return { app: crearApp({ crearRepositorio }), guardados, datos, pedidosActividad };
 }
 
 function pedir(app, ruta, { metodo = 'GET', cuerpo, token = 'token-valido' } = {}) {
@@ -96,6 +102,26 @@ describe('API de admin', () => {
   it('le da los datos privados al admin', async () => {
     const cuerpo = await (await pedir(armar().app, '/admin/datos')).json();
     expect(cuerpo.expulsiones).toHaveLength(4);
+    expect(cuerpo.rol).toBe('admin');
+  });
+
+  it('el registro de actividad es solo para el superadmin', async () => {
+    const respuesta = await pedir(armar().app, '/admin/actividad?dia=2026-10-03');
+    expect(respuesta.status).toBe(403);
+    expect((await respuesta.json()).error).toBe('Esta sección es solo para el superadmin.');
+  });
+
+  it('al superadmin le da la actividad del día pedido, en hora de Argentina', async () => {
+    const { app, pedidosActividad } = armar({ rol: 'superadmin' });
+    const respuesta = await pedir(app, '/admin/actividad?dia=2026-10-03');
+    expect(respuesta.status).toBe(200);
+    expect(await respuesta.json()).toEqual([expect.objectContaining({ quien: 'Franco', tabla: 'tarjetas' })]);
+    expect(pedidosActividad).toEqual([{ desde: '2026-10-03T00:00:00-03:00', hasta: '2026-10-04T00:00:00-03:00' }]);
+  });
+
+  it('pide el día bien escrito', async () => {
+    const respuesta = await pedir(armar({ rol: 'superadmin' }).app, '/admin/actividad?dia=hoy');
+    expect(respuesta.status).toBe(400);
   });
 
   it('crea un partido válido', async () => {

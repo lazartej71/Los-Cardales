@@ -168,4 +168,34 @@ describe('base en memoria de la simulación', () => {
     await expect(repo.leerPublico()).rejects.toThrow('sin conexión');
     expect((await repo.leerPublico()).equipos).toHaveLength(32);
   });
+
+  it('en la simulación la cuenta es superadmin', async () => {
+    expect(await armar().repo.rol()).toBe('superadmin');
+  });
+
+  it('anota la actividad de cada alta, cambio y baja', async () => {
+    const { inicial, repo } = armar();
+    const [a, b] = inicial.equipos;
+    const creado = await repo.insertar('partidos', { categoria_id: 1, fecha: 9, local_id: a.id, visitante_id: b.id });
+    await repo.actualizar('partidos', creado.id, { goles_local: 2, goles_visitante: 1, postergado: false });
+    await repo.borrar('partidos', creado.id);
+    const hoy = { desde: '2000-01-01T00:00:00-03:00', hasta: '2999-01-01T00:00:00-03:00' };
+    const actividad = await repo.leerActividad(hoy);
+    // Del más nuevo al más viejo; el cambio solo anota lo que cambió de verdad
+    expect(actividad.map((e) => [e.quien, e.accion, e.tabla, e.cambios])).toEqual([
+      ['Simulación', 'baja', 'partidos', null],
+      ['Simulación', 'cambio', 'partidos', ['goles_local', 'goles_visitante']],
+      ['Simulación', 'alta', 'partidos', null],
+    ]);
+    expect(actividad[0].fila).toMatchObject({ id: creado.id, golesLocal: 2 });
+    expect(typeof actividad[0].creadoEn).toBe('string');
+    expect(await repo.leerActividad({ desde: '2000-01-01T00:00:00-03:00', hasta: '2000-01-02T00:00:00-03:00' })).toEqual([]);
+  });
+
+  it('un cambio que no cambia nada no se anota', async () => {
+    const { inicial, repo } = armar();
+    const partido = inicial.partidos[0];
+    await repo.actualizar('partidos', partido.id, { postergado: partido.postergado });
+    expect(await repo.leerActividad({ desde: '2000-01-01T00:00:00-03:00', hasta: '2999-01-01T00:00:00-03:00' })).toEqual([]);
+  });
 });

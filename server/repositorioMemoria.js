@@ -17,6 +17,8 @@ const POR_DEFECTO = {
 const PRIVADAS = ['delegados', 'expulsiones', 'tarjetas', 'movimientos'];
 
 const copia = (valor) => structuredClone(valor);
+// "goles_local" → "golesLocal"
+const aClave = (columna) => columna.replace(/_([a-z])/g, (_, letra) => letra.toUpperCase());
 const porFechaEId = (a, b) => a.fecha - b.fecha || a.id - b.id;
 
 /**
@@ -32,6 +34,8 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         .then((datos) => {
           const db = copia(datos);
           for (const tabla of PRIVADAS) db[tabla] = [];
+          // Como el trigger de la migración 5: cada alta, cambio o baja queda anotada
+          db.actividad = [];
           // Como las secuencias de la base: los ids no se reusan aunque se borre una fila
           db.ultimoId = {
             partidos: Math.max(0, ...db.partidos.map((p) => p.id)),
@@ -54,6 +58,18 @@ export function crearRepositorioMemoria(cargarDatosReales) {
     return copia({ categorias, zonas, equipos, tablaInicial, partidos: [...partidos].sort(porFechaEId), configuracion });
   }
 
+  function anotar(db, accion, tabla, fila, cambios = null) {
+    db.actividad.push({
+      id: db.actividad.length + 1,
+      creadoEn: new Date().toISOString(),
+      quien: 'Simulación',
+      accion,
+      tabla,
+      fila: copia(fila),
+      cambios,
+    });
+  }
+
   return function crearRepositorio(token) {
     return {
       leerPublico,
@@ -73,11 +89,25 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         return true;
       },
 
+      // En la simulación se ve todo, también la pestaña Control
+      async rol() {
+        return 'superadmin';
+      },
+
+      async leerActividad({ desde, hasta }) {
+        const db = await base();
+        const [inicio, fin] = [Date.parse(desde), Date.parse(hasta)];
+        return copia(
+          db.actividad.filter((e) => Date.parse(e.creadoEn) >= inicio && Date.parse(e.creadoEn) < fin).reverse()
+        );
+      },
+
       async insertar(tabla, fila) {
         const db = await base();
         const id = ++db.ultimoId[tabla];
         const nueva = { id, ...POR_DEFECTO[tabla], ...aCamel(fila) };
         db[tabla].push(nueva);
+        anotar(db, 'alta', tabla, nueva);
         return copia(nueva);
       },
 
@@ -85,19 +115,26 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         const db = await base();
         const fila = tabla === 'configuracion' ? db.configuracion : db[tabla].find((f) => f.id === id);
         if (!fila) throw new Error(`Simulación: no existe ${tabla} ${id}`);
+        const distintas = Object.keys(cambios)
+          .filter((columna) => JSON.stringify(fila[aClave(columna)]) !== JSON.stringify(cambios[columna]))
+          .sort();
         Object.assign(fila, aCamel(cambios));
+        if (distintas.length) anotar(db, 'cambio', tabla, fila, distintas);
         return copia(fila);
       },
 
       async borrar(tabla, id) {
         const db = await base();
+        const borrada = db[tabla].find((f) => f.id === id);
         db[tabla] = db[tabla].filter((f) => f.id !== id);
+        if (borrada) anotar(db, 'baja', tabla, borrada);
       },
 
       async guardarDelegado(fila) {
         const db = await base();
         const delegado = aCamel(fila);
         db.delegados = [...db.delegados.filter((d) => d.equipoId !== delegado.equipoId), delegado];
+        anotar(db, 'cambio', 'delegados', delegado, Object.keys(fila).filter((c) => c !== 'equipo_id').sort());
       },
     };
   };
