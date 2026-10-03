@@ -8,6 +8,7 @@ function armar({ admin = true, rol = 'admin' } = {}) {
   const datos = crearDatosEjemplo();
   const guardados = [];
   const pedidosActividad = [];
+  let visitas = 0;
   const publico = () => ({
     categorias: datos.categorias,
     zonas: datos.zonas,
@@ -22,6 +23,10 @@ function armar({ admin = true, rol = 'admin' } = {}) {
     usuarioActual: async () => (token === 'token-valido' ? { id: 'u1' } : null),
     esAdmin: async () => admin,
     rol: async () => rol,
+    sumarVisita: async () => {
+      visitas++;
+    },
+    leerVisitas: async () => [{ dia: '2026-10-03', personas: 40 }],
     leerActividad: async (rango) => {
       pedidosActividad.push(rango);
       return [{ id: 1, quien: 'Franco', accion: 'alta', tabla: 'tarjetas', fila: {}, cambios: null }];
@@ -41,7 +46,7 @@ function armar({ admin = true, rol = 'admin' } = {}) {
       guardados.push({ accion: 'delegado', fila });
     },
   });
-  return { app: crearApp({ crearRepositorio }), guardados, datos, pedidosActividad };
+  return { app: crearApp({ crearRepositorio }), guardados, datos, pedidosActividad, visitas: () => visitas };
 }
 
 function pedir(app, ruta, { metodo = 'GET', cuerpo, token = 'token-valido' } = {}) {
@@ -61,6 +66,14 @@ describe('API pública', () => {
     expect(cuerpo.equipos).toHaveLength(32);
     expect(cuerpo.expulsiones).toBeUndefined();
     expect(JSON.stringify(cuerpo)).not.toMatch(/telefono|549115/);
+  });
+
+  it('cualquiera avisa una visita, sin sesión y sin caché', async () => {
+    const { app, visitas } = armar();
+    const respuesta = await pedir(app, '/visita', { metodo: 'POST', token: null });
+    expect(respuesta.status).toBe(204);
+    expect(respuesta.headers.get('Cache-Control')).toBe('no-store');
+    expect(visitas()).toBe(1);
   });
 
   it('responde en JSON cuando la ruta no existe', async () => {
@@ -117,6 +130,13 @@ describe('API de admin', () => {
     expect(respuesta.status).toBe(200);
     expect(await respuesta.json()).toEqual([expect.objectContaining({ quien: 'Franco', tabla: 'tarjetas' })]);
     expect(pedidosActividad).toEqual([{ desde: '2026-10-03T00:00:00-03:00', hasta: '2026-10-04T00:00:00-03:00' }]);
+  });
+
+  it('las visitas son solo para el superadmin', async () => {
+    expect((await pedir(armar().app, '/admin/visitas')).status).toBe(403);
+    const respuesta = await pedir(armar({ rol: 'superadmin' }).app, '/admin/visitas');
+    expect(respuesta.status).toBe(200);
+    expect(await respuesta.json()).toEqual([{ dia: '2026-10-03', personas: 40 }]);
   });
 
   it('pide el día bien escrito', async () => {

@@ -198,4 +198,14 @@ describe('base en memoria de la simulación', () => {
     await repo.actualizar('partidos', partido.id, { postergado: partido.postergado });
     expect(await repo.leerActividad({ desde: '2000-01-01T00:00:00-03:00', hasta: '2999-01-01T00:00:00-03:00' })).toEqual([]);
   });
+
+  it('suma las visitas del día', async () => {
+    const { repo, crearRepositorio } = armar();
+    await crearRepositorio(null).sumarVisita();
+    await crearRepositorio(null).sumarVisita();
+    const visitas = await repo.leerVisitas();
+    expect(visitas).toHaveLength(1);
+    expect(visitas[0]).toMatchObject({ personas: 2 });
+    expect(visitas[0].dia).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
 });

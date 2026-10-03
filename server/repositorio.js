@@ -82,6 +82,15 @@ export function crearRepositorioSupabase({ url, clave }) {
     return {
       leerPublico,
 
+      async sumarVisita() {
+        await ejecutar(cliente.rpc('sumar_visita'));
+      },
+
+      // Los últimos 60 días con visitas, del más nuevo al más viejo (la base solo se los da al superadmin)
+      async leerVisitas() {
+        return ejecutar(cliente.from('visitas').select('dia, personas').order('dia', { ascending: false }).limit(60));
+      },
+
       // Lo público más lo privado: delegados (unidos a cada equipo), expulsiones, tarjetas y movimientos
       async leerAdmin() {
         const [publico, delegados, expulsiones, tarjetas, movimientos] = await Promise.all([

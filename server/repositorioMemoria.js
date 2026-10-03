@@ -4,6 +4,7 @@
  * Tiene la misma forma que crearRepositorioSupabase, así la API no nota la diferencia.
  */
 
+import { hoyEnArgentina } from '../src/logica/cuentas.js';
 import { aCamel, armarDatosAdmin } from './repositorio.js';
 
 // Lo que completa la base sola al insertar (los valores por defecto de esquema.sql y las migraciones)
@@ -36,6 +37,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
           for (const tabla of PRIVADAS) db[tabla] = [];
           // Como el trigger de la migración 5: cada alta, cambio o baja queda anotada
           db.actividad = [];
+          db.visitas = new Map(); // día → personas
           // Como las secuencias de la base: los ids no se reusan aunque se borre una fila
           db.ultimoId = {
             partidos: Math.max(0, ...db.partidos.map((p) => p.id)),
@@ -87,6 +89,19 @@ export function crearRepositorioMemoria(cargarDatosReales) {
 
       async esAdmin() {
         return true;
+      },
+
+      async sumarVisita() {
+        const db = await base();
+        const dia = hoyEnArgentina();
+        db.visitas.set(dia, (db.visitas.get(dia) ?? 0) + 1);
+      },
+
+      async leerVisitas() {
+        const db = await base();
+        return [...db.visitas.entries()]
+          .map(([dia, personas]) => ({ dia, personas }))
+          .sort((a, b) => b.dia.localeCompare(a.dia));
       },
 
       // En la simulación se ve todo, también la pestaña Control

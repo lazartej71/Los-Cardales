@@ -58,6 +58,13 @@ export function crearApp({ crearRepositorio }) {
     return c.json(datos);
   });
 
+  // Cada navegador avisa una vez por día que entró alguien a la vista pública (solo se suma 1 al día)
+  app.post('/visita', async (c) => {
+    await crearRepositorio(null).sumarVisita();
+    c.header('Cache-Control', 'no-store');
+    return c.body(null, 204);
+  });
+
   const admin = new Hono();
 
   // Solo pasan los pedidos con la sesión de un admin
@@ -96,6 +103,13 @@ export function crearApp({ crearRepositorio }) {
     const repo = c.get('repositorio');
     const [datos, rol] = await Promise.all([repo.leerAdmin(), repo.rol()]);
     return c.json({ ...datos, rol });
+  });
+
+  // Personas por día en la vista pública: solo para el superadmin
+  admin.get('/visitas', async (c) => {
+    const repo = c.get('repositorio');
+    if ((await repo.rol()) !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
+    return c.json(await repo.leerVisitas());
   });
 
   // Registro de actividad de un día (hora de Argentina): solo para el superadmin
