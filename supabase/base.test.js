@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 const leer = (archivo) => readFileSync(new URL(archivo, import.meta.url), 'utf8');
 const ADMIN = '11111111-1111-1111-1111-111111111111';
 const OTRO = '22222222-2222-2222-2222-222222222222';
+const SUPER = '33333333-3333-3333-3333-333333333333';
 let db;
 let partidoId;
 
@@ -52,9 +53,12 @@ beforeAll(async () => {
   await db.exec(leer('./migracion-3-predios.sql'));
   await db.exec(leer('./migracion-4-cancha-6-cura-borges.sql'));
   await db.exec(`
-    insert into auth.users values ('${ADMIN}', 'admin@prueba.com'), ('${OTRO}', 'otro@prueba.com');
-    insert into public.administradores (user_id, nombre) values ('${ADMIN}', 'Prueba');
+    insert into auth.users values ('${ADMIN}', 'admin@prueba.com'), ('${OTRO}', 'otro@prueba.com'),
+      ('${SUPER}', 'ljdev@loscardalesfutbol.com');
+    insert into public.administradores (user_id, nombre) values ('${ADMIN}', 'Prueba'), ('${SUPER}', 'Jorge');
   `);
+  // La 5 va después de las cuentas: al final pasa a superadmin la de ljdev
+  await db.exec(leer('./migracion-5-control.sql'));
 }, 60000);
 
 describe('carga inicial', () => {
@@ -220,5 +224,70 @@ describe('migración 4: cancha 6 de Cura Borges', () => {
         values (1, 31, 7, 8, ${lugar})`);
     expect((await crear(`'cura_borges', 2, '13:40'`)).error).toMatch(/partidos_cancha_check/);
     expect((await crear(`'cura_borges', 6, '13:40'`)).error).toBeUndefined();
+  });
+});
+
+describe('migración 5: roles y registro de actividad', () => {
+  const comoSuper = (consulta) => como('authenticated', SUPER, consulta);
+  // Lo último que anotó el registro (como postgres, que no tiene RLS)
+  const ultima = () => uno('select quien, accion, tabla, cambios, fila from public.actividad order by id desc limit 1');
+  const cuantas = async () => (await uno('select count(*)::int as n from public.actividad')).n;
+  let id;
+
+  it('los admins quedan como admin y ljdev como superadmin', async () => {
+    expect((await db.query('select nombre, rol from public.administradores order by nombre')).rows).toEqual([
+      { nombre: 'Jorge', rol: 'superadmin' },
+      { nombre: 'Prueba', rol: 'admin' },
+    ]);
+  });
+
+  it('anota el alta de un partido con quién lo cargó', async () => {
+    const { filas } = await comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+      values (1, 40, 9, 10) returning id`);
+    id = filas[0].id;
+    expect(await ultima()).toMatchObject({ quien: 'Prueba', accion: 'alta', tabla: 'partidos', cambios: null });
+    expect((await ultima()).fila).toMatchObject({ id, local_id: 9, visitante_id: 10 });
+  });
+
+  it('anota qué columnas cambiaron, y nada si no cambió nada', async () => {
+    await comoAdmin(`update public.partidos set goles_local = 2, goles_visitante = 1 where id = ${id}`);
+    expect(await ultima()).toMatchObject({ accion: 'cambio', cambios: ['goles_local', 'goles_visitante'] });
+    const antes = await cuantas();
+    await comoAdmin(`update public.partidos set goles_local = 2 where id = ${id}`);
+    expect(await cuantas()).toBe(antes);
+  });
+
+  it('anota la baja con la fila borrada', async () => {
+    await comoAdmin(`delete from public.partidos where id = ${id}`);
+    expect(await ultima()).toMatchObject({ accion: 'baja', tabla: 'partidos' });
+    expect((await ultima()).fila).toMatchObject({ id, goles_local: 2 });
+  });
+
+  it('lo cargado desde el SQL Editor queda como Supabase (SQL)', async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(`update public.configuracion set arancel = 110000`);
+    expect(await ultima()).toMatchObject({ quien: 'Supabase (SQL)', tabla: 'configuracion', cambios: ['arancel'] });
+  });
+
+  it('solo el superadmin lee el registro', async () => {
+    expect((await comoAdmin('select count(*)::int as n from public.actividad')).filas).toEqual([{ n: 0 }]);
+    expect((await comoSuper('select count(*)::int as n from public.actividad')).filas).toEqual([{ n: await cuantas() }]);
+  });
+
+  it('nadie puede escribir ni borrar el registro desde la app', async () => {
+    for (const consulta of [
+      `insert into public.actividad (quien, accion, tabla) values ('x', 'alta', 'partidos')`,
+      'delete from public.actividad',
+      `update public.actividad set quien = 'x'`,
+    ]) {
+      expect((await comoSuper(consulta)).error).toMatch(/permission denied/);
+    }
+  });
+
+  it('si la migración se corre dos veces, falla al principio y no cambia nada', async () => {
+    const antes = await cuantas();
+    await expect(db.exec(leer('./migracion-5-control.sql'))).rejects.toThrow(/already exists/);
+    await db.exec('rollback');
+    expect(await cuantas()).toBe(antes);
   });
 });
