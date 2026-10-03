@@ -13,6 +13,10 @@ function armar(fallo) {
       return { id: 1 };
     }),
     crearMovimiento: vi.fn(async () => ({ id: 9 })),
+    actividad: vi.fn(async () => {
+      if (fallo) throw fallo;
+      return [{ id: 1 }];
+    }),
   };
   const acciones = crearAcciones({
     token: 'tok',
@@ -25,6 +29,20 @@ function armar(fallo) {
 }
 
 describe('acciones del panel', () => {
+  it('lee la actividad sin volver a pedir los datos ni avisar', async () => {
+    const { acciones, avisos, recargar, cliente } = armar();
+    expect(await acciones.leerActividad('2026-10-03')).toEqual([{ id: 1 }]);
+    expect(cliente.actividad).toHaveBeenCalledWith('tok', '2026-10-03');
+    expect(recargar).not.toHaveBeenCalled();
+    expect(avisos).toEqual([]);
+  });
+
+  it('si falla la lectura de actividad avisa el motivo', async () => {
+    const { acciones, avisos } = armar(new ErrorApi('No hay conexión.', 0));
+    expect(await acciones.leerActividad('2026-10-03')).toBeNull();
+    expect(avisos).toEqual([['error', 'No hay conexión.']]);
+  });
+
   it('guarda el lugar y la hora de un partido', async () => {
     const { acciones, cliente } = armar();
     const lugar = { predio: 'cura_borges', cancha: 9, hora: '15:10' };

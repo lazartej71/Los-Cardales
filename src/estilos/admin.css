@@ -57,7 +57,8 @@
 
 .admin-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  /* Tantas columnas como pestañas: 5, o 6 con Control (superadmin) */
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--superficie); border-top: 1px solid var(--linea); box-shadow: var(--sombra-nav);
 }
@@ -73,7 +74,7 @@
   .admin-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; }
   .admin-nav {
     position: sticky; top: calc(20px + var(--alto-cartel, 0px)); align-self: start; margin-top: 20px;
-    display: grid; grid-template-columns: 1fr; gap: 4px; padding: 0;
+    display: grid; grid-auto-flow: row; grid-template-columns: 1fr; gap: 4px; padding: 0;
     background: none; border: 0; box-shadow: none;
   }
   .admin-nav .nav-inferior__btn {
@@ -346,3 +347,20 @@
 .renglon__lugar { color: var(--marca-fuerte); }
 .renglon__editor { padding: 0 6px 6px; }
 .renglon__editor .editor { border: 0; background: none; padding: 8px; }
+
+/* Control (superadmin): filtros, resumen del día y actividad */
+.control-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.control-filtros__fecha, .control-filtros__persona { width: auto; min-width: 0; flex: 1 1 140px; }
+.control-resumen { padding: 10px 12px; border-radius: var(--radio-chico); background: var(--superficie-2); }
+.control-resumen__titulo { font-weight: 700; margin-bottom: 4px; }
+.control-resumen__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14.5px; }
+.control-resumen__detalle { color: var(--tinta-2); }
+.control-lista { list-style: none; margin: 0; padding: 0; }
+.control-lista__item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--linea); font-size: 14.5px;
+}
+.control-lista__item:last-child { border-bottom: 0; }
+.control-lista__hora { font-family: var(--fuente-display); font-weight: 700; color: var(--marca-fuerte); }
+.control-lista__quien { font-weight: 700; }
+.control-lista__texto { grid-column: 2; color: var(--tinta-2); overflow-wrap: anywhere; }

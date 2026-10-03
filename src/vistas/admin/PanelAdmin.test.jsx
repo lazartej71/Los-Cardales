@@ -197,6 +197,24 @@ describe('panel de administración', () => {
   });
 });
 
+describe('pestaña Control', () => {
+  it('Franco (admin) no la ve', () => {
+    expect(dibujar('resultados', { db: { ...crearDatosEjemplo(), rol: 'admin' } })).not.toContain('<span>Control</span>');
+  });
+
+  it('el superadmin la ve', () => {
+    const html = dibujar('control', { db: { ...crearDatosEjemplo(), rol: 'superadmin' } });
+    expect(html).toContain('<span>Control</span>');
+    expect(html).toContain('Ver visitas en Vercel');
+  });
+
+  it('un admin que entra a la sección control por la dirección ve Partidos', () => {
+    const html = dibujar('control', { db: { ...crearDatosEjemplo(), rol: 'admin' } });
+    expect(html).not.toContain('Ver visitas en Vercel');
+    expect(html).toContain('Partidos y resultados');
+  });
+});
+
 describe('login', () => {
   it('pide usuario y contraseña, sin credenciales de prueba', () => {
     const html = renderToString(<PantallaLogin nombreCampeonato="Copa GP" onIngresar={nada} onVolver={nada} />);

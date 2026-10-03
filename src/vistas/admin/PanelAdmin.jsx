@@ -8,6 +8,7 @@ import { Logo } from '../../componentes/Logo.jsx';
 import { zonaElegida } from '../../logica/consultas.js';
 import { estadoExpulsion } from '../../logica/expulsiones.js';
 import { AdminConfiguracion } from './AdminConfiguracion.jsx';
+import { AdminControl } from './AdminControl.jsx';
 import { AdminCuentas } from './AdminCuentas.jsx';
 import { AdminEquipos } from './AdminEquipos.jsx';
 import { AdminResultados } from './AdminResultados.jsx';
@@ -20,10 +21,13 @@ const SECCIONES_ADMIN = [
   { id: 'equipos', etiqueta: 'Equipos', titulo: 'Equipos y delegados', icono: 'camiseta' },
   { id: 'configuracion', etiqueta: 'Ajustes', titulo: 'Configuración', icono: 'ajustes' },
 ];
+// Solo la ve el superadmin
+const SECCION_CONTROL = { id: 'control', etiqueta: 'Control', titulo: 'Control del sitio', icono: 'control' };
 
 export function PanelAdmin({ db, acciones, ui, setUi, onVerSitio, onSalir }) {
   const cambiar = (cambios) => setUi((u) => ({ ...u, ...cambios }));
-  const actual = SECCIONES_ADMIN.find((s) => s.id === ui.seccion) || SECCIONES_ADMIN[0];
+  const secciones = db.rol === 'superadmin' ? [...SECCIONES_ADMIN, SECCION_CONTROL] : SECCIONES_ADMIN;
+  const actual = secciones.find((s) => s.id === ui.seccion) || secciones[0];
   const pendientesTribunal = db.expulsiones.filter((e) => estadoExpulsion(e).tipo === 'pendiente').length;
   const categorias = [...db.categorias].sort((a, b) => a.orden - b.orden);
   const categoria = categorias.find((c) => c.id === ui.categoriaId) || categorias[0] || null;
@@ -44,7 +48,9 @@ export function PanelAdmin({ db, acciones, ui, setUi, onVerSitio, onSalir }) {
 
   const comunes = { db, acciones, filtro };
   let contenido;
-  if (!categoria || !zona) {
+  if (actual.id === 'control') {
+    contenido = <AdminControl db={db} acciones={acciones} />;
+  } else if (!categoria || !zona) {
     contenido = <p className="vacio-texto">Todavía no hay categorías cargadas en la base.</p>;
   } else if (actual.id === 'resultados') {
     contenido = (
@@ -100,7 +106,7 @@ export function PanelAdmin({ db, acciones, ui, setUi, onVerSitio, onSalir }) {
 
       <div className="contenedor admin-layout">
         <nav className="admin-nav" aria-label="Secciones del panel">
-          {SECCIONES_ADMIN.map((s) => (
+          {secciones.map((s) => (
             <button
               key={s.id}
               type="button"

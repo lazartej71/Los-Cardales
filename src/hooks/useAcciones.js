@@ -21,7 +21,19 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
     }
   }
 
+  // Solo lee (no cambia nada): no vuelve a pedir los datos ni avisa si sale bien
+  async function leer(pedido) {
+    try {
+      return await pedido();
+    } catch (error) {
+      if (error.estado === 401 || error.estado === 403) onSesionInvalida(error);
+      else avisar(error.message, 'error');
+      return null;
+    }
+  }
+
   return {
+    leerActividad: (dia) => leer(() => cliente.actividad(token, dia)),
     crearPartido: (datos, mensaje) => ejecutar(() => cliente.crearPartido(token, datos), mensaje),
     guardarResultado: (id, golesLocal, golesVisitante, mensaje) =>
       ejecutar(() => cliente.actualizarPartido(token, id, { golesLocal, golesVisitante }), mensaje),

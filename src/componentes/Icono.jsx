@@ -50,6 +50,7 @@ const ICONOS = {
       <circle cx="9" cy="17" r="2" />
     </>
   ),
+  control: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
   arriba: <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />,
   abajo: <path d="M12 5v14M5.5 12.5 12 19l6.5-6.5" />,
   cerrar: <path d="M18 6 6 18M6 6l12 12" />,
