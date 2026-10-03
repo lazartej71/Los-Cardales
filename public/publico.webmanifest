@@ -9,8 +9,8 @@
   "theme_color": "#060a22",
   "lang": "es-AR",
   "icons": [
-    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "/icono-android-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/icono-android-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]

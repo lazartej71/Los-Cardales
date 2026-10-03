@@ -40,8 +40,9 @@ describe('instalar como app', () => {
     for (const m of [publico, admin]) {
       expect(m.display).toBe('standalone');
       expect(m.icons).toEqual([
-        { src: '/icono-192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/icono-512.png', sizes: '512x512', type: 'image/png' },
+        // Logo transparente: lo usan la PC y la pantalla de carga de Android (sin cuadrado alrededor)
+        { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/logo-512.png', sizes: '512x512', type: 'image/png' },
         // Android los recorta con la forma del teléfono (círculo, cuadrado redondeado...)
         { src: '/icono-android-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
         { src: '/icono-android-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
@@ -55,11 +56,19 @@ describe('instalar como app', () => {
   });
 
   it('los íconos tienen el tamaño que dicen y no son transparentes', () => {
-    for (const nombre of ['180', '192', '512', 'android-192', 'android-512']) {
+    for (const nombre of ['180', 'android-192', 'android-512']) {
       const lado = Number(nombre.replace('android-', ''));
       const png = readFileSync(new URL(`../../public/icono-${nombre}.png`, import.meta.url));
       // Cabecera PNG: ancho y alto en los bytes 16-23; tipo de color en el 25 (2 = RGB, sin transparencia)
       expect([png.readUInt32BE(16), png.readUInt32BE(20), png[25]]).toEqual([lado, lado, 2]);
+    }
+  });
+
+  it('el logo de la pantalla de carga tiene fondo transparente', () => {
+    for (const lado of [192, 512]) {
+      const png = readFileSync(new URL(`../../public/logo-${lado}.png`, import.meta.url));
+      // Tipo de color 6 = RGBA (con transparencia)
+      expect([png.readUInt32BE(16), png.readUInt32BE(20), png[25]]).toEqual([lado, lado, 6]);
     }
   });
 
