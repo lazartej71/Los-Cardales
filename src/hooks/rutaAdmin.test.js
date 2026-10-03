@@ -39,7 +39,23 @@ describe('instalar como app', () => {
     expect(admin).toMatchObject({ id: '/admin', start_url: '/admin', scope: '/admin', name: 'Los Cardales Admin' });
     for (const m of [publico, admin]) {
       expect(m.display).toBe('standalone');
-      expect(m.icons.map((i) => i.sizes)).toEqual(['192x192', '1024x1024']);
+      expect(m.icons).toEqual([
+        { src: '/icono-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icono-512.png', sizes: '512x512', type: 'image/png' },
+      ]);
+    }
+  });
+
+  it('el ícono del iPhone es el logo con fondo negro', () => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    expect(html).toContain('<link rel="apple-touch-icon" href="/icono-180.png" />');
+  });
+
+  it('los íconos tienen el tamaño que dicen y no son transparentes', () => {
+    for (const lado of [180, 192, 512]) {
+      const png = readFileSync(new URL(`../../public/icono-${lado}.png`, import.meta.url));
+      // Cabecera PNG: ancho y alto en los bytes 16-23; tipo de color en el 25 (2 = RGB, sin transparencia)
+      expect([png.readUInt32BE(16), png.readUInt32BE(20), png[25]]).toEqual([lado, lado, 2]);
     }
   });
 
