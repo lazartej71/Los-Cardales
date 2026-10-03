@@ -3,7 +3,7 @@
 App web mobile-first del campeonato de fútbol amateur, con cinco categorías: Libre, +30, +35, +40 y +45.
 
 - **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido, y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
-- **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`).
+- **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`). El panel conviene instalarlo desde `admin.loscardalesfutbol.com`: en Android, si la app pública ya está instalada, Chrome no deja instalar `www…/admin` porque queda dentro de ella.
 - **Panel de administración:** se abre en `/admin` (por ejemplo `https://www.loscardalesfutbol.com/admin`; el link viejo `/#admin` lleva ahí). Desde ahí:
   - se arman los partidos de cada fecha;
   - en cada partido se cargan el resultado (o el W.O.), las amarillas, las rojas (con aviso al delegado por WhatsApp) y lo que pagó cada equipo;

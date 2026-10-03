@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "admin.loscardalesfutbol.com" }],
+      "destination": "/admin",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/api/:ruta*", "destination": "/api?__ruta=:ruta*" },
     { "source": "/admin", "destination": "/index.html" }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { direccionDelPanelViejo, esPanel, manifiestoDe } from './useRutaAdmin.js';
+import { direccionDelPanelViejo, esPanel, manifiestoDe, sitioPublicoDesde } from './useRutaAdmin.js';
 
 const leerJson = (ruta) => JSON.parse(readFileSync(new URL(ruta, import.meta.url), 'utf8'));
 
@@ -70,6 +70,22 @@ describe('instalar como app', () => {
       // Tipo de color 6 = RGBA (con transparencia)
       expect([png.readUInt32BE(16), png.readUInt32BE(20), png[25]]).toEqual([lado, lado, 6]);
     }
+  });
+
+  it('admin.loscardalesfutbol.com lleva al panel', () => {
+    const { redirects } = leerJson('../../vercel.json');
+    expect(redirects).toContainEqual({
+      source: '/',
+      has: [{ type: 'host', value: 'admin.loscardalesfutbol.com' }],
+      destination: '/admin',
+      permanent: false,
+    });
+  });
+
+  it('desde el subdominio del panel, el sitio público se abre en www', () => {
+    expect(sitioPublicoDesde('admin.loscardalesfutbol.com')).toBe('https://www.loscardalesfutbol.com/');
+    expect(sitioPublicoDesde('www.loscardalesfutbol.com')).toBeNull();
+    expect(sitioPublicoDesde('localhost')).toBeNull();
   });
 
   it('en Vercel /admin abre la app', () => {
