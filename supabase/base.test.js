@@ -59,6 +59,7 @@ beforeAll(async () => {
   `);
   // La 5 va después de las cuentas: al final pasa a superadmin la de ljdev
   await db.exec(leer('./migracion-5-control.sql'));
+  await db.exec(leer('./migracion-6-visitas.sql'));
 }, 60000);
 
 describe('carga inicial', () => {
@@ -289,5 +290,34 @@ describe('migración 5: roles y registro de actividad', () => {
     await expect(db.exec(leer('./migracion-5-control.sql'))).rejects.toThrow(/already exists/);
     await db.exec('rollback');
     expect(await cuantas()).toBe(antes);
+  });
+});
+
+describe('migración 6: visitas', () => {
+  const comoSuper = (consulta) => como('authenticated', SUPER, consulta);
+  const hoy = `(now() at time zone 'America/Argentina/Buenos_Aires')::date`;
+
+  it('cualquiera suma una visita al día de hoy (hora de Argentina)', async () => {
+    for (let i = 0; i < 3; i++) expect((await como('anon', null, 'select public.sumar_visita()')).error).toBeUndefined();
+    expect(await uno(`select personas from public.visitas where dia = ${hoy}`)).toEqual({ personas: 3 });
+  });
+
+  it('solo el superadmin lee las visitas', async () => {
+    expect((await como('anon', null, 'select * from public.visitas')).error).toMatch(/permission denied/);
+    expect((await comoAdmin('select count(*)::int as n from public.visitas')).filas).toEqual([{ n: 0 }]);
+    expect((await comoSuper(`select personas from public.visitas where dia = ${hoy}`)).filas).toEqual([{ personas: 3 }]);
+  });
+
+  it('nadie cambia el número a mano desde la app', async () => {
+    for (const consulta of ['update public.visitas set personas = 999', 'delete from public.visitas']) {
+      expect((await comoSuper(consulta)).error).toMatch(/permission denied/);
+      expect((await como('anon', null, consulta)).error).toMatch(/permission denied/);
+    }
+  });
+
+  it('si la migración se corre dos veces, falla al principio y no cambia nada', async () => {
+    await expect(db.exec(leer('./migracion-6-visitas.sql'))).rejects.toThrow(/already exists/);
+    await db.exec('rollback');
+    expect(await uno(`select personas from public.visitas where dia = ${hoy}`)).toEqual({ personas: 3 });
   });
 });
