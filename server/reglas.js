@@ -35,12 +35,9 @@ function categoriaDeEquipo(datos, equipoId) {
   return zona ? zona.categoriaId : null;
 }
 
-// Lugar y hora válidos y con la cancha libre en esa fecha (los postergados no la ocupan)
-function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
-  const lugar = validarLugar(cuerpo);
-  if (lugar.error) return fallo(lugar.error);
-  const { predio, cancha, hora } = lugar.valor;
-  const ocupada = datos.partidos.some(
+// ¿Otro partido no postergado de la fecha ya usa esa cancha a esa hora?
+const canchaOcupada = (datos, fecha, { predio, cancha, hora }, partidoId = null) =>
+  datos.partidos.some(
     (p) =>
       p.id !== partidoId &&
       !p.postergado &&
@@ -49,10 +46,25 @@ function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
       p.cancha === cancha &&
       p.hora === hora
   );
-  if (ocupada) {
-    return fallo(`La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`, 409);
-  }
+const textoOcupada = (fecha, { predio, cancha, hora }) =>
+  `La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`;
+
+// Lugar y hora válidos y con la cancha libre en esa fecha (los postergados no la ocupan)
+function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
+  const lugar = validarLugar(cuerpo);
+  if (lugar.error) return fallo(lugar.error);
+  if (canchaOcupada(datos, fecha, lugar.valor, partidoId)) return fallo(textoOcupada(fecha, lugar.valor), 409);
   return lugar;
+}
+
+// Un postergado que vuelve a jugarse (se le quita la postergación, o se le carga resultado o W.O.)
+// vuelve a ocupar su cancha: no puede pisar a otro partido
+function validarVuelveAJugarse(datos, partido, resultado) {
+  const vuelve = partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio;
+  if (vuelve && canchaOcupada(datos, partido.fecha, partido, partido.id)) {
+    return fallo(`${textoOcupada(partido.fecha, partido).slice(0, -1)}: cambiale el lugar o la hora a este partido.`, 409);
+  }
+  return resultado;
 }
 
 export function validarPartidoNuevo(datos, cuerpo) {
@@ -84,6 +96,11 @@ export function validarPartidoNuevo(datos, cuerpo) {
 export function validarCambioPartido(datos, partidoId, cuerpo) {
   const partido = datos.partidos.find((p) => p.id === partidoId);
   if (!partido) return fallo('Ese partido no existe.', 404);
+  return validarVuelveAJugarse(datos, partido, validarCambioDe(datos, partido, cuerpo));
+}
+
+function validarCambioDe(datos, partido, cuerpo) {
+  const partidoId = partido.id;
   const c = cuerpo || {};
   // W.O.: el que no se presentó pierde 3 a 0 y no paga el arancel
   if ('ausente' in c) {

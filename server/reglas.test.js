@@ -122,6 +122,20 @@ describe('validarCambioPartido', () => {
     );
   });
 
+  it('no deja quitar la postergación si otro partido ya ocupa su cancha y hora', () => {
+    const postergado = { ...pendiente, id: 501, fecha: 4, postergado: true, ...LUGAR };
+    const db = { ...conOcupada(), partidos: [...conOcupada().partidos, postergado] };
+    const resultado = validarCambioPartido(db, 501, { postergado: false });
+    expect(resultado.estado).toBe(409);
+    expect(resultado.error).toBe(
+      'La cancha 2 de Los Cardales ya tiene un partido a las 13:40 en la fecha 4: cambiale el lugar o la hora a este partido.'
+    );
+    // Cargarle el resultado también lo saca de postergado
+    expect(validarCambioPartido(db, 501, { golesLocal: 1, golesVisitante: 0 }).estado).toBe(409);
+    const libre = { ...datos, partidos: [...datos.partidos, postergado] };
+    expect(validarCambioPartido(libre, 501, { postergado: false })).toEqual({ valor: { postergado: false } });
+  });
+
   it('al cambiar el lugar no choca consigo mismo, pero sí con otro partido', () => {
     expect(validarCambioPartido(conOcupada(), 500, LUGAR)).toEqual({ valor: LUGAR });
     const enFecha4 = { ...conOcupada(), partidos: [...conOcupada().partidos, { ...pendiente, id: 501, fecha: 4 }] };
