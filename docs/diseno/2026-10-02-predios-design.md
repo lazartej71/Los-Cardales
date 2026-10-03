@@ -14,7 +14,7 @@ Que cada partido diga dónde y a qué hora se juega, y que el público lo vea de
 | --- | --- |
 | Día | No se carga: todos los partidos de una fecha se juegan el mismo día, y la fecha ya lo dice. |
 | Predios | Solo dos, fijos en el código: **Los Cardales** y **Cura Borges**. |
-| Canchas | Lista fija por predio. Los Cardales: 1, 2, 3, 4, 5, 6 y 7. Cura Borges: 1, 4, 5, 7, 8 y 9. Si un predio suma una cancha, se cambia una línea de código. |
+| Canchas | Lista fija por predio. Los Cardales: 1, 2, 3, 4, 5, 6 y 7. Cura Borges: 1, 4, 5, 6, 7, 8 y 9 (la 6 se sumó el 2026-10-02, migración 4). Si un predio suma una cancha, se cambia una línea de código. |
 | Hora | Se escribe a mano (por ejemplo `13:40`). |
 | Obligatorio | Predio, cancha y hora se piden siempre al agregar un partido. |
 | Cambios | Se pueden editar después de crear el partido (por si mueven un horario). |
@@ -31,7 +31,7 @@ Que cada partido diga dónde y a qué hora se juega, y que el público lo vea de
 ```js
 export const PREDIOS = [
   { id: 'los_cardales', nombre: 'Los Cardales', canchas: [1, 2, 3, 4, 5, 6, 7] },
-  { id: 'cura_borges', nombre: 'Cura Borges', canchas: [1, 4, 5, 7, 8, 9] },
+  { id: 'cura_borges', nombre: 'Cura Borges', canchas: [1, 4, 5, 6, 7, 8, 9] },
 ];
 ```
 

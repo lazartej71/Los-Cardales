@@ -4,7 +4,7 @@ import { canchasDe, normalizarHora, textoLugar, textoLugarCorto, validarLugar } 
 describe('lugar del partido', () => {
   it('cada predio tiene sus canchas', () => {
     expect(canchasDe('los_cardales')).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(canchasDe('cura_borges')).toEqual([1, 4, 5, 7, 8, 9]);
+    expect(canchasDe('cura_borges')).toEqual([1, 4, 5, 6, 7, 8, 9]);
     expect(canchasDe('otro')).toEqual([]);
   });
 

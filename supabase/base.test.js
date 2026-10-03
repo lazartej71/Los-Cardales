@@ -50,6 +50,7 @@ beforeAll(async () => {
   await db.exec(leer('./datos-iniciales.sql'));
   await db.exec(leer('./migracion-2-cuentas.sql'));
   await db.exec(leer('./migracion-3-predios.sql'));
+  await db.exec(leer('./migracion-4-cancha-6-cura-borges.sql'));
   await db.exec(`
     insert into auth.users values ('${ADMIN}', 'admin@prueba.com'), ('${OTRO}', 'otro@prueba.com');
     insert into public.administradores (user_id, nombre) values ('${ADMIN}', 'Prueba');
@@ -209,5 +210,15 @@ describe('migración 3: predio, cancha y hora', () => {
     await expect(db.exec(leer('./migracion-3-predios.sql'))).rejects.toThrow(/already exists/);
     await db.exec('rollback');
     expect(await uno(`select count(*)::int as n from public.partidos where fecha = 30`)).toEqual({ n: 3 });
+  });
+});
+
+describe('migración 4: cancha 6 de Cura Borges', () => {
+  it('acepta la cancha 6 de Cura Borges y sigue rechazando canchas que no existen', async () => {
+    const crear = (lugar) =>
+      comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id, predio, cancha, hora)
+        values (1, 31, 7, 8, ${lugar})`);
+    expect((await crear(`'cura_borges', 2, '13:40'`)).error).toMatch(/partidos_cancha_check/);
+    expect((await crear(`'cura_borges', 6, '13:40'`)).error).toBeUndefined();
   });
 });
