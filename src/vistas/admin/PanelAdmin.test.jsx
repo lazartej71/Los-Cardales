@@ -205,12 +205,12 @@ describe('pestaña Control', () => {
   it('el superadmin la ve', () => {
     const html = dibujar('control', { db: { ...crearDatosEjemplo(), rol: 'superadmin' } });
     expect(html).toContain('<span>Control</span>');
-    expect(html).toContain('Ver visitas en Vercel');
+    expect(html).toContain('Personas que entraron a la página');
   });
 
   it('un admin que entra a la sección control por la dirección ve Partidos', () => {
     const html = dibujar('control', { db: { ...crearDatosEjemplo(), rol: 'admin' } });
-    expect(html).not.toContain('Ver visitas en Vercel');
+    expect(html).not.toContain('Personas que entraron a la página');
     expect(html).toContain('Partidos y resultados');
   });
 });

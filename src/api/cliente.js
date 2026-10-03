@@ -49,5 +49,7 @@ export const api = {
   borrarMovimiento: (token, id) => pedir(`/admin/movimientos/${id}`, { metodo: 'DELETE', token }),
   actualizarEquipo: (token, id, cuerpo) => pedir(`/admin/equipos/${id}`, { metodo: 'PATCH', cuerpo, token }),
   actualizarConfiguracion: (token, cuerpo) => pedir('/admin/configuracion', { metodo: 'PATCH', cuerpo, token }),
+  visita: () => pedir('/visita', { metodo: 'POST' }),
+  visitas: (token) => pedir('/admin/visitas', { token }),
   actividad: (token, dia) => pedir(`/admin/actividad?dia=${encodeURIComponent(dia)}`, { token }),
 };

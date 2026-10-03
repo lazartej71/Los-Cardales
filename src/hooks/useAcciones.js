@@ -34,6 +34,7 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
 
   return {
     leerActividad: (dia) => leer(() => cliente.actividad(token, dia)),
+    leerVisitas: () => leer(() => cliente.visitas(token)),
     crearPartido: (datos, mensaje) => ejecutar(() => cliente.crearPartido(token, datos), mensaje),
     guardarResultado: (id, golesLocal, golesVisitante, mensaje) =>
       ejecutar(() => cliente.actualizarPartido(token, id, { golesLocal, golesVisitante }), mensaje),

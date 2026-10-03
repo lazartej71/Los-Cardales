@@ -1,7 +1,7 @@
 /**
- * Pestaña Control (solo superadmin): quién cargó qué y cuándo, con un resumen por persona,
- * y el acceso a las visitas en Vercel. La actividad la anota la base sola (migración 5).
- * inicial: lista ya cargada (para las pruebas); si no viene, se pide al abrir y al cambiar el día.
+ * Pestaña Control (solo superadmin): cuántas personas entran a la página (migración 6) y
+ * quién cargó qué y cuándo, con un resumen por persona (migración 5).
+ * inicial y visitasIniciales: datos ya cargados (para las pruebas); si no vienen, se piden al abrir.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -25,6 +25,81 @@ function diaAnterior(dia) {
   return new Date(Date.UTC(anio, mes - 1, numero - 1)).toISOString().slice(0, 10);
 }
 
+const DIAS_SEMANA = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+// "2026-10-03" → "sáb 3"
+function diaCorto(dia) {
+  const [anio, mes, numero] = dia.split('-').map(Number);
+  return `${DIAS_SEMANA[new Date(Date.UTC(anio, mes - 1, numero)).getUTCDay()]} ${numero}`;
+}
+
+// Hoy, ayer, los últimos 7 días (con 0 en los días sin visitas) y el total
+function resumirVisitas(visitas, hoy) {
+  const porDia = new Map(visitas.map((v) => [v.dia, v.personas]));
+  const semana = [];
+  for (let i = 6, dia = hoy; i >= 0; i--) {
+    semana.unshift({ dia, personas: porDia.get(dia) ?? 0 });
+    dia = diaAnterior(dia);
+  }
+  return {
+    hoy: porDia.get(hoy) ?? 0,
+    ayer: porDia.get(diaAnterior(hoy)) ?? 0,
+    semana,
+    totalSemana: semana.reduce((t, d) => t + d.personas, 0),
+    total: visitas.reduce((t, v) => t + v.personas, 0),
+  };
+}
+
+function BloqueVisitas({ visitas, hoy }) {
+  const r = resumirVisitas(visitas ?? [], hoy);
+  const maximo = Math.max(1, ...r.semana.map((d) => d.personas));
+  const cifras = [
+    ['Hoy', r.hoy],
+    ['Ayer', r.ayer],
+    ['7 días', r.totalSemana],
+    ['Total', r.total],
+  ];
+  return (
+    <section className="panel" aria-labelledby="control-visitas">
+      <h3 id="control-visitas" className="panel__titulo">Visitas</h3>
+      <p className="panel__texto">Personas que entraron a la página (una vez por día y por dispositivo).</p>
+      {visitas === null ? (
+        <p className="vacio-texto">Cargando las visitas…</p>
+      ) : (
+        <>
+          <dl className="visitas__cifras">
+            {cifras.map(([etiqueta, valor]) => (
+              <div key={etiqueta} className="visitas__dato">
+                <dt>{etiqueta}</dt>
+                <dd className="visitas__cifra">{valor}</dd>
+              </div>
+            ))}
+          </dl>
+          <ol className="visitas__grafico" aria-label="Personas por día, últimos 7 días">
+            {r.semana.map((d) => {
+              const texto = `${diaCorto(d.dia)}: ${d.personas} ${d.personas === 1 ? 'persona' : 'personas'}`;
+              return (
+                <li key={d.dia} className="visitas__columna" title={texto}>
+                  <span className="visitas__valor" aria-hidden="true">{d.personas}</span>
+                  <span
+                    className="visitas__barra"
+                    style={{ height: `${Math.round((d.personas / maximo) * 100)}%` }}
+                    aria-hidden="true"
+                  />
+                  <span className="visitas__dia" aria-hidden="true">{diaCorto(d.dia)}</span>
+                  <span className="visualmente-oculto">{texto}</span>
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      )}
+      <a className="enlace" href={VISITAS_VERCEL} target="_blank" rel="noreferrer">
+        Más detalle en Vercel (países, dispositivos)
+      </a>
+    </section>
+  );
+}
+
 const cantidad = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`;
 
 function TextoResumen({ fila }) {
@@ -38,8 +113,8 @@ function TextoResumen({ fila }) {
   return <span className="control-resumen__detalle">{partes.join(' · ')}</span>;
 }
 
-export function AdminControl({ db, acciones, inicial }) {
-  const hoy = hoyEnArgentina();
+export function AdminControl({ db, acciones, inicial, visitasIniciales, hoy = hoyEnArgentina() }) {
+  const [visitas, setVisitas] = useState(visitasIniciales ?? null);
   const [dia, setDia] = useState(hoy);
   const [persona, setPersona] = useState('');
   const [entradas, setEntradas] = useState(inicial ?? null);
@@ -47,14 +122,17 @@ export function AdminControl({ db, acciones, inicial }) {
 
   const cargar = useCallback(async () => {
     setCargando(true);
+    // Las visitas se actualizan junto con la actividad (al abrir, al cambiar el día y con Actualizar)
+    if (!visitasIniciales) acciones.leerVisitas().then((v) => setVisitas(v ?? []));
     const lista = await acciones.leerActividad(dia);
     setEntradas(lista ?? []);
     setCargando(false);
-  }, [acciones, dia]);
+  }, [acciones, dia, visitasIniciales]);
 
   useEffect(() => {
     if (!inicial) cargar();
   }, [cargar, inicial]);
+
 
   const lista = entradas ?? [];
   const personas = [...new Set(lista.map((e) => e.quien))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -67,13 +145,7 @@ export function AdminControl({ db, acciones, inicial }) {
 
   return (
     <>
-      <section className="panel" aria-labelledby="control-visitas">
-        <h3 id="control-visitas" className="panel__titulo">Visitas</h3>
-        <p className="panel__texto">Cuánta gente entra a la página, desde dónde y con qué dispositivo.</p>
-        <a className="btn btn--secundario" href={VISITAS_VERCEL} target="_blank" rel="noreferrer">
-          Ver visitas en Vercel
-        </a>
-      </section>
+      <BloqueVisitas visitas={visitas} hoy={hoy} />
 
       <section className="panel" aria-labelledby="control-actividad">
         <h3 id="control-actividad" className="panel__titulo">Actividad</h3>

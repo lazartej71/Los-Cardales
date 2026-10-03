@@ -4,7 +4,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { api } from './api/cliente.js';
 import { SIMULACION } from './api/simulacion.js';
+import { avisarVisita } from './api/visitas.js';
 import { EstadoDeCarga } from './componentes/EstadoDeCarga.jsx';
 import { LimiteDeError } from './componentes/LimiteDeError.jsx';
 import { Toast } from './componentes/Toast.jsx';
@@ -13,6 +15,7 @@ import { useDatos } from './hooks/useDatos.js';
 import { useRutaAdmin } from './hooks/useRutaAdmin.js';
 import { useSesion } from './hooks/useSesion.js';
 import { useToast } from './hooks/useToast.js';
+import { hoyEnArgentina } from './logica/cuentas.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
 import { PantallaLogin } from './vistas/admin/PantallaLogin.jsx';
 import { VistaPublica } from './vistas/publico/VistaPublica.jsx';
@@ -60,6 +63,18 @@ export function App({ simulacion = SIMULACION }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [enAdmin]);
+
+  // Cuenta a la persona que entra a la vista pública (una vez por día y por navegador)
+  useEffect(() => {
+    if (enAdmin || simulacion) return;
+    let almacen;
+    try {
+      almacen = window.localStorage;
+    } catch {
+      return;
+    }
+    avisarVisita({ almacen, hoy: hoyEnArgentina(), enviar: api.visita });
+  }, [enAdmin, simulacion]);
 
   const cerrarSesion = async () => {
     await salir();

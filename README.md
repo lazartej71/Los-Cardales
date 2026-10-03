@@ -57,9 +57,9 @@ scripts/             importación del Excel
 
 ## Base de datos
 
-**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql`, `supabase/migracion-3-predios.sql`, `supabase/migracion-4-cancha-6-cura-borges.sql` y `supabase/migracion-5-control.sql`.
+**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql`, `supabase/migracion-3-predios.sql`, `supabase/migracion-4-cancha-6-cura-borges.sql`, `supabase/migracion-5-control.sql` y `supabase/migracion-6-visitas.sql`.
 
-**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. Cada migración se corre antes de publicar el código que la usa.
+**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. La 6 (`migracion-6-visitas.sql`) cuenta cuántas personas entran por día. Cada migración se corre antes de publicar el código que la usa.
 
 **Probarla en la compu.** `npm test` incluye `supabase/base.test.js`, que corre los tres archivos en un Postgres local (PGlite) y revisa los permisos, las reglas y los triggers.
 
@@ -81,7 +81,7 @@ Los datos iniciales salen de `Excel/TABLAS GP FECHA N1.xlsx` (`npm run importar`
 
 **Roles:** cada admin es `admin` (el panel de siempre) o `superadmin` (además ve la pestaña **Control**: quién cargó qué y cuándo, y el acceso a las visitas). Para cambiarlo: `update public.administradores set rol = 'superadmin' where user_id = (select id from auth.users where email = 'usuario@loscardalesfutbol.com');`. El registro de actividad lo anota la base sola en cada cambio (también lo que se carga desde el SQL Editor, como "Supabase (SQL)") y solo lo lee el superadmin.
 
-**Visitas:** las cuenta Vercel Web Analytics, solo en el sitio publicado. Hay que activarlo una vez en Vercel: proyecto los-cardales → **Analytics → Enable**. Se ven ahí o con el botón **Ver visitas en Vercel** de la pestaña Control.
+**Visitas:** la pestaña Control muestra cuántas personas entraron hoy, ayer, en los últimos 7 días (con barras) y en total. Cada navegador avisa una sola vez por día al abrir la vista pública (no cuentan el panel ni la simulación) y en Supabase queda solo un número por día, sin datos de la persona. Para más detalle (países, dispositivos) está Vercel Web Analytics, activado en el proyecto los-cardales → **Analytics**.
 
 **Quitar a un admin:** `delete from public.administradores where user_id = (select id from auth.users where email = 'usuario@loscardalesfutbol.com');`
 

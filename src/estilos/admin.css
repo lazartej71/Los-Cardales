@@ -364,3 +364,25 @@
 .control-lista__hora { font-family: var(--fuente-display); font-weight: 700; color: var(--marca-fuerte); }
 .control-lista__quien { font-weight: 700; }
 .control-lista__texto { grid-column: 2; color: var(--tinta-2); overflow-wrap: anywhere; }
+
+/* Visitas: cifras y barras de los últimos 7 días (una serie, color validado sobre el panel oscuro) */
+.visitas__cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.visitas__dato { padding: 8px 6px; border-radius: var(--radio-chico); background: var(--superficie-2); text-align: center; }
+.visitas__dato dt { font-size: 12.5px; color: var(--tinta-suave); }
+.visitas__cifra { margin: 0; font-family: var(--fuente-display); font-size: 24px; font-weight: 700; color: var(--tinta); }
+.visitas__grafico {
+  list-style: none; margin: 4px 0 0; padding: 0; height: 150px;
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; align-items: end;
+}
+.visitas__columna {
+  position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  padding-bottom: 20px;
+}
+.visitas__columna::after {
+  content: ""; position: absolute; left: -1px; right: -1px; bottom: 20px; border-top: 1px solid var(--linea-fuerte);
+}
+.visitas__barra { width: min(70%, 28px); min-height: 0; border-radius: 4px 4px 0 0; background: #cc7a0a; }
+.visitas__columna:hover .visitas__barra { background: #e08a12; }
+.visitas__valor { font-size: 12.5px; font-weight: 700; color: var(--tinta-2); margin-bottom: 2px; }
+.visitas__dia { position: absolute; bottom: 0; font-size: 12px; color: var(--tinta-suave); white-space: nowrap; }
+
