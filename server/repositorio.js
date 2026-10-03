@@ -86,9 +86,10 @@ export function crearRepositorioSupabase({ url, clave }) {
         await ejecutar(cliente.rpc('sumar_visita'));
       },
 
-      // Los últimos 60 días con visitas, del más nuevo al más viejo (la base solo se los da al superadmin)
+      // Todos los días con visitas (uno por día: pocos cientos en un torneo), del más nuevo al más viejo.
+      // La base solo se los da al superadmin.
       async leerVisitas() {
-        return ejecutar(cliente.from('visitas').select('dia, personas').order('dia', { ascending: false }).limit(60));
+        return ejecutar(cliente.from('visitas').select('dia, personas').order('dia', { ascending: false }));
       },
 
       // Lo público más lo privado: delegados (unidos a cada equipo), expulsiones, tarjetas y movimientos
