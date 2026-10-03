@@ -39,6 +39,8 @@ describe('instalar como app', () => {
     expect(admin).toMatchObject({ id: '/admin', start_url: '/admin', scope: '/admin', name: 'Los Cardales Admin' });
     for (const m of [publico, admin]) {
       expect(m.display).toBe('standalone');
+      // Pantalla de entrada de Android: negro, como el fondo del ícono, así no se nota su borde
+      expect(m.background_color).toBe('#000000');
       expect(m.icons).toEqual([
         // Logo transparente: lo usan la PC y la pantalla de carga de Android (sin cuadrado alrededor)
         { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
