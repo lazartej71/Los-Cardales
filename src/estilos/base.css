@@ -166,6 +166,11 @@ p { margin: 0; }
   box-shadow: 0 4px 16px rgba(255, 140, 0, 0.3);
 }
 
+/* Celular: cada categoría toma el ancho de su nombre, así "LIBRE" no se corta */
+@media (max-width: 479px) {
+  .seg--categoria .seg__btn { flex: 1 1 auto; padding: 0 4px; letter-spacing: 0.02em; }
+}
+
 /* Zonas: pestañas subrayadas con el degradé, un nivel por debajo de la categoría */
 .seg--zona { background: none; border: 0; padding: 0; gap: 0; border-radius: 0; }
 .seg--zona .seg__btn {

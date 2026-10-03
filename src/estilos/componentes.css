@@ -38,6 +38,17 @@
 }
 .pos--1 { background: var(--oro); color: var(--sobre-oro); }
 .pos--2 { background: var(--naranja); color: var(--sobre-marca); }
+/* Celular: la tabla entra entera, sin scroll de costado. El equipo ocupa lo que sobra y,
+   si el nombre no entra, se corta con "…"; los números se achican un poco. */
+@media (max-width: 479px) {
+  .tabla { min-width: 0; }
+  .tabla th, .tabla td { padding-inline: 2px; }
+  .tabla td { font-size: 15px; }
+  .tabla .col-pos { width: 32px; padding-left: 8px; }
+  .tabla .col-equipo { left: 32px; width: 100%; max-width: 0; padding-inline: 4px; font-size: 14px; }
+  .tabla .col-pts { padding-right: 10px; font-size: 17px; }
+  .pos { width: 22px; height: 22px; font-size: 14px; }
+}
 
 .notas {
   list-style: none; margin: 12px 0 0; padding: 10px 12px; display: grid; gap: 6px;
