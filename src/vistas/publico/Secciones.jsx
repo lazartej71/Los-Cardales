@@ -2,37 +2,12 @@
  * Secciones de la vista pública: posiciones, fixture y resultados por fecha.
  */
 
-import { Icono } from '../../componentes/Icono.jsx';
 import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
 import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
 import { textoLugar } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
-
-export function BannerInstalar({ onCerrar }) {
-  return (
-    <aside className="instalar" aria-label="Instalar la app">
-      <span className="instalar__icono">
-        <Icono nombre="celular" />
-      </span>
-      <div>
-        <p className="instalar__titulo">Instalá la app en tu celular</p>
-        <ul className="instalar__pasos">
-          <li>
-            <strong>Android:</strong> Menú ⋮ → Agregar a pantalla de inicio
-          </li>
-          <li>
-            <strong>iPhone:</strong> Compartir ⬆️ → Agregar a pantalla de inicio
-          </li>
-        </ul>
-      </div>
-      <button type="button" className="instalar__cerrar" onClick={onCerrar} aria-label="Cerrar aviso de instalación">
-        <Icono nombre="cerrar" tamano={18} />
-      </button>
-    </aside>
-  );
-}
 
 // Aclaración de la fecha que se cargó como tabla inicial (sin el detalle de los partidos)
 function NotaFechaInicial({ hayPostergados }) {

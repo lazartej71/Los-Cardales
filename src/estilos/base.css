@@ -226,24 +226,6 @@ p { margin: 0; }
   .seccion--fixture { grid-column: 2; grid-row: 1 / span 2; }
 }
 
-/* Aviso para instalar la app */
-.instalar {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start;
-  padding: 12px 10px 12px 14px;
-  background: var(--superficie); border: 1px solid var(--marca-borde); border-radius: var(--radio);
-}
-.instalar__icono {
-  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
-  background: var(--marca-suave); color: var(--marca-fuerte);
-}
-.instalar__titulo { font-weight: 700; font-size: 16px; }
-.instalar__pasos { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 14.5px; color: var(--tinta-2); }
-.instalar__cerrar {
-  width: 40px; height: 40px; margin: -6px -4px 0 0; border: 0; border-radius: 10px;
-  background: none; color: var(--tinta-suave); display: grid; place-items: center;
-}
-.instalar__cerrar:hover { background: var(--superficie-2); color: var(--tinta); }
-
 /* Navegación inferior (celular) */
 .nav-inferior {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;

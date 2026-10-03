@@ -17,7 +17,7 @@ import {
   zonasDeCategoria,
 } from '../../logica/consultas.js';
 import { calcularTabla } from '../../logica/tabla.js';
-import { BannerInstalar, SeccionFixture, SeccionPosiciones, SeccionResultados } from './Secciones.jsx';
+import { SeccionFixture, SeccionPosiciones, SeccionResultados } from './Secciones.jsx';
 
 const SECCIONES_PUBLICAS = [
   { id: 'posiciones', etiqueta: 'Posiciones', icono: 'podio' },
@@ -106,7 +106,6 @@ export function VistaPublica({ db, ui, setUi }) {
           </div>
 
           <main className="contenedor publico__main">
-            {ui.bannerVisible && <BannerInstalar onCerrar={() => cambiar({ bannerVisible: false })} />}
             <div className="secciones">
               <SeccionPosiciones
                 activa={ui.seccion === 'posiciones'}

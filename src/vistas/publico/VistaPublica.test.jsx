@@ -9,7 +9,6 @@ const ui = (cambios = {}) => ({
   zonaId: null,
   seccion: 'posiciones',
   fecha: null,
-  bannerVisible: true,
   ...cambios,
 });
 const dibujar = (db, cambios) => renderToString(<VistaPublica db={db} ui={ui(cambios)} setUi={() => {}} />);
@@ -39,6 +38,10 @@ describe('VistaPublica', () => {
     const html = dibujar(crearDatosEjemplo());
     expect(html).toContain('Libre A3');
     expect(html).toContain('Zona B');
+  });
+
+  it('no muestra el aviso para instalar la app', () => {
+    expect(dibujar(crearDatosEjemplo())).not.toContain('Instalá la app');
   });
 
   it('no tiene botón de admin', () => {

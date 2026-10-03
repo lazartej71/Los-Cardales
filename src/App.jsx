@@ -41,7 +41,6 @@ export function App({ simulacion = SIMULACION }) {
     zonaId: null,
     seccion: 'posiciones',
     fecha: null,
-    bannerVisible: true,
   });
   const [uiAdmin, setUiAdmin] = useState({
     seccion: 'resultados',
