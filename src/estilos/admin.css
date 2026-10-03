@@ -123,7 +123,7 @@
 .aviso__tel { user-select: all; font-variant-numeric: tabular-nums; }
 .aviso__mensaje {
   padding: 10px 12px; border-radius: 12px 12px 3px 12px; background: var(--burbuja); color: var(--tinta);
-  font-size: 14.5px; user-select: text;
+  font-size: 14.5px; user-select: text; white-space: pre-line; /* respeta los renglones del mensaje */
 }
 .aviso__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .aviso__acciones .btn--whatsapp { flex: 1 1 220px; }

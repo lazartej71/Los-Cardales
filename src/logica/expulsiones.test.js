@@ -21,12 +21,48 @@ describe('estadoExpulsion', () => {
 });
 
 describe('aviso por WhatsApp', () => {
-  it('arma el mensaje con equipo, número, fecha y partido', () => {
+  // Expulsión del N° 5 de Libre A2 en la fecha 1 (Libre A1 vs Libre A2)
+  const armar = (cambiosExpulsion = {}, delegado = 'Juan') => {
     const db = crearDatosEjemplo();
-    const expulsion = db.expulsiones[0];
-    expect(mensajeExpulsion(expulsion, detalleExpulsion(db, expulsion))).toBe(
-      'Aviso del Campeonato: del equipo Libre A2 fue expulsado el jugador N° 5 en la fecha 1 (Libre A1 vs Libre A2).'
+    const expulsion = { ...db.expulsiones[0], ...cambiosExpulsion };
+    const detalle = detalleExpulsion(db, expulsion);
+    return mensajeExpulsion(expulsion, { ...detalle, equipo: { ...detalle.equipo, delegado } });
+  };
+
+  it('arma el aviso con el jugador, la sanción y la firma del campeonato', () => {
+    expect(armar({ nombreJugador: 'Martín Gómez', fechasSuspension: 2 })).toBe(
+      [
+        '🟥 *LOS CARDALES FÚTBOL · Expulsión*',
+        '',
+        'Hola Juan, te informamos que en la fecha 1 (Libre · Libre A1 vs Libre A2) fue expulsado un jugador de *Libre A2*:',
+        '',
+        '👕 N° 5 · Martín Gómez',
+        '⛔ Suspensión: *2 fechas*',
+        '',
+        'No puede jugar hasta cumplir la sanción. Cualquier consulta, respondé este mensaje.',
+        '',
+        '_Mensaje automático de Los Cardales Fútbol_',
+      ].join('\n')
     );
+  });
+
+  it('sin nombre del jugador ni del delegado', () => {
+    const mensaje = armar({ nombreJugador: '', fechasSuspension: 1 }, '');
+    expect(mensaje).toContain('Hola, te informamos que');
+    expect(mensaje).toContain('\n👕 N° 5\n');
+    expect(mensaje).toContain('⛔ Suspensión: *1 fecha*');
+  });
+
+  it('con la sanción sin definir avisa que la decide el tribunal', () => {
+    const mensaje = armar({ fechasSuspension: null });
+    expect(mensaje).toContain('⏳ Suspensión: *a definir por el tribunal*. Te avisamos cuando haya resolución.');
+    expect(mensaje).not.toContain('No puede jugar hasta cumplir');
+  });
+
+  it('sin fechas de suspensión puede jugar la próxima', () => {
+    const mensaje = armar({ fechasSuspension: 0 });
+    expect(mensaje).toContain('✅ Sin fechas de suspensión: puede jugar la próxima fecha.');
+    expect(mensaje).not.toContain('No puede jugar hasta cumplir');
   });
 
   it('limpia el teléfono y codifica el texto en el link', () => {
