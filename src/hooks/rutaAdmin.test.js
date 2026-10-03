@@ -42,6 +42,9 @@ describe('instalar como app', () => {
       expect(m.icons).toEqual([
         { src: '/icono-192.png', sizes: '192x192', type: 'image/png' },
         { src: '/icono-512.png', sizes: '512x512', type: 'image/png' },
+        // Android los recorta con la forma del teléfono (círculo, cuadrado redondeado...)
+        { src: '/icono-android-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+        { src: '/icono-android-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ]);
     }
   });
@@ -52,8 +55,9 @@ describe('instalar como app', () => {
   });
 
   it('los íconos tienen el tamaño que dicen y no son transparentes', () => {
-    for (const lado of [180, 192, 512]) {
-      const png = readFileSync(new URL(`../../public/icono-${lado}.png`, import.meta.url));
+    for (const nombre of ['180', '192', '512', 'android-192', 'android-512']) {
+      const lado = Number(nombre.replace('android-', ''));
+      const png = readFileSync(new URL(`../../public/icono-${nombre}.png`, import.meta.url));
       // Cabecera PNG: ancho y alto en los bytes 16-23; tipo de color en el 25 (2 = RGB, sin transparencia)
       expect([png.readUInt32BE(16), png.readUInt32BE(20), png[25]]).toEqual([lado, lado, 2]);
     }
