@@ -48,7 +48,7 @@ export function CamposLugar({ idBase, lugar, onCambiar, invalido = false }) {
           aria-invalid={(invalido && !lugar.cancha) || undefined}
           onChange={(e) => onCambiar({ ...lugar, cancha: e.target.value })}
         >
-          <option value="">{canchas.length ? 'Elegí la cancha' : 'Primero elegí el predio'}</option>
+          <option value="">{canchas.length ? 'Elegí la cancha' : 'Elegí el predio'}</option>
           {canchas.map((n) => (
             <option key={n} value={n}>{`Cancha ${n}`}</option>
           ))}

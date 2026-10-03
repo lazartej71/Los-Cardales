@@ -2,7 +2,7 @@
 
 App web mobile-first del campeonato de fútbol amateur, con cinco categorías: Libre, +30, +35, +40 y +45.
 
-- **Vista pública:** tabla de posiciones que se calcula sola, fixture y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
+- **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido, y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
 - **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`).
 - **Panel de administración:** se abre en `/admin` (por ejemplo `https://www.loscardalesfutbol.com/admin`; el link viejo `/#admin` lleva ahí). Desde ahí:
   - se arman los partidos de cada fecha;
@@ -57,9 +57,9 @@ scripts/             importación del Excel
 
 ## Base de datos
 
-**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql` y `supabase/migracion-2-cuentas.sql`.
+**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql` y `supabase/migracion-3-predios.sql`.
 
-**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. Se corre antes de publicar el código que la usa.
+**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. Cada migración se corre antes de publicar el código que la usa.
 
 **Probarla en la compu.** `npm test` incluye `supabase/base.test.js`, que corre los tres archivos en un Postgres local (PGlite) y revisa los permisos, las reglas y los triggers.
 

@@ -91,6 +91,6 @@ describe('lugar y hora en el editor', () => {
   it('un partido sin lugar trae los campos vacíos para completarlo', () => {
     const html = dibujar({ predio: null, cancha: null, hora: null });
     expect(html).toContain('Lugar y hora');
-    expect(html).toContain('Primero elegí el predio');
+    expect(html).toContain('>Elegí el predio<');
   });
 });

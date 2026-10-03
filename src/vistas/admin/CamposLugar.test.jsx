@@ -23,7 +23,7 @@ describe('campos de lugar y hora', () => {
 
   it('sin predio elegido pide elegirlo antes de la cancha', () => {
     const html = dibujar({ predio: '', cancha: '', hora: '' });
-    expect(html).toContain('Primero elegí el predio');
+    expect(html).toContain('>Elegí el predio<');
     expect(html).toContain('Los Cardales');
     expect(html).toContain('Cura Borges');
   });
