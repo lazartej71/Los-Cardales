@@ -131,4 +131,34 @@ describe('VistaPublica', () => {
     expect(html).toContain('<details class="fecha-bloque"><summary class="fecha-bloque__cab"><h3 class="fecha-bloque__titulo">Fecha 1</h3>');
     expect(html.match(/<details[^>]* open=""/g)).toHaveLength(1);
   });
+
+  describe('lugar y hora en el fixture', () => {
+    const sinResultado = { golesLocal: null, golesVisitante: null, postergado: false };
+    const conLugares = {
+      ...zonaUnica,
+      tablaInicial: [],
+      partidos: [
+        { id: 1, categoriaId: 5, fecha: 2, localId: 3, visitanteId: 4, ...sinResultado, predio: 'cura_borges', cancha: 9, hora: '15:10' },
+        { id: 2, categoriaId: 5, fecha: 2, localId: 1, visitanteId: 2, ...sinResultado, predio: 'los_cardales', cancha: 2, hora: '13:40' },
+      ],
+    };
+
+    it('muestra el predio, la cancha y la hora, ordenados por hora', () => {
+      const html = dibujar(conLugares, { seccion: 'fixture' });
+      expect(html).toContain('Los Cardales · Cancha 2 · 13:40');
+      expect(html).toContain('class="lugar"');
+      expect(html.indexOf('13:40')).toBeLessThan(html.indexOf('15:10'));
+    });
+
+    it('en un postergado el lugar aparece tachado', () => {
+      const db = { ...conLugares, partidos: [{ ...conLugares.partidos[1], postergado: true }] };
+      const html = dibujar(db, { seccion: 'fixture' });
+      expect(html).toContain('lugar--tachado');
+      expect(html).toContain('Postergado');
+    });
+
+    it('un partido sin lugar no lleva la etiqueta', () => {
+      expect(dibujar(zonaUnica, { seccion: 'fixture' })).not.toContain('class="lugar');
+    });
+  });
 });

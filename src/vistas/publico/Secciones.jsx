@@ -7,6 +7,7 @@ import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
 import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
+import { textoLugar } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 
 export function BannerInstalar({ onCerrar }) {
@@ -88,6 +89,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
                 {partidos.map((p) => (
                   <li key={p.id}>
                     <LineaPartido partido={p} info={info} />
+                    <EtiquetaLugar partido={p} />
                   </li>
                 ))}
               </ul>
@@ -96,6 +98,17 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
         );
       })}
     </section>
+  );
+}
+
+// Dónde y a qué hora se juega, bien visible. Si el partido se postergó, tachado: ese lugar ya no vale.
+function EtiquetaLugar({ partido }) {
+  const texto = textoLugar(partido);
+  if (!texto) return null;
+  return (
+    <p className={partido.postergado ? 'lugar lugar--tachado' : 'lugar'}>
+      <strong>{texto}</strong>
+    </p>
   );
 }
 
