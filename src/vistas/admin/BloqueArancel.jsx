@@ -1,9 +1,9 @@
 /**
- * Arancel de un partido: lo que pagó cada equipo, con su método, y cómo queda su cuenta total.
+ * Arancel de un partido: lo que pagó cada equipo, en efectivo y por transferencia (puede ser en dos
+ * partes), el total del día y cómo queda su cuenta total.
  */
 
 import { useState } from 'react';
-import { Segmentado } from '../../componentes/Segmentado.jsx';
 import {
   calcularCuentas,
   estadoSaldo,
@@ -13,7 +13,10 @@ import {
   leerMonto,
   METODOS_PAGO,
   pagosDePartido,
+  sumarMontos,
 } from '../../logica/cuentas.js';
+
+const conMedio = { efectivo: 'en efectivo', transferencia: 'por transferencia' };
 
 export function BloqueArancel({ db, partido, local, visitante, acciones }) {
   const arancel = db.configuracion.arancel;
@@ -29,13 +32,13 @@ export function BloqueArancel({ db, partido, local, visitante, acciones }) {
       </summary>
       <div className="bloque__cuerpo">
         {equipos.map((equipo) => {
-          const [pago = null] = pagosDePartido(db.movimientos, partido.id, equipo.id);
+          const pagos = pagosDePartido(db.movimientos, partido.id, equipo.id);
           return (
             <PagoDeEquipo
-              key={`${equipo.id}-${pago ? `${pago.id}-${pago.monto}-${pago.metodo}` : 'sin-pago'}`}
+              key={`${equipo.id}-${pagos.map((m) => `${m.id}-${m.monto}-${m.metodo}`).join('-')}`}
               partido={partido}
               equipo={equipo}
-              pago={pago}
+              pagos={pagos}
               arancel={arancel}
               saldo={cuentas.get(equipo.id).saldo}
               acciones={acciones}
@@ -47,12 +50,13 @@ export function BloqueArancel({ db, partido, local, visitante, acciones }) {
   );
 }
 
-function PagoDeEquipo({ partido, equipo, pago, arancel, saldo, acciones }) {
-  const [monto, setMonto] = useState(pago ? formatearMiles(pago.monto) : '');
-  const [metodo, setMetodo] = useState(pago ? pago.metodo : 'efectivo');
+function PagoDeEquipo({ partido, equipo, pagos, arancel, saldo, acciones }) {
+  const pagoCon = (metodo) => pagos.find((m) => m.metodo === metodo) ?? null;
+  const [montos, setMontos] = useState(() =>
+    Object.fromEntries(METODOS_PAGO.map(({ valor }) => [valor, pagoCon(valor) ? formatearMiles(pagoCon(valor).monto) : '']))
+  );
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const idMonto = `pago-${partido.id}-${equipo.id}`;
   const lado = partido.localId === equipo.id ? 'local' : 'visitante';
   const estado = estadoSaldo(saldo);
 
@@ -65,81 +69,91 @@ function PagoDeEquipo({ partido, equipo, pago, arancel, saldo, acciones }) {
     );
   }
 
-  const valor = leerMonto(monto);
-  const vacio = monto.trim() === '';
-  const sinCambios = pago ? valor === pago.monto && metodo === pago.metodo : vacio;
+  // Cada parte: el monto escrito (null si está vacío) y el pago que ya había con ese medio
+  const partes = METODOS_PAGO.map(({ valor: metodo, etiqueta }) => {
+    const texto = montos[metodo].trim();
+    const monto = texto ? leerMonto(texto) : null;
+    return { metodo, etiqueta, texto, monto, mal: Boolean(texto) && monto === null, pago: pagoCon(metodo) };
+  });
+  const invalida = partes.some((p) => p.mal);
+  const total = sumarMontos(partes.filter((p) => p.monto !== null));
+  const todoVacio = partes.every((p) => !p.texto);
+  const sinCambios = partes.every((p) => (p.pago ? p.monto === p.pago.monto : !p.texto));
+
+  const cambiar = (metodo, texto) => {
+    setMontos((m) => ({ ...m, [metodo]: texto.replace(/[^\d.,]/g, '') }));
+    setError('');
+  };
+
+  // Completa en efectivo lo que falta para llegar al arancel
+  const completar = () => {
+    const transferencia = partes.find((p) => p.metodo === 'transferencia').monto ?? 0;
+    cambiar('efectivo', arancel > transferencia ? formatearMiles(arancel - transferencia) : '');
+  };
 
   const guardar = async () => {
-    if (!vacio && valor === null) {
+    if (invalida) {
       setError('Escribí el monto en pesos, por ejemplo 105.000.');
       return;
     }
+    const conMonto = partes.filter((p) => p.monto !== null);
+    const detalle =
+      conMonto.length === 1
+        ? conMedio[conMonto[0].metodo]
+        : `(${conMonto.map((p) => `${formatearPesos(p.monto)} ${conMedio[p.metodo]}`).join(' + ')})`;
+    const mensaje = todoVacio
+      ? `Se quitó el pago de ${equipo.nombre} en este partido.`
+      : `Pago guardado: ${equipo.nombre} pagó ${formatearPesos(total)} ${detalle}.`;
     setGuardando(true);
-    if (vacio) {
-      await acciones.borrarMovimiento(pago.id, `Se quitó el pago de ${equipo.nombre} en este partido.`);
-    } else {
-      const como = metodo === 'efectivo' ? 'en efectivo' : 'por transferencia';
-      const mensaje = `Pago guardado: ${equipo.nombre} pagó ${formatearPesos(valor)} ${como}.`;
-      if (pago) {
-        await acciones.actualizarMovimiento(pago.id, { monto: valor, metodo }, mensaje);
-      } else {
-        const datos = { tipo: 'pago', equipoId: equipo.id, partidoId: partido.id, monto: valor, metodo, fecha: hoyEnArgentina() };
-        await acciones.crearMovimiento(datos, mensaje);
-      }
-    }
+    await acciones.guardarPagos(
+      { partidoId: partido.id, equipoId: equipo.id, fecha: hoyEnArgentina(), partes },
+      mensaje
+    );
     setGuardando(false);
   };
 
   return (
     <div className="pago">
       <div className="pago__cab">
-        <label className="pago__equipo" htmlFor={idMonto}>
-          {equipo.nombre}
-        </label>
+        <p className="pago__equipo">{equipo.nombre}</p>
         <span className={`saldo saldo--${estado.tipo}`}>{estado.texto}</span>
       </div>
-      <div className="pago__fila">
-        <div className="pago__monto">
-          <span className="pago__signo" aria-hidden="true">$</span>
-          <input
-            id={idMonto}
-            className="input"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="0"
-            value={monto}
-            aria-invalid={Boolean(error) || undefined}
-            onChange={(e) => {
-              setMonto(e.target.value.replace(/[^\d.,]/g, ''));
-              setError('');
-            }}
-          />
-        </div>
-        <button
-          type="button"
-          className="btn btn--secundario btn--chico"
-          onClick={() => {
-            setMonto(formatearMiles(arancel));
-            setError('');
-          }}
-        >
-          Completo
-        </button>
-      </div>
-      <Segmentado
-        variante="chips"
-        etiquetaGrupo={`Cómo pagó ${equipo.nombre}`}
-        opciones={METODOS_PAGO}
-        valor={metodo}
-        onCambiar={setMetodo}
-      />
+      {partes.map(({ metodo, etiqueta, mal }) => {
+        const id = `pago-${partido.id}-${equipo.id}-${metodo}`;
+        return (
+          <div key={metodo} className="pago__fila pago__medio">
+            <label className="pago__etiqueta" htmlFor={id}>
+              {etiqueta}
+            </label>
+            <div className="pago__monto">
+              <span className="pago__signo" aria-hidden="true">$</span>
+              <input
+                id={id}
+                className="input"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="0"
+                value={montos[metodo]}
+                aria-invalid={(Boolean(error) && mal) || undefined}
+                onChange={(e) => cambiar(metodo, e.target.value)}
+              />
+            </div>
+            {metodo === 'efectivo' && (
+              <button type="button" className="btn btn--secundario btn--chico" onClick={completar}>
+                Completo
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <p className="pago__total">{`Total del día: ${formatearPesos(total)}`}</p>
       {error && (
         <p className="campo__error" role="alert">
           {error}
         </p>
       )}
       <button type="button" className="btn btn--primario btn--chico" disabled={guardando || sinCambios} onClick={guardar}>
-        {guardando ? 'Guardando…' : vacio && pago ? 'Quitar pago' : 'Guardar pago'}
+        {guardando ? 'Guardando…' : todoVacio && pagos.length ? 'Quitar pago' : 'Guardar pago'}
       </button>
     </div>
   );

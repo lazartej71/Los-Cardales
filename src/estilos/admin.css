@@ -278,6 +278,10 @@
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   color: var(--tinta-suave); pointer-events: none;
 }
+/* Una fila por medio de pago: etiqueta, monto y (en efectivo) el botón Completo */
+.pago__medio { align-items: center; }
+.pago__etiqueta { flex: 0 0 104px; font-size: 14px; color: var(--tinta-suave); }
+.pago__total { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* Saldo de una cuenta */
 .saldo { font-size: 14px; font-weight: 700; white-space: nowrap; }

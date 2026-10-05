@@ -81,6 +81,21 @@ describe('editor del partido', () => {
     // Libre A1 jugó 2 partidos ($210.000) y pagó $95.000
     expect(html).toContain('debe $115.000');
   });
+
+  it('el pago va en dos partes, efectivo y transferencia, con el total del día', () => {
+    const movimientos = [
+      { id: 1, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 50000, metodo: 'efectivo', fecha: '2026-10-15', nota: '' },
+      { id: 2, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 55000, metodo: 'transferencia', fecha: '2026-10-15', nota: '' },
+    ];
+    const html = dibujar({}, { movimientos });
+    expect(html).toMatch(/for="pago-1-1-efectivo"[^>]*>Efectivo</);
+    expect(html).toMatch(/id="pago-1-1-efectivo"[^>]*value="50.000"/);
+    expect(html).toMatch(/for="pago-1-1-transferencia"[^>]*>Transferencia</);
+    expect(html).toMatch(/id="pago-1-1-transferencia"[^>]*value="55.000"/);
+    expect(html).toContain('Total del día: $105.000');
+    // El rival todavía no pagó nada
+    expect(html).toContain('Total del día: $0');
+  });
 });
 
 describe('formulario de una roja', () => {

@@ -172,6 +172,17 @@ describe('panel de administración', () => {
     expect(dibujar('cuentas', { busquedaCuentas: 'zzz' })).toContain('Ningún equipo de Libre coincide con «zzz».');
   });
 
+  it('en la cuenta, un pago en dos partes muestra cada medio', () => {
+    const db = crearDatosEjemplo();
+    db.movimientos = [
+      { id: 1, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 50000, metodo: 'efectivo', fecha: '2026-10-15', nota: '' },
+      { id: 2, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 55000, metodo: 'transferencia', fecha: '2026-10-15', nota: '' },
+    ];
+    expect(dibujar('cuentas', { db, equipoCuentaId: 1 })).toContain(
+      'pagó $105.000 de $105.000 · $50.000 efectivo + $55.000 transferencia'
+    );
+  });
+
   it('la cuenta de un equipo va en orden: deudas, partidos y pagos sueltos', () => {
     const db = crearDatosEjemplo();
     db.movimientos = movimientosDeLibreA1;
