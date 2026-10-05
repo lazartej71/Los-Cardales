@@ -11,6 +11,7 @@ import { avisarVisita } from './api/visitas.js';
 import { EstadoDeCarga } from './componentes/EstadoDeCarga.jsx';
 import { LimiteDeError } from './componentes/LimiteDeError.jsx';
 import { Toast } from './componentes/Toast.jsx';
+import { ROLES_SIMULACION, rolSimulado } from './datos/constantes.js';
 import { useAcciones } from './hooks/useAcciones.js';
 import { useDatos } from './hooks/useDatos.js';
 import { useRutaAdmin } from './hooks/useRutaAdmin.js';
@@ -34,7 +35,7 @@ function almacenLocal() {
 export function App({ simulacion = SIMULACION }) {
   const [toast, avisar] = useToast();
   const { enAdmin, salirDelPanel } = useRutaAdmin();
-  const { sesion, cargando: cargandoSesion, ingresar, salir } = useSesion({ simulacion });
+  const { sesion, cargando: cargandoSesion, ingresar, salir, verComo } = useSesion({ simulacion });
   const token = sesion ? sesion.access_token : null;
   const modo = enAdmin && token ? 'admin' : 'publico';
   const { db, error, recargar } = useDatos({ modo, token });
@@ -130,7 +131,21 @@ export function App({ simulacion = SIMULACION }) {
     <>
       {simulacion && (
         <div className="cartel-simulacion">
-          <strong>MODO SIMULACIÓN</strong> · nada se guarda en la base real
+          <span className="cartel-simulacion__texto">
+            <strong>MODO SIMULACIÓN</strong> · nada se guarda en la base real
+          </span>
+          {enAdmin && token && (
+            <label className="cartel-simulacion__rol">
+              Ver como
+              <select value={rolSimulado(token)} onChange={(e) => verComo(e.target.value)}>
+                {ROLES_SIMULACION.map((r) => (
+                  <option key={r.valor} value={r.valor}>
+                    {r.etiqueta}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       <LimiteDeError onReiniciar={salirDelPanel}>

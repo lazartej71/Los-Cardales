@@ -1,5 +1,6 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { rolSimulado, tokenSimulado } from '../datos/constantes.js';
 import { emailDeUsuario, useSesion } from './useSesion.js';
 
 function Mostrar({ simulacion }) {
@@ -14,6 +15,20 @@ describe('sesión', () => {
 
   it('en la app real arranca sin sesión hasta que el admin ingresa', () => {
     expect(renderToString(<Mostrar simulacion={false} />)).toContain('sin sesión|');
+  });
+
+  it('en la simulación se puede probar el panel como superadmin, admin o veedor', () => {
+    expect(['superadmin', 'admin', 'veedor'].map(tokenSimulado)).toEqual([
+      'simulacion',
+      'simulacion-admin',
+      'simulacion-veedor',
+    ]);
+    expect(['simulacion', 'simulacion-admin', 'simulacion-veedor', 'otro'].map(rolSimulado)).toEqual([
+      'superadmin',
+      'admin',
+      'veedor',
+      'superadmin',
+    ]);
   });
 });
 

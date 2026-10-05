@@ -1,11 +1,13 @@
 /**
- * Sesión de los admins con Supabase Auth. Queda guardada en el navegador y se renueva sola.
- * En la simulación no hay login: el panel abre directo y cualquier dato sirve para volver a entrar.
+ * Sesión de los admins y veedores con Supabase Auth. Queda guardada en el navegador y se renueva sola.
+ * En la simulación no hay login: el panel abre directo, cualquier dato sirve para volver a entrar y
+ * verComo(rol) cambia con qué cuenta se prueba (superadmin, admin o veedor).
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { SIMULACION } from '../api/simulacion.js';
 import { obtenerSupabase } from '../api/supabase.js';
+import { tokenSimulado } from '../datos/constantes.js';
 
 const SESION_SIMULADA = { access_token: 'simulacion' };
 const DOMINIO_USUARIOS = 'loscardalesfutbol.com';
@@ -64,5 +66,12 @@ export function useSesion({ simulacion = SIMULACION } = {}) {
     if (supabase) await supabase.auth.signOut();
   }, [simulacion]);
 
-  return { sesion: estado.sesion, cargando: estado.cargando, ingresar, salir };
+  const verComo = useCallback(
+    (rol) => {
+      if (simulacion) setEstado({ sesion: { access_token: tokenSimulado(rol) }, cargando: false });
+    },
+    [simulacion]
+  );
+
+  return { sesion: estado.sesion, cargando: estado.cargando, ingresar, salir, verComo };
 }

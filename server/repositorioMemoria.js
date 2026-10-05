@@ -4,6 +4,7 @@
  * Tiene la misma forma que crearRepositorioSupabase, así la API no nota la diferencia.
  */
 
+import { rolSimulado } from '../src/datos/constantes.js';
 import { hoyEnArgentina } from '../src/logica/cuentas.js';
 import { aCamel, armarDatosAdmin } from './repositorio.js';
 
@@ -16,8 +17,6 @@ const POR_DEFECTO = {
 };
 // Tablas privadas: la simulación las arranca vacías
 const PRIVADAS = ['delegados', 'expulsiones', 'tarjetas', 'movimientos'];
-// La sesión simulada dice con qué rol se prueba (el selector "Ver como" del cartel de la simulación)
-const ROLES_SIMULADOS = { simulacion: 'superadmin', 'simulacion-admin': 'admin', 'simulacion-veedor': 'veedor' };
 
 const copia = (valor) => structuredClone(valor);
 // "goles_local" → "golesLocal"
@@ -75,7 +74,8 @@ export function crearRepositorioMemoria(cargarDatosReales) {
   }
 
   return function crearRepositorio(token) {
-    const rol = ROLES_SIMULADOS[token] ?? 'superadmin';
+    // La sesión simulada dice con qué rol se prueba (el selector "Ver como" del cartel de la simulación)
+    const rol = rolSimulado(token);
     const veedor = rol === 'veedor';
     const quien = rol === 'superadmin' ? 'Simulación' : `Simulación (${rol})`;
 
