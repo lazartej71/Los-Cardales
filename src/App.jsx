@@ -88,6 +88,13 @@ export function App({ simulacion = SIMULACION }) {
     avisarVisita({ almacen, hoy: hoyEnArgentina(), enviar: api.visita });
   }, [enAdmin, simulacion]);
 
+  // Simulación: antes de cambiar de cuenta vuelve a Partidos; si quedara abierta Control (solo superadmin),
+  // pediría la actividad con la cuenta nueva, recibiría "sin permiso" y cerraría la sesión
+  const probarComo = (rol) => {
+    setUiAdmin((u) => ({ ...u, seccion: 'resultados', partidoAbiertoId: null }));
+    verComo(rol);
+  };
+
   const cerrarSesion = async () => {
     await salir();
     setUiAdmin((u) => ({ ...u, equipoCuentaId: null, busquedaCuentas: '', partidoAbiertoId: null }));
@@ -137,7 +144,7 @@ export function App({ simulacion = SIMULACION }) {
           {enAdmin && token && (
             <label className="cartel-simulacion__rol">
               Ver como
-              <select value={rolSimulado(token)} onChange={(e) => verComo(e.target.value)}>
+              <select value={rolSimulado(token)} onChange={(e) => probarComo(e.target.value)}>
                 {ROLES_SIMULACION.map((r) => (
                   <option key={r.valor} value={r.valor}>
                     {r.etiqueta}
