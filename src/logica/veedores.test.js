@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { esPartidoDeVeedor, fechaDeVeedores, partidosDeCancha, partidosDePredio, resumenPartidos } from './veedores.js';
+import {
+  esPartidoDeVeedor,
+  fechaDeVeedores,
+  partidosDeCancha,
+  partidosDePredio,
+  partidosDeVeedor,
+  resumenPartidos,
+} from './veedores.js';
 
 let ultimoId = 0;
 // Partido de la cancha 2 de Los Cardales, sin resultado
@@ -30,8 +37,14 @@ function armarTorneo() {
     otroPredio: partido(3, { predio: 'cura_borges', cancha: 2 }),
     otraCategoriaFecha3: partido(3, { categoriaId: 2, hora: '14:00' }),
     postergado: partido(3, { hora: '16:00', postergado: true }),
-    recuperado: partido(1, { hora: '10:00' }),
+    // Quedó sin cargar en la fecha 1 y no se reprogramó: ya no le aparece al veedor
+    sinCargarDeFecha1: partido(1, { hora: '10:00' }),
     proximaFecha: partido(4),
+    // Postergados reprogramados para un día especial (con día), jugados o no
+    reprogramado: partido(1, { postergado: true, dia: '2026-10-12', hora: '10:00' }),
+    reprogramadoJugado: jugado(2, { dia: '2026-10-12', hora: '11:30' }),
+    reprogramadoDeFecha3Jugado: jugado(3, { dia: '2026-10-12', hora: '18:00' }),
+    reprogramadoOtroDia: partido(1, { postergado: true, dia: '2026-10-19', hora: '09:00' }),
   };
   return { p, partidos: Object.values(p) };
 }
@@ -50,25 +63,27 @@ describe('partidos de una cancha', () => {
   it('trae los de la fecha en juego en esa cancha, de todas las categorías, por hora', () => {
     const { p, partidos } = armarTorneo();
     expect(partidosDeCancha(partidos, 'los_cardales', 2).map((x) => x.id)).toEqual([
-      p.recuperado.id,
       p.pendienteFecha3.id,
       p.otraCategoriaFecha3.id,
       p.cargadoFecha3.id,
     ]);
   });
 
-  it('deja afuera otras canchas, otros predios, postergados, fechas jugadas y la próxima fecha', () => {
+  it('deja afuera otras canchas, otros predios, postergados, otras fechas y los reprogramados', () => {
     const { p, partidos } = armarTorneo();
     const ids = partidosDeCancha(partidos, 'los_cardales', 2).map((x) => x.id);
-    for (const afuera of [p.jugadoFecha2, p.otraCancha, p.otroPredio, p.postergado, p.proximaFecha]) {
+    for (const afuera of [
+      p.jugadoFecha2,
+      p.otraCancha,
+      p.otroPredio,
+      p.postergado,
+      p.proximaFecha,
+      p.sinCargarDeFecha1,
+      p.reprogramado,
+      p.reprogramadoDeFecha3Jugado,
+    ]) {
       expect(ids).not.toContain(afuera.id);
     }
-  });
-
-  it('un postergado recuperado sale de la lista cuando se le carga el resultado', () => {
-    const { p, partidos } = armarTorneo();
-    const conResultado = partidos.map((x) => (x.id === p.recuperado.id ? { ...x, golesLocal: 1, golesVisitante: 1 } : x));
-    expect(partidosDeCancha(conResultado, 'los_cardales', 2).map((x) => x.id)).not.toContain(p.recuperado.id);
   });
 
   it('los de un predio son los de todas sus canchas', () => {
@@ -78,12 +93,35 @@ describe('partidos de una cancha', () => {
   });
 });
 
-describe('qué partidos puede tocar un veedor', () => {
-  it('los que ve en alguna cancha, y ninguno más', () => {
+describe('postergados que se recuperan en un día especial', () => {
+  it('van aparte, por día y hora, jugados o no', () => {
     const { p, partidos } = armarTorneo();
-    expect(esPartidoDeVeedor(partidos, p.pendienteFecha3.id)).toBe(true);
-    expect(esPartidoDeVeedor(partidos, p.recuperado.id)).toBe(true);
-    for (const afuera of [p.jugadoFecha2, p.postergado, p.proximaFecha, p.sinHoraFecha3]) {
+    expect(partidosDeCancha(partidos, 'los_cardales', 2, 'postergados').map((x) => x.id)).toEqual([
+      p.reprogramado.id,
+      p.reprogramadoJugado.id,
+      p.reprogramadoDeFecha3Jugado.id,
+      p.reprogramadoOtroDia.id,
+    ]);
+    expect(partidosDePredio(partidos, 'cura_borges', 'postergados')).toEqual([]);
+  });
+
+  it('un postergado sin día todavía no se reprogramó: no aparece', () => {
+    const { p, partidos } = armarTorneo();
+    expect(partidosDeVeedor(partidos, 'postergados').map((x) => x.id)).not.toContain(p.postergado.id);
+  });
+
+  it('no mueven la fecha en juego', () => {
+    expect(fechaDeVeedores(armarTorneo().partidos)).toBe(3);
+  });
+});
+
+describe('qué partidos puede tocar un veedor', () => {
+  it('los de la fecha en juego y los reprogramados, y ninguno más', () => {
+    const { p, partidos } = armarTorneo();
+    for (const adentro of [p.pendienteFecha3, p.reprogramado, p.reprogramadoJugado]) {
+      expect(esPartidoDeVeedor(partidos, adentro.id)).toBe(true);
+    }
+    for (const afuera of [p.jugadoFecha2, p.postergado, p.proximaFecha, p.sinHoraFecha3, p.sinCargarDeFecha1]) {
       expect(esPartidoDeVeedor(partidos, afuera.id)).toBe(false);
     }
     expect(esPartidoDeVeedor(partidos, 9999)).toBe(false);

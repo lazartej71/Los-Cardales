@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canchasDe, normalizarHora, textoLugar, textoLugarCorto, validarLugar } from './lugar.js';
+import { canchasDe, normalizarHora, textoDia, textoLugar, textoLugarCorto, validarLugar } from './lugar.js';
 
 describe('lugar del partido', () => {
   it('cada predio tiene sus canchas', () => {
@@ -35,5 +35,18 @@ describe('lugar del partido', () => {
     expect(textoLugar(partido)).toBe('Los Cardales · Cancha 2 · 13:40');
     expect(textoLugarCorto(partido)).toBe('Los Cardales · C2 · 13:40');
     expect(textoLugar({ predio: null })).toBe('');
+  });
+
+  it('un postergado reprogramado suma el día', () => {
+    const partido = { predio: 'los_cardales', cancha: 2, hora: '13:40', dia: '2026-10-12' };
+    expect(textoLugar(partido)).toBe('Lunes 12/10 · Los Cardales · Cancha 2 · 13:40');
+    expect(textoLugarCorto(partido)).toBe('Lunes 12/10 · Los Cardales · C2 · 13:40');
+  });
+
+  it('nombra el día como en el calendario', () => {
+    expect(textoDia('2026-10-12')).toBe('Lunes 12/10');
+    expect(textoDia('2026-10-13')).toBe('Martes 13/10');
+    expect(textoDia('2026-11-01')).toBe('Domingo 01/11');
+    expect(textoDia(null)).toBe('');
   });
 });
