@@ -14,9 +14,6 @@ if (panelViejo) window.history.replaceState(null, '', panelViejo);
 
 contarVisitas({ produccion: import.meta.env.PROD, simulacion: SIMULACION });
 
-// Para no confundir la pestaña de la simulación con la del sitio real
-if (SIMULACION) document.title = `SIMULACIÓN · ${document.title}`;
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
