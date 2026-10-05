@@ -64,11 +64,12 @@ for each row execute function public.validar_cambio_veedor();
 create policy "Veedores cargan resultados" on public.partidos
   for update to authenticated using ((select public.es_veedor())) with check ((select public.es_veedor()));
 
--- Rojas: las ve todas, las agrega, y borra las que todavía no tienen sanción
+-- Rojas: las ve todas, las agrega (sin sanción: la pone el organizador) y borra las que todavía no la tienen
 create policy "Veedores leen rojas" on public.expulsiones
   for select to authenticated using ((select public.es_veedor()));
 create policy "Veedores agregan rojas" on public.expulsiones
-  for insert to authenticated with check ((select public.es_veedor()));
+  for insert to authenticated
+  with check ((select public.es_veedor()) and fechas_suspension is null and fechas_cumplidas = 0);
 create policy "Veedores borran rojas sin sanción" on public.expulsiones
   for delete to authenticated using ((select public.es_veedor()) and fechas_suspension is null);
 

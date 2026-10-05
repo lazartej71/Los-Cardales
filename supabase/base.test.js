@@ -386,6 +386,13 @@ describe('migración 7: veedores, rojas con tipo y pagos en dos partes', () => {
     expect((await comoVeedor(roja(`'otra'`))).error).toMatch(/expulsiones_tipo_check/);
     // Una roja vieja, sin tipo, sigue siendo válida
     expect((await comoAdmin(roja('null'))).error).toBeUndefined();
+    // La sanción la pone el organizador: el veedor no puede cargar una roja que ya la traiga
+    const conSancionDeEntrada = await comoVeedor(`insert into public.expulsiones
+      (partido_id, equipo_id, numero_camiseta, tipo, fechas_suspension) values (${id}, 1, 11, 'directa', 0)`);
+    expect(conSancionDeEntrada.error).toMatch(/row-level security/);
+    const conCumplidas = await comoVeedor(`insert into public.expulsiones
+      (partido_id, equipo_id, numero_camiseta, tipo, fechas_cumplidas) values (${id}, 1, 11, 'directa', 1)`);
+    expect(conCumplidas.error).toMatch(/row-level security|expulsiones_check/);
 
     const [conSancion, sinSancion] = [directa.filas[0].id, doble.filas[0].id];
     await comoAdmin(`update public.expulsiones set fechas_suspension = 2 where id = ${conSancion}`);
