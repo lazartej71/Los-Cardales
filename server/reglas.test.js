@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
 import {
+  permisoVeedorBorrarRoja,
+  permisoVeedorPago,
+  permisoVeedorPagoNuevo,
+  permisoVeedorPartido,
+  permisoVeedorRojaNueva,
   validarBorradoMovimiento,
   validarBorradoPartido,
   validarBorradoTarjeta,
@@ -152,11 +157,24 @@ describe('validarBorradoPartido', () => {
 describe('validarExpulsionNueva', () => {
   const partido = datos.partidos[0];
 
-  it('acepta un equipo que jugó el partido y limpia el nombre', () => {
-    const cuerpo = { partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 7, nombreJugador: '  Juan  ' };
+  it('acepta un equipo que jugó el partido, con el tipo de roja, y limpia el nombre', () => {
+    const cuerpo = {
+      partidoId: partido.id,
+      equipoId: partido.localId,
+      numeroCamiseta: 7,
+      nombreJugador: '  Juan  ',
+      tipo: 'directa',
+    };
     expect(validarExpulsionNueva(datos, cuerpo)).toEqual({
-      valor: { partido_id: partido.id, equipo_id: partido.localId, numero_camiseta: 7, nombre_jugador: 'Juan' },
+      valor: { partido_id: partido.id, equipo_id: partido.localId, numero_camiseta: 7, nombre_jugador: 'Juan', tipo: 'directa' },
     });
+  });
+
+  it('exige elegir si fue doble amarilla o roja directa', () => {
+    const cuerpo = { partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 7 };
+    expect(validarExpulsionNueva(datos, cuerpo).error).toBe('Elegí si la roja fue por doble amarilla o directa.');
+    expect(validarExpulsionNueva(datos, { ...cuerpo, tipo: 'naranja' }).error).toMatch(/doble amarilla o directa/);
+    expect(validarExpulsionNueva(datos, { ...cuerpo, tipo: 'doble_amarilla' }).valor.tipo).toBe('doble_amarilla');
   });
 
   it('rechaza un equipo que no jugó ese partido', () => {
@@ -253,6 +271,17 @@ describe('W.O.', () => {
     expect(resultado.error).toMatch(/tiene un pago anotado/);
     // La plata que ya pagó no se pierde: se pasa a un pago suelto
     expect(resultado.error).toMatch(/anotalo como pago suelto en Cuentas/);
+  });
+
+  it('si pagó en dos partes, habla de los dos pagos', () => {
+    const movimientos = [
+      pagoDe(pendiente.visitanteId, pendiente.id, { monto: 50000 }),
+      pagoDe(pendiente.visitanteId, pendiente.id, { monto: 55000, metodo: 'transferencia' }),
+    ];
+    const resultado = validarCambioPartido({ ...datos, movimientos }, pendiente.id, { ausente: 'visitante' });
+    expect(resultado.estado).toBe(409);
+    expect(resultado.error).toMatch(/tiene dos pagos anotados en este partido/);
+    expect(resultado.error).toMatch(/quitá esos pagos y anotalos como pagos sueltos en Cuentas/);
   });
 });
 
@@ -364,11 +393,15 @@ describe('validarMovimientoNuevo', () => {
     expect(validarMovimientoNuevo(datos, deuda).error).toMatch(/no va en un partido/);
   });
 
-  it('un solo pago por equipo y partido', () => {
+  it('un pago por medio: si ya pagó en efectivo, la otra parte va por transferencia', () => {
     const conPago = { ...datos, movimientos: [pagoDe(jugado.localId, jugado.id)] };
     const resultado = validarMovimientoNuevo(conPago, pagoDelPartido());
     expect(resultado.estado).toBe(409);
-    expect(resultado.error).toMatch(/ya tiene un pago anotado/);
+    expect(resultado.error).toMatch(/ya tiene un pago en efectivo anotado en este partido/);
+    expect(validarMovimientoNuevo(conPago, pagoDelPartido({ metodo: 'transferencia' })).valor).toMatchObject({
+      metodo: 'transferencia',
+      monto: 95000,
+    });
   });
 
   it('no le anota un pago al equipo que no se presentó', () => {
@@ -408,6 +441,23 @@ describe('validarCambioMovimiento', () => {
     expect(validarCambioMovimiento(conMovimientos, 2, { metodo: 'efectivo' }).error).toMatch(/solo en los pagos/);
   });
 
+  it('no pasa un pago al medio que ya tiene la otra parte del mismo partido', () => {
+    const partido = datos.partidos[0];
+    const dosPartes = {
+      ...datos,
+      movimientos: [
+        pagoDe(partido.localId, partido.id, { id: 3 }),
+        pagoDe(partido.localId, partido.id, { id: 4, metodo: 'transferencia' }),
+      ],
+    };
+    const resultado = validarCambioMovimiento(dosPartes, 3, { metodo: 'transferencia' });
+    expect(resultado.estado).toBe(409);
+    expect(resultado.error).toMatch(/ya tiene un pago por transferencia anotado en este partido/);
+    expect(validarCambioMovimiento(dosPartes, 3, { metodo: 'efectivo', monto: 40000 })).toEqual({
+      valor: { metodo: 'efectivo', monto: 40000 },
+    });
+  });
+
   it('responde 404 si no existe y avisa si no hay cambios', () => {
     expect(validarCambioMovimiento(conMovimientos, 99, { monto: 5 }).estado).toBe(404);
     expect(validarCambioMovimiento(conMovimientos, 1, {}).error).toMatch(/No hay cambios/);
@@ -422,5 +472,84 @@ describe('arancel en la configuración', () => {
     for (const arancel of [-1, 1.5, '105000', 20000000]) {
       expect(validarConfiguracion({ arancel }).error).toMatch(/arancel/);
     }
+  });
+});
+
+describe('lo que puede hacer un veedor', () => {
+  // La fecha 3 está en juego y sus partidos tienen cancha; la fecha 2 ya se jugó
+  const conLugar = {
+    ...datos,
+    partidos: datos.partidos.map((p) => (p.fecha === 3 ? { ...p, predio: 'los_cardales', cancha: 1, hora: '13:40' } : p)),
+  };
+  const enJuego = conLugar.partidos.find((p) => p.fecha === 3);
+  const jugado = conLugar.partidos.find((p) => p.fecha === 2);
+  const NO_PUEDE = { error: 'Tu cuenta de veedor no puede hacer esto.', estado: 403 };
+
+  it('carga, cambia o quita el resultado y el W.O. de un partido de la fecha en juego', () => {
+    for (const cuerpo of [
+      { golesLocal: 2, golesVisitante: 1 },
+      { golesLocal: null, golesVisitante: null },
+      { ausente: 'visitante' },
+    ]) {
+      expect(permisoVeedorPartido(conLugar, enJuego.id, cuerpo)).toBeNull();
+    }
+  });
+
+  it('no posterga ni cambia el lugar', () => {
+    expect(permisoVeedorPartido(conLugar, enJuego.id, { postergado: true })).toEqual(NO_PUEDE);
+    expect(permisoVeedorPartido(conLugar, enJuego.id, { predio: 'cura_borges', cancha: 1, hora: '10:00' })).toEqual(
+      NO_PUEDE
+    );
+    expect(permisoVeedorPartido(conLugar, enJuego.id, null)).toEqual(NO_PUEDE);
+  });
+
+  it('no toca partidos que no ve (otra fecha)', () => {
+    const resultado = permisoVeedorPartido(conLugar, jugado.id, { golesLocal: 0, golesVisitante: 0 });
+    expect(resultado.estado).toBe(403);
+    expect(resultado.error).toBe('Ese partido no es de la fecha en juego: pedile al organizador que lo corrija.');
+  });
+
+  it('agrega rojas solo en los partidos que ve', () => {
+    expect(permisoVeedorRojaNueva(conLugar, { partidoId: enJuego.id })).toBeNull();
+    expect(permisoVeedorRojaNueva(conLugar, { partidoId: jugado.id }).estado).toBe(403);
+    expect(permisoVeedorRojaNueva(conLugar, null).estado).toBe(403);
+  });
+
+  it('borra una roja de sus partidos solo si todavía no tiene sanción', () => {
+    const rojas = [
+      { id: 1, partidoId: enJuego.id, equipoId: enJuego.localId, fechasSuspension: null },
+      { id: 2, partidoId: enJuego.id, equipoId: enJuego.localId, fechasSuspension: 2 },
+      { id: 3, partidoId: jugado.id, equipoId: jugado.localId, fechasSuspension: null },
+    ];
+    const conRojas = { ...conLugar, expulsiones: rojas };
+    expect(permisoVeedorBorrarRoja(conRojas, 1)).toBeNull();
+    expect(permisoVeedorBorrarRoja(conRojas, 2)).toEqual({
+      error: 'Esa roja ya tiene sanción: para borrarla, hablá con el organizador.',
+      estado: 403,
+    });
+    expect(permisoVeedorBorrarRoja(conRojas, 3).estado).toBe(403);
+    // Si no existe, responde la regla de siempre (404)
+    expect(permisoVeedorBorrarRoja(conRojas, 99)).toBeNull();
+  });
+
+  it('anota pagos de sus partidos, pero no deudas anteriores ni pagos sueltos', () => {
+    const pago = { tipo: 'pago', equipoId: enJuego.localId, partidoId: enJuego.id };
+    expect(permisoVeedorPagoNuevo(conLugar, pago)).toBeNull();
+    expect(permisoVeedorPagoNuevo(conLugar, { ...pago, partidoId: jugado.id }).estado).toBe(403);
+    expect(permisoVeedorPagoNuevo(conLugar, { ...pago, partidoId: null })).toEqual(NO_PUEDE);
+    expect(permisoVeedorPagoNuevo(conLugar, { ...pago, tipo: 'deuda_anterior', partidoId: null })).toEqual(NO_PUEDE);
+  });
+
+  it('cambia o borra pagos de sus partidos y nada más', () => {
+    const movimientos = [
+      pagoDe(enJuego.localId, enJuego.id, { id: 1 }),
+      pagoDe(jugado.localId, jugado.id, { id: 2 }),
+      pagoDe(enJuego.localId, null, { id: 3 }),
+    ];
+    const conPagos = { ...conLugar, movimientos };
+    expect(permisoVeedorPago(conPagos, 1)).toBeNull();
+    expect(permisoVeedorPago(conPagos, 2).estado).toBe(403);
+    expect(permisoVeedorPago(conPagos, 3)).toEqual(NO_PUEDE);
+    expect(permisoVeedorPago(conPagos, 99)).toBeNull();
   });
 });

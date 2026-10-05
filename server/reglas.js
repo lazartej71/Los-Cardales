@@ -10,6 +10,7 @@ import { pagosDePartido } from '../src/logica/cuentas.js';
 import { nombrePredio, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
+import { esPartidoDeVeedor } from '../src/logica/veedores.js';
 
 const fallo = (error, estado = 400) => ({ error, estado });
 const esEntero = (valor, min, max) => Number.isInteger(valor) && valor >= min && valor <= max;
@@ -18,6 +19,9 @@ const nombreDe = (datos, equipoId) => datos.equipos.find((e) => e.id === equipoI
 const MONTO_MAXIMO = 10000000;
 const METODOS = ['efectivo', 'transferencia'];
 const TIPOS_MOVIMIENTO = ['pago', 'deuda_anterior'];
+const TIPOS_ROJA = ['doble_amarilla', 'directa'];
+// 'efectivo' → "en efectivo"; 'transferencia' → "por transferencia"
+const conMedio = (metodo) => (metodo === 'efectivo' ? 'en efectivo' : 'por transferencia');
 
 // "2026-10-15": el formato de la base y un día que existe en el calendario
 function esFecha(valor) {
@@ -108,9 +112,13 @@ function validarCambioDe(datos, partido, cuerpo) {
       return fallo('Elegí cuál de los dos equipos no se presentó.');
     }
     const ausenteId = c.ausente === 'local' ? partido.localId : partido.visitanteId;
-    if (pagosDePartido(datos.movimientos || [], partidoId, ausenteId).length) {
+    const pagos = pagosDePartido(datos.movimientos || [], partidoId, ausenteId);
+    if (pagos.length) {
+      const nombre = nombreDe(datos, ausenteId);
       return fallo(
-        `${nombreDe(datos, ausenteId)} tiene un pago anotado en este partido. Para que esa plata no se pierda, quitá ese pago y anotalo como pago suelto en Cuentas; después marcá que no se presentó.`,
+        pagos.length === 1
+          ? `${nombre} tiene un pago anotado en este partido. Para que esa plata no se pierda, quitá ese pago y anotalo como pago suelto en Cuentas; después marcá que no se presentó.`
+          : `${nombre} tiene dos pagos anotados en este partido. Para que esa plata no se pierda, quitá esos pagos y anotalos como pagos sueltos en Cuentas; después marcá que no se presentó.`,
         409
       );
     }
@@ -174,7 +182,10 @@ function validarJugadorDePartido(datos, cuerpo, sinPartido) {
 }
 
 export function validarExpulsionNueva(datos, cuerpo) {
-  return validarJugadorDePartido(datos, cuerpo, 'Elegí el partido en el que fue la expulsión.');
+  const jugador = validarJugadorDePartido(datos, cuerpo, 'Elegí el partido en el que fue la expulsión.');
+  if (jugador.error) return jugador;
+  if (!TIPOS_ROJA.includes(cuerpo.tipo)) return fallo('Elegí si la roja fue por doble amarilla o directa.');
+  return { valor: { ...jugador.valor, tipo: cuerpo.tipo } };
 }
 
 export function validarTarjetaNueva(datos, cuerpo) {
@@ -254,9 +265,10 @@ export function validarMovimientoNuevo(datos, cuerpo) {
     const lado = partido.localId === c.equipoId ? 'local' : partido.visitanteId === c.equipoId ? 'visitante' : null;
     if (!lado) return fallo('El equipo tiene que ser uno de los dos que jugaron ese partido.');
     if (partido.ausente === lado) return fallo(`${nombreDe(datos, c.equipoId)} no se presentó: no paga este partido.`);
-    if (pagosDePartido(datos.movimientos || [], partidoId, c.equipoId).length) {
+    // Un pago por medio: la otra parte del mismo partido va con el otro medio
+    if (pagosDePartido(datos.movimientos || [], partidoId, c.equipoId).some((m) => m.metodo === c.metodo)) {
       return fallo(
-        `${nombreDe(datos, c.equipoId)} ya tiene un pago anotado en este partido: corregilo en lugar de anotar otro.`,
+        `${nombreDe(datos, c.equipoId)} ya tiene un pago ${conMedio(c.metodo)} anotado en este partido: corregilo en lugar de anotar otro.`,
         409
       );
     }
@@ -270,7 +282,21 @@ export function validarCambioMovimiento(datos, movimientoId, cuerpo) {
   const c = cuerpo || {};
   const cambios = Object.fromEntries(['monto', 'metodo', 'fecha', 'nota'].filter((k) => k in c).map((k) => [k, c[k]]));
   if (!Object.keys(cambios).length) return fallo('No hay cambios para guardar.');
-  return validarCamposMovimiento(cambios, movimiento.tipo);
+  const campos = validarCamposMovimiento(cambios, movimiento.tipo);
+  if (campos.error) return campos;
+  const otraParte =
+    movimiento.partidoId !== null &&
+    'metodo' in campos.valor &&
+    pagosDePartido(datos.movimientos, movimiento.partidoId, movimiento.equipoId).some(
+      (m) => m.id !== movimiento.id && m.metodo === campos.valor.metodo
+    );
+  if (otraParte) {
+    return fallo(
+      `${nombreDe(datos, movimiento.equipoId)} ya tiene un pago ${conMedio(campos.valor.metodo)} anotado en este partido: cambiá ese en lugar de este.`,
+      409
+    );
+  }
+  return campos;
 }
 
 export function validarBorradoMovimiento(datos, movimientoId) {
@@ -313,4 +339,48 @@ export function validarConfiguracion(cuerpo) {
   }
   if (!Object.keys(valor).length) return fallo('No hay cambios para guardar.');
   return { valor };
+}
+
+// ---------- Veedores ----------
+// Además de las reglas de siempre, un veedor solo toca los partidos que ve (la fecha en juego, en
+// cada cancha) y solo resultado, W.O., rojas sin sanción y pagos de partidos.
+// Devuelven null si puede, o el error 403.
+
+const NO_PUEDE_VEEDOR = 'Tu cuenta de veedor no puede hacer esto.';
+const CAMBIOS_DE_VEEDOR = ['golesLocal', 'golesVisitante', 'ausente'];
+
+const fueraDeSusPartidos = (datos, partidoId) =>
+  esPartidoDeVeedor(datos.partidos, partidoId)
+    ? null
+    : fallo('Ese partido no es de la fecha en juego: pedile al organizador que lo corrija.', 403);
+
+export function permisoVeedorPartido(datos, partidoId, cuerpo) {
+  const claves = Object.keys(cuerpo || {});
+  if (!claves.length || claves.some((k) => !CAMBIOS_DE_VEEDOR.includes(k))) return fallo(NO_PUEDE_VEEDOR, 403);
+  return fueraDeSusPartidos(datos, partidoId);
+}
+
+export const permisoVeedorRojaNueva = (datos, cuerpo) => fueraDeSusPartidos(datos, cuerpo?.partidoId);
+
+export function permisoVeedorBorrarRoja(datos, expulsionId) {
+  const roja = (datos.expulsiones || []).find((e) => e.id === expulsionId);
+  if (!roja) return null; // responde la regla de siempre (404)
+  if (roja.fechasSuspension !== null) {
+    return fallo('Esa roja ya tiene sanción: para borrarla, hablá con el organizador.', 403);
+  }
+  return fueraDeSusPartidos(datos, roja.partidoId);
+}
+
+export function permisoVeedorPagoNuevo(datos, cuerpo) {
+  if (cuerpo?.tipo !== 'pago' || cuerpo.partidoId === null || cuerpo.partidoId === undefined) {
+    return fallo(NO_PUEDE_VEEDOR, 403);
+  }
+  return fueraDeSusPartidos(datos, cuerpo.partidoId);
+}
+
+export function permisoVeedorPago(datos, movimientoId) {
+  const movimiento = (datos.movimientos || []).find((m) => m.id === movimientoId);
+  if (!movimiento) return null; // responde la regla de siempre (404)
+  if (movimiento.tipo !== 'pago' || movimiento.partidoId === null) return fallo(NO_PUEDE_VEEDOR, 403);
+  return fueraDeSusPartidos(datos, movimiento.partidoId);
 }
