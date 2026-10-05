@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
 import { AvisoWhatsApp } from './AvisoWhatsApp.jsx';
+import { FormRoja } from './BloqueTarjetas.jsx';
 import { EditorPartido } from './EditorPartido.jsx';
 
 // Cualquier acción "sale bien" sin hacer nada
@@ -51,6 +52,25 @@ describe('editor del partido', () => {
     expect(html).toContain('Roja · N° 5 (Lucas Benítez)');
   });
 
+  it('ya no ofrece cargar amarillas, solo rojas', () => {
+    const html = dibujar();
+    expect(html).not.toContain('+ Amarilla');
+    expect(html).toContain('+ Roja');
+  });
+
+  it('cada roja dice su tipo, y la que no tiene sanción se puede borrar desde el partido', () => {
+    const db = crearDatosEjemplo();
+    const expulsiones = [
+      { ...db.expulsiones[0], tipo: 'directa' }, // con 2 fechas de suspensión
+      { id: 9, partidoId: 1, equipoId: 1, numeroCamiseta: 8, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: 'doble_amarilla' },
+    ];
+    const html = dibujar({}, { expulsiones });
+    expect(html).toContain('Roja directa · N° 5 (Lucas Benítez)');
+    expect(html).toContain('Doble amarilla · N° 8');
+    expect(html).toContain('aria-label="Borrar la roja del N° 8"');
+    expect(html).not.toContain('aria-label="Borrar la roja del N° 5"');
+  });
+
   it('muestra lo que pagó cada equipo y cómo queda su cuenta', () => {
     const movimientos = [
       { id: 1, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 95000, metodo: 'efectivo', fecha: '2026-10-15', nota: '' },
@@ -60,6 +80,21 @@ describe('editor del partido', () => {
     expect(html).toContain('value="95.000"');
     // Libre A1 jugó 2 partidos ($210.000) y pagó $95.000
     expect(html).toContain('debe $115.000');
+  });
+});
+
+describe('formulario de una roja', () => {
+  it('pide el tipo (doble amarilla o roja directa), el número y el nombre', () => {
+    const db = crearDatosEjemplo();
+    const partido = db.partidos[0];
+    const html = renderToString(
+      <FormRoja partido={partido} equipo={db.equipos[0]} acciones={acciones} onListo={() => {}} />
+    );
+    expect(html).toContain('Tipo de roja');
+    expect(html).toContain('>Doble amarilla<');
+    expect(html).toContain('>Roja directa<');
+    expect(html).toContain('N° de camiseta');
+    expect(html).toContain('Guardar roja');
   });
 });
 

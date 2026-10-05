@@ -30,6 +30,15 @@ describe('panel de administración', () => {
     expect(dibujar(seccion)).toContain('Panel de administración');
   });
 
+  it('en Suspendidos, cada roja dice si fue doble amarilla o directa', () => {
+    const db = crearDatosEjemplo();
+    db.expulsiones[0] = { ...db.expulsiones[0], tipo: 'doble_amarilla' };
+    const html = dibujar('sanciones', { db });
+    expect(html).toContain('Doble amarilla · N° 5 de Libre A2');
+    // Las viejas, sin tipo, se ven como antes
+    expect(html).toContain('>N° 9 de +35 B4, ');
+  });
+
   it('el menú tiene Cuentas en lugar de Expulsión', () => {
     const html = dibujar('resultados');
     expect(html).toContain('<span>Cuentas</span>');

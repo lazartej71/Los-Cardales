@@ -43,6 +43,8 @@ function textoPartido({ accion, fila, cambios }, db) {
 }
 
 const VERBO = { alta: 'Cargó', cambio: 'Cambió', baja: 'Borró' };
+// Las rojas cargadas antes de la migración 7 no tienen tipo
+const ROJA = { directa: 'la roja directa', doble_amarilla: 'la doble amarilla' };
 
 export function describirActividad(entrada, db) {
   const { accion, tabla, fila = {}, cambios } = entrada;
@@ -52,7 +54,7 @@ export function describirActividad(entrada, db) {
     return `${VERBO[accion]} la amarilla del N° ${fila.numeroCamiseta} de ${equipo} en ${enPartido(fila.partidoId, db)}`;
   }
   if (tabla === 'expulsiones') {
-    const que = accion === 'cambio' ? 'la sanción' : 'la roja';
+    const que = accion === 'cambio' ? 'la sanción' : (ROJA[fila.tipo] ?? 'la roja');
     return `${VERBO[accion]} ${que} del N° ${fila.numeroCamiseta} de ${equipo} en ${enPartido(fila.partidoId, db)}`;
   }
   if (tabla === 'movimientos') {

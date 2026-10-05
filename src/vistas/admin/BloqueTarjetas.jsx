@@ -1,17 +1,21 @@
 /**
- * Tarjetas de un partido: amarillas (solo registro) y rojas (expulsiones, con aviso por WhatsApp).
- * Las rojas se suspenden y se borran en Suspendidos.
+ * Tarjetas de un partido: rojas (expulsiones, con su tipo y el aviso por WhatsApp). Las amarillas ya no
+ * se cargan: las que había se siguen viendo y se pueden borrar.
+ * Una roja sin sanción se borra acá; con sanción, se maneja en Suspendidos.
+ * conAviso: false para los veedores, que no avisan por WhatsApp.
  */
 
 import { useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
+import { Segmentado } from '../../componentes/Segmentado.jsx';
+import { nombreRoja, TIPOS_ROJA } from '../../logica/expulsiones.js';
 import { validarCamiseta } from '../../logica/validaciones.js';
 import { AvisoWhatsApp } from './AvisoWhatsApp.jsx';
 
 const contar = (cantidad, una, varias) => (cantidad === 0 ? '' : `${cantidad} ${cantidad === 1 ? una : varias}`);
 const conNombre = (base, nombre) => (nombre ? `${base} (${nombre})` : base);
 
-export function BloqueTarjetas({ db, partido, local, visitante, acciones }) {
+export function BloqueTarjetas({ db, partido, local, visitante, acciones, conAviso = true }) {
   const amarillas = db.tarjetas.filter((t) => t.partidoId === partido.id);
   const rojas = db.expulsiones.filter((e) => e.partidoId === partido.id);
   const resumen =
@@ -35,6 +39,7 @@ export function BloqueTarjetas({ db, partido, local, visitante, acciones }) {
             amarillas={amarillas.filter((t) => t.equipoId === equipo.id)}
             rojas={rojas.filter((e) => e.equipoId === equipo.id)}
             acciones={acciones}
+            conAviso={conAviso}
           />
         ))}
       </div>
@@ -42,16 +47,24 @@ export function BloqueTarjetas({ db, partido, local, visitante, acciones }) {
   );
 }
 
-function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones }) {
-  const [nueva, setNueva] = useState(null); // 'amarilla' | 'roja' | null
+function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones, conAviso }) {
+  const [cargando, setCargando] = useState(false);
   const [aviso, setAviso] = useState(null); // id de la roja con el aviso abierto
   const [borrando, setBorrando] = useState(null);
 
-  const borrarAmarilla = async (tarjeta) => {
-    setBorrando(tarjeta.id);
-    await acciones.borrarTarjeta(tarjeta.id, `Se borró la amarilla del N° ${tarjeta.numeroCamiseta} de ${equipo.nombre}.`);
+  const borrar = async (clave, accion) => {
+    setBorrando(clave);
+    await accion();
     setBorrando(null);
   };
+  const borrarAmarilla = (t) =>
+    borrar(`a-${t.id}`, () =>
+      acciones.borrarTarjeta(t.id, `Se borró la amarilla del N° ${t.numeroCamiseta} de ${equipo.nombre}.`)
+    );
+  const borrarRoja = (e) =>
+    borrar(`r-${e.id}`, () =>
+      acciones.borrarExpulsion(e.id, `Se borró la roja del N° ${e.numeroCamiseta} de ${equipo.nombre}.`)
+    );
 
   return (
     <div className="tarjetas-equipo">
@@ -68,7 +81,7 @@ function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones }) {
                 type="button"
                 className="btn-icono"
                 aria-label={`Borrar la amarilla del N° ${t.numeroCamiseta}`}
-                disabled={borrando === t.id}
+                disabled={borrando === `a-${t.id}`}
                 onClick={() => borrarAmarilla(t)}
               >
                 <Icono nombre="basura" tamano={16} />
@@ -78,16 +91,31 @@ function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones }) {
           {rojas.map((e) => (
             <li key={`r-${e.id}`} className="tarjetas-lista__item">
               <span className="tarjeta-mini tarjeta-mini--roja" aria-hidden="true" />
-              <span className="tarjetas-lista__texto">{conNombre(`Roja · N° ${e.numeroCamiseta}`, e.nombreJugador)}</span>
-              <button
-                type="button"
-                className="btn btn--whatsapp btn--chico"
-                aria-expanded={aviso === e.id}
-                onClick={() => setAviso(aviso === e.id ? null : e.id)}
-              >
-                Avisar
-              </button>
-              {aviso === e.id && (
+              <span className="tarjetas-lista__texto">
+                {conNombre(`${nombreRoja(e.tipo)} · N° ${e.numeroCamiseta}`, e.nombreJugador)}
+              </span>
+              {e.fechasSuspension === null && (
+                <button
+                  type="button"
+                  className="btn-icono"
+                  aria-label={`Borrar la roja del N° ${e.numeroCamiseta}`}
+                  disabled={borrando === `r-${e.id}`}
+                  onClick={() => borrarRoja(e)}
+                >
+                  <Icono nombre="basura" tamano={16} />
+                </button>
+              )}
+              {conAviso && (
+                <button
+                  type="button"
+                  className="btn btn--whatsapp btn--chico"
+                  aria-expanded={aviso === e.id}
+                  onClick={() => setAviso(aviso === e.id ? null : e.id)}
+                >
+                  Avisar
+                </button>
+              )}
+              {conAviso && aviso === e.id && (
                 <div className="tarjetas-lista__aviso">
                   <AvisoWhatsApp db={db} expulsion={e} />
                 </div>
@@ -98,14 +126,11 @@ function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones }) {
       ) : (
         <p className="campo__ayuda">Sin tarjetas.</p>
       )}
-      {nueva ? (
-        <FormTarjeta tipo={nueva} partido={partido} equipo={equipo} acciones={acciones} onListo={() => setNueva(null)} />
+      {cargando ? (
+        <FormRoja partido={partido} equipo={equipo} acciones={acciones} onListo={() => setCargando(false)} />
       ) : (
         <div className="tarjetas-equipo__botones">
-          <button type="button" className="btn btn--secundario btn--chico" onClick={() => setNueva('amarilla')}>
-            + Amarilla
-          </button>
-          <button type="button" className="btn btn--secundario btn--chico" onClick={() => setNueva('roja')}>
+          <button type="button" className="btn btn--secundario btn--chico" onClick={() => setCargando(true)}>
             + Roja
           </button>
         </div>
@@ -114,33 +139,48 @@ function TarjetasDeEquipo({ db, partido, equipo, amarillas, rojas, acciones }) {
   );
 }
 
-function FormTarjeta({ tipo, partido, equipo, acciones, onListo }) {
+export function FormRoja({ partido, equipo, acciones, onListo }) {
+  const [tipo, setTipo] = useState(null);
   const [numero, setNumero] = useState('');
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const roja = tipo === 'roja';
-  const idBase = `tarjeta-${partido.id}-${equipo.id}`;
+  const idBase = `roja-${partido.id}-${equipo.id}`;
 
   const guardar = async (e) => {
     e.preventDefault();
+    if (!tipo) {
+      setError('Elegí si fue doble amarilla o roja directa.');
+      return;
+    }
     const camiseta = validarCamiseta(numero);
     if (camiseta === null) {
       setError('El número de camiseta es obligatorio (de 1 a 99).');
       return;
     }
     setGuardando(true);
-    const datos = { partidoId: partido.id, equipoId: equipo.id, numeroCamiseta: camiseta, nombreJugador: nombre.trim() };
-    const jugador = `N° ${camiseta} de ${equipo.nombre}`;
-    const hecho = roja
-      ? await acciones.crearExpulsion(datos, `Roja guardada: ${jugador}. Ya figura en Suspendidos.`)
-      : await acciones.crearTarjeta(datos, `Amarilla guardada: ${jugador}.`);
+    const datos = { partidoId: partido.id, equipoId: equipo.id, numeroCamiseta: camiseta, nombreJugador: nombre.trim(), tipo };
+    const mensaje = `${nombreRoja(tipo)} guardada: N° ${camiseta} de ${equipo.nombre}. Ya figura en Suspendidos.`;
+    const hecho = await acciones.crearExpulsion(datos, mensaje);
     setGuardando(false);
     if (hecho) onListo();
   };
 
   return (
-    <form className="form-tarjeta" onSubmit={guardar} noValidate aria-label={`${roja ? 'Roja' : 'Amarilla'} para ${equipo.nombre}`}>
+    <form className="form-tarjeta" onSubmit={guardar} noValidate aria-label={`Roja para ${equipo.nombre}`}>
+      <div className="campo">
+        <span className="campo__label">Tipo de roja</span>
+        <Segmentado
+          variante="chips"
+          etiquetaGrupo={`Tipo de roja para ${equipo.nombre}`}
+          opciones={TIPOS_ROJA}
+          valor={tipo}
+          onCambiar={(valor) => {
+            setTipo(valor);
+            setError('');
+          }}
+        />
+      </div>
       <div className="fila-campos">
         <div className="campo">
           <label className="campo__label" htmlFor={`${idBase}-numero`}>N° de camiseta</label>
@@ -177,8 +217,8 @@ function FormTarjeta({ tipo, partido, equipo, acciones, onListo }) {
         </p>
       )}
       <div className="form-tarjeta__acciones">
-        <button type="submit" className={`btn btn--chico ${roja ? 'btn--peligro' : 'btn--primario'}`} disabled={guardando}>
-          {guardando ? 'Guardando…' : roja ? 'Guardar roja' : 'Guardar amarilla'}
+        <button type="submit" className="btn btn--chico btn--peligro" disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar roja'}
         </button>
         <button type="button" className="btn btn--fantasma btn--chico" onClick={onListo}>
           Cancelar

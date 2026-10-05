@@ -4,6 +4,16 @@
 
 /* ---------- Expulsiones y avisos ---------- */
 
+// Por qué fue la roja (las cargadas antes de la migración 7 no tienen tipo)
+export const TIPOS_ROJA = [
+  { valor: 'doble_amarilla', etiqueta: 'Doble amarilla' },
+  { valor: 'directa', etiqueta: 'Roja directa' },
+];
+
+export const nombreRoja = (tipo) => TIPOS_ROJA.find((t) => t.valor === tipo)?.etiqueta ?? 'Roja';
+
+const LINEA_TIPO = { directa: '🟥 Por *roja directa*', doble_amarilla: '🟨🟨 Por *doble amarilla*' };
+
 // Pendiente de tribunal (sin fechas definidas), suspendido o habilitado
 export function estadoExpulsion(expulsion) {
   const { fechasSuspension, fechasCumplidas } = expulsion;
@@ -46,6 +56,7 @@ export function mensajeExpulsion(expulsion, detalle) {
       `fue expulsado un jugador de *${detalle.equipo.nombre}*:`,
     '',
     `👕 N° ${expulsion.numeroCamiseta}${jugador}`,
+    ...(LINEA_TIPO[expulsion.tipo] ? [LINEA_TIPO[expulsion.tipo]] : []),
     ...lineasSancion(expulsion.fechasSuspension),
     '',
     '_Mensaje automático de Los Cardales Fútbol_',
