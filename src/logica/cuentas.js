@@ -70,10 +70,16 @@ export function motivoSinCobro(partido, equipoId, conPago = false) {
   return null;
 }
 
-// El pago anotado en un partido para un equipo, o null
-export function pagoDePartido(movimientos, partidoId, equipoId) {
-  return movimientos.find((m) => m.tipo === 'pago' && m.partidoId === partidoId && m.equipoId === equipoId) ?? null;
+const ordenMetodo = (metodo) => METODOS_PAGO.findIndex((m) => m.valor === metodo);
+
+// Los pagos anotados en un partido para un equipo: hasta uno por medio (efectivo y transferencia), en ese orden
+export function pagosDePartido(movimientos, partidoId, equipoId) {
+  return movimientos
+    .filter((m) => m.tipo === 'pago' && m.partidoId === partidoId && m.equipoId === equipoId)
+    .sort((a, b) => ordenMetodo(a.metodo) - ordenMetodo(b.metodo));
 }
+
+export const sumarMontos = (movimientos) => movimientos.reduce((total, m) => total + m.monto, 0);
 
 /**
  * Saldo de cada equipo de la lista: Map equipoId → { cobrado, pagado, saldo }.
@@ -124,26 +130,29 @@ export function detalleCuenta({ equipoId, equipos, partidos, movimientos, arance
       .filter((p) => p.localId === equipoId || p.visitanteId === equipoId)
       .sort((a, b) => a.fecha - b.fecha || a.id - b.id)
       .map((p) => {
-        const pago = pagoDePartido(propios, p.id, equipoId);
-        const motivo = motivoSinCobro(p, equipoId, pago !== null);
+        const pagos = pagosDePartido(propios, p.id, equipoId);
+        const motivo = motivoSinCobro(p, equipoId, pagos.length > 0);
         return {
           partido: p,
           rivalId: p.localId === equipoId ? p.visitanteId : p.localId,
           cobrado: motivo === null ? arancel : 0,
           motivo,
-          pago,
+          pagos,
         };
       }),
     pagosSueltos: propios.filter((m) => m.tipo === 'pago' && m.partidoId === null).sort(porFechaEId),
   };
 }
 
-// Renglón de un partido en la cuenta: "pagó $95.000 de $105.000 · efectivo", "sin pago · postergado"…
-export function describirPartidoEnCuenta({ cobrado, motivo, pago }) {
+// Renglón de un partido en la cuenta: "pagó $95.000 de $105.000 · efectivo", "sin pago · postergado",
+// "pagó $105.000 de $105.000 · $50.000 efectivo + $55.000 transferencia"…
+export function describirPartidoEnCuenta({ cobrado, motivo, pagos }) {
   const partes = [];
-  if (pago) {
-    const pagado = formatearPesos(pago.monto);
-    partes.push(motivo ? `pagó ${pagado}` : `pagó ${pagado} de ${formatearPesos(cobrado)}`, pago.metodo);
+  if (pagos.length) {
+    const pagado = formatearPesos(sumarMontos(pagos));
+    const medios =
+      pagos.length === 1 ? pagos[0].metodo : pagos.map((m) => `${formatearPesos(m.monto)} ${m.metodo}`).join(' + ');
+    partes.push(motivo ? `pagó ${pagado}` : `pagó ${pagado} de ${formatearPesos(cobrado)}`, medios);
   } else {
     partes.push(motivo ? 'sin pago' : `sin pago de ${formatearPesos(cobrado)}`);
   }

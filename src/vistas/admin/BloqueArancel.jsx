@@ -12,7 +12,7 @@ import {
   hoyEnArgentina,
   leerMonto,
   METODOS_PAGO,
-  pagoDePartido,
+  pagosDePartido,
 } from '../../logica/cuentas.js';
 
 export function BloqueArancel({ db, partido, local, visitante, acciones }) {
@@ -29,7 +29,7 @@ export function BloqueArancel({ db, partido, local, visitante, acciones }) {
       </summary>
       <div className="bloque__cuerpo">
         {equipos.map((equipo) => {
-          const pago = pagoDePartido(db.movimientos, partido.id, equipo.id);
+          const [pago = null] = pagosDePartido(db.movimientos, partido.id, equipo.id);
           return (
             <PagoDeEquipo
               key={`${equipo.id}-${pago ? `${pago.id}-${pago.monto}-${pago.metodo}` : 'sin-pago'}`}

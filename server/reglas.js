@@ -6,7 +6,7 @@
  */
 
 import { CRITERIOS } from '../src/datos/constantes.js';
-import { pagoDePartido } from '../src/logica/cuentas.js';
+import { pagosDePartido } from '../src/logica/cuentas.js';
 import { nombrePredio, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
@@ -108,7 +108,7 @@ function validarCambioDe(datos, partido, cuerpo) {
       return fallo('Elegí cuál de los dos equipos no se presentó.');
     }
     const ausenteId = c.ausente === 'local' ? partido.localId : partido.visitanteId;
-    if (pagoDePartido(datos.movimientos || [], partidoId, ausenteId)) {
+    if (pagosDePartido(datos.movimientos || [], partidoId, ausenteId).length) {
       return fallo(
         `${nombreDe(datos, ausenteId)} tiene un pago anotado en este partido. Para que esa plata no se pierda, quitá ese pago y anotalo como pago suelto en Cuentas; después marcá que no se presentó.`,
         409
@@ -254,7 +254,7 @@ export function validarMovimientoNuevo(datos, cuerpo) {
     const lado = partido.localId === c.equipoId ? 'local' : partido.visitanteId === c.equipoId ? 'visitante' : null;
     if (!lado) return fallo('El equipo tiene que ser uno de los dos que jugaron ese partido.');
     if (partido.ausente === lado) return fallo(`${nombreDe(datos, c.equipoId)} no se presentó: no paga este partido.`);
-    if (pagoDePartido(datos.movimientos || [], partidoId, c.equipoId)) {
+    if (pagosDePartido(datos.movimientos || [], partidoId, c.equipoId).length) {
       return fallo(
         `${nombreDe(datos, c.equipoId)} ya tiene un pago anotado en este partido: corregilo en lugar de anotar otro.`,
         409
