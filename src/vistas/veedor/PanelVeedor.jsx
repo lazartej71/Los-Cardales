@@ -1,7 +1,8 @@
 /**
  * Pantalla de los veedores: eligen el predio, después la cancha, y cargan los partidos de esa cancha en la
  * fecha en juego (resultado, W.O., rojas y arancel). Una barra fija arriba vuelve a elegir otra cancha.
- * inicial: { predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
+ * Aparte, el botón Postergados lleva a los postergados reprogramados para un día especial, con los mismos pasos.
+ * inicial: { modo, predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
  */
 
 import { useState } from 'react';
@@ -10,7 +11,13 @@ import { Logo } from '../../componentes/Logo.jsx';
 import { PREDIOS } from '../../datos/constantes.js';
 import { canchasDe, nombrePredio } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
-import { fechaDeVeedores, partidosDeCancha, partidosDePredio, resumenPartidos } from '../../logica/veedores.js';
+import {
+  fechaDeVeedores,
+  partidosDeCancha,
+  partidosDePredio,
+  partidosDeVeedor,
+  resumenPartidos,
+} from '../../logica/veedores.js';
 import { EditorPartido } from '../admin/EditorPartido.jsx';
 import { RenglonPartido } from '../admin/RenglonPartido.jsx';
 import { guardarCancha, leerCanchaGuardada } from './canchaGuardada.js';
@@ -23,14 +30,17 @@ function textoResumen({ total, porCargar }) {
 
 export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerSitio, onSalir }) {
   const [eleccion, setEleccion] = useState(() => ({
+    modo: 'fecha',
     predio: null,
     cancha: null,
     abierto: null,
     ...leerCanchaGuardada(almacen),
     ...inicial,
   }));
-  const { predio, cancha, abierto } = eleccion;
+  const { modo, predio, cancha, abierto } = eleccion;
   const fecha = fechaDeVeedores(db.partidos);
+  const postergados = modo === 'postergados';
+  const reprogramados = partidosDeVeedor(db.partidos, 'postergados');
 
   const elegir = (cambios) => {
     const nueva = { ...eleccion, abierto: null, ...cambios };
@@ -43,10 +53,13 @@ export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerS
   if (!predio) {
     contenido = (
       <>
+        {postergados && (
+          <Barra texto="Volver" lugar="Postergados" onVolver={() => elegir({ modo: 'fecha', predio: null, cancha: null })} />
+        )}
         <p className="admin-intro">Elegí el predio donde estás.</p>
         <div className="veedor-opciones">
           {PREDIOS.map((p) => {
-            const resumen = resumenPartidos(partidosDePredio(db.partidos, p.id));
+            const resumen = resumenPartidos(partidosDePredio(db.partidos, p.id, modo));
             return (
               <Opcion
                 key={p.id}
@@ -57,17 +70,29 @@ export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerS
               />
             );
           })}
+          {!postergados && reprogramados.length > 0 && (
+            <Opcion
+              titulo="Postergados"
+              detalle={textoResumen(resumenPartidos(reprogramados))}
+              destacada
+              onElegir={() => elegir({ modo: 'postergados', predio: null, cancha: null })}
+            />
+          )}
         </div>
       </>
     );
   } else if (!cancha) {
     contenido = (
       <>
-        <Barra texto="Predios" lugar={nombrePredio(predio)} onVolver={() => elegir({ predio: null, cancha: null })} />
+        <Barra
+          texto="Predios"
+          lugar={postergados ? `Postergados · ${nombrePredio(predio)}` : nombrePredio(predio)}
+          onVolver={() => elegir({ predio: null, cancha: null })}
+        />
         <p className="admin-intro">{`Elegí la cancha de ${nombrePredio(predio)}.`}</p>
         <div className="veedor-opciones veedor-opciones--canchas">
           {canchasDe(predio).map((numero) => {
-            const resumen = resumenPartidos(partidosDeCancha(db.partidos, predio, numero));
+            const resumen = resumenPartidos(partidosDeCancha(db.partidos, predio, numero, modo));
             return (
               <Opcion
                 key={numero}
@@ -91,7 +116,8 @@ export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerS
         />
         <PartidosDeCancha
           db={db}
-          partidos={partidosDeCancha(db.partidos, predio, cancha)}
+          partidos={partidosDeCancha(db.partidos, predio, cancha, modo)}
+          postergados={postergados}
           fecha={fecha}
           abierto={abierto}
           onAbrir={(id) => setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }))}
@@ -126,17 +152,22 @@ export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerS
       </header>
 
       <main className="contenedor veedor-main">
-        <h2 className="admin-main__titulo">{`Veedores · Fecha ${fecha}`}</h2>
+        <h2 className="admin-main__titulo">{postergados ? 'Veedores · Postergados' : `Veedores · Fecha ${fecha}`}</h2>
         {contenido}
       </main>
     </div>
   );
 }
 
-// Botón grande para elegir un predio o una cancha
-function Opcion({ titulo, detalle, apagada, onElegir }) {
+// Botón grande para elegir un predio, una cancha o los postergados
+function Opcion({ titulo, detalle, apagada = false, destacada = false, onElegir }) {
   return (
-    <button type="button" className="veedor-opcion" disabled={apagada} onClick={onElegir}>
+    <button
+      type="button"
+      className={`veedor-opcion${destacada ? ' veedor-opcion--destacada' : ''}`}
+      disabled={apagada}
+      onClick={onElegir}
+    >
       <span className="veedor-opcion__titulo">{titulo}</span>
       <span className="veedor-opcion__detalle">{detalle}</span>
     </button>
@@ -155,11 +186,16 @@ function Barra({ texto, lugar, onVolver }) {
   );
 }
 
-function PartidosDeCancha({ db, partidos, fecha, abierto, onAbrir, acciones }) {
-  if (!partidos.length) return <p className="vacio-texto">{`No hay partidos en esta cancha en la fecha ${fecha}.`}</p>;
+function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, acciones }) {
+  if (!partidos.length) {
+    const vacio = postergados ? 'No hay postergados en esta cancha.' : `No hay partidos en esta cancha en la fecha ${fecha}.`;
+    return <p className="vacio-texto">{vacio}</p>;
+  }
 
   const equipo = (id) => db.equipos.find((e) => e.id === id);
   const categoria = (p) => db.categorias.find((c) => c.id === p.categoriaId)?.nombre ?? '';
+  // Un postergado dice de qué fecha es (suma en esa fecha al cargarle el resultado)
+  const detalle = (p) => (postergados ? `${categoria(p)} · Postergado de la fecha ${p.fecha}` : categoria(p));
   const porCargar = partidos.filter((p) => !tieneResultado(p));
   const cargados = partidos.filter(tieneResultado);
 
@@ -167,7 +203,7 @@ function PartidosDeCancha({ db, partidos, fecha, abierto, onAbrir, acciones }) {
     <RenglonPartido
       key={p.id}
       partido={p}
-      detalle={categoria(p)}
+      detalle={detalle(p)}
       local={equipo(p.localId)}
       visitante={equipo(p.visitanteId)}
       abierto={abierto === p.id}
@@ -184,7 +220,7 @@ function PartidosDeCancha({ db, partidos, fecha, abierto, onAbrir, acciones }) {
         acciones={acciones}
         onCambio={() => {}}
         veedor
-        titulo={`${categoria(p)} · fecha ${p.fecha}`}
+        titulo={`${categoria(p)} · ${postergados ? 'postergado de la ' : ''}fecha ${p.fecha}`}
       />
     </RenglonPartido>
   );

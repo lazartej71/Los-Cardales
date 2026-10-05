@@ -21,9 +21,24 @@ function armarDb() {
   return { ...db, rol: 'veedor' };
 }
 
-const dibujar = (inicial = {}) =>
+// Además: un postergado de la fecha 2 (+40) reprogramado para el lunes 12/10 en la cancha 4 de Cura Borges,
+// y otro (+45) postergado sin reprogramar
+function armarDbConPostergados() {
+  const db = armarDb();
+  const primero = (categoriaId) => db.partidos.find((p) => p.fecha === 2 && p.categoriaId === categoriaId).id;
+  const [reprogramado, sinDia] = [primero(3), primero(4)];
+  const sinResultado = { golesLocal: null, golesVisitante: null, postergado: true };
+  db.partidos = db.partidos.map((p) => {
+    if (p.id === reprogramado) return { ...p, ...sinResultado, dia: '2026-10-12', predio: 'cura_borges', cancha: 4, hora: '10:00' };
+    if (p.id === sinDia) return { ...p, ...sinResultado };
+    return p;
+  });
+  return db;
+}
+
+const dibujar = (inicial = {}, db = armarDb()) =>
   renderToString(
-    <PanelVeedor db={armarDb()} acciones={acciones} inicial={inicial} almacen={null} onVerSitio={() => {}} onSalir={() => {}} />
+    <PanelVeedor db={db} acciones={acciones} inicial={inicial} almacen={null} onVerSitio={() => {}} onSalir={() => {}} />
   );
 
 describe('pantalla del veedor', () => {
@@ -70,6 +85,41 @@ describe('pantalla del veedor', () => {
   it('una cancha sin partidos lo dice', () => {
     expect(dibujar({ predio: 'los_cardales', cancha: 1 })).toContain('No hay partidos en esta cancha en la fecha 3.');
   });
+
+  it('sin postergados reprogramados no aparece el botón Postergados', () => {
+    expect(dibujar()).not.toContain('Postergados');
+  });
+});
+
+describe('postergados en la pantalla del veedor', () => {
+  it('la primera pantalla suma el botón Postergados (solo cuenta los reprogramados)', () => {
+    const html = dibujar({}, armarDbConPostergados());
+    expect(html).toMatch(/Postergados<\/span><span[^>]*>1 partido · 1 por cargar/);
+    // La fecha en juego no cambia
+    expect(html).toContain('Veedores · Fecha 3');
+  });
+
+  it('adentro elige el predio entre los que tienen postergados', () => {
+    const html = dibujar({ modo: 'postergados' }, armarDbConPostergados());
+    expect(html).toContain('Veedores · Postergados');
+    expect(html).toContain('Volver');
+    expect(html).toMatch(/Cura Borges<\/span><span[^>]*>1 partido · 1 por cargar/);
+    expect(html).toMatch(/disabled=""[^>]*><span[^>]*>Los Cardales<\/span><span[^>]*>Sin partidos/);
+  });
+
+  it('en la cancha muestra el postergado con su fecha original y su día, sin los de la fecha en juego', () => {
+    const html = dibujar({ modo: 'postergados', predio: 'cura_borges', cancha: 4 }, armarDbConPostergados());
+    expect(html).toContain('Cura Borges · Cancha 4');
+    expect(html).toContain('Por cargar (1)');
+    expect(html).toContain('Postergado de la fecha 2');
+    expect(html).toContain('Lunes 12/10');
+    expect(html).not.toContain('Libre B1');
+  });
+
+  it('una cancha sin postergados lo dice', () => {
+    const html = dibujar({ modo: 'postergados', predio: 'cura_borges', cancha: 9 }, armarDbConPostergados());
+    expect(html).toContain('No hay postergados en esta cancha.');
+  });
 });
 
 describe('cancha recordada en el celular', () => {
@@ -78,18 +128,22 @@ describe('cancha recordada en el celular', () => {
     return { getItem: (k) => datos.get(k) ?? null, setItem: (k, v) => datos.set(k, v) };
   };
 
-  it('guarda y vuelve a leer el predio y la cancha', () => {
+  it('guarda y vuelve a leer si estaba en la fecha o en postergados, el predio y la cancha', () => {
     const almacen = almacenFalso();
-    guardarCancha(almacen, { predio: 'cura_borges', cancha: 9 });
-    expect(leerCanchaGuardada(almacen)).toEqual({ predio: 'cura_borges', cancha: 9 });
-    guardarCancha(almacen, { predio: 'los_cardales', cancha: null });
-    expect(leerCanchaGuardada(almacen)).toEqual({ predio: 'los_cardales', cancha: null });
+    guardarCancha(almacen, { modo: 'fecha', predio: 'cura_borges', cancha: 9 });
+    expect(leerCanchaGuardada(almacen)).toEqual({ modo: 'fecha', predio: 'cura_borges', cancha: 9 });
+    guardarCancha(almacen, { modo: 'postergados', predio: 'los_cardales', cancha: null });
+    expect(leerCanchaGuardada(almacen)).toEqual({ modo: 'postergados', predio: 'los_cardales', cancha: null });
+    guardarCancha(almacen, { modo: 'postergados', predio: null, cancha: null });
+    expect(leerCanchaGuardada(almacen)).toEqual({ modo: 'postergados' });
   });
 
   it('ignora lo que no es un predio o una cancha que existe', () => {
     const almacen = almacenFalso();
     almacen.setItem('veedor-cancha', JSON.stringify({ predio: 'cura_borges', cancha: 2 }));
-    expect(leerCanchaGuardada(almacen)).toEqual({ predio: 'cura_borges', cancha: null });
+    expect(leerCanchaGuardada(almacen)).toEqual({ modo: 'fecha', predio: 'cura_borges', cancha: null });
+    almacen.setItem('veedor-cancha', JSON.stringify({ modo: 'cualquiera', predio: 'otro', cancha: 2 }));
+    expect(leerCanchaGuardada(almacen)).toEqual({ modo: 'fecha' });
     almacen.setItem('veedor-cancha', '{roto');
     expect(leerCanchaGuardada(almacen)).toEqual({});
   });

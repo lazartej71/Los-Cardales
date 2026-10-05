@@ -104,6 +104,8 @@
 }
 .veedor-opcion:hover:not(:disabled) { border-color: var(--linea-fuerte); background: var(--superficie-2); }
 .veedor-opcion:disabled { opacity: 0.5; }
+/* Postergados: se recuperan en un día especial, por eso van aparte y con otro color */
+.veedor-opcion--destacada { border-color: var(--marca-borde); background: var(--marca-suave); }
 .veedor-opcion__titulo { font-family: var(--fuente-titulo); font-size: 20px; letter-spacing: 0.02em; text-transform: uppercase; }
 .veedor-opcion__detalle { font-size: 14px; color: var(--tinta-2); }
 /* Siempre a mano: queda fija arriba (debajo del cartel de la simulación, si está) */
