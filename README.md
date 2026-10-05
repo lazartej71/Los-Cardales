@@ -2,14 +2,14 @@
 
 App web mobile-first del campeonato de fútbol amateur, con cinco categorías: Libre, +30, +35, +40 y +45.
 
-- **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido, y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
+- **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido (y arriba, aparte, los postergados que se recuperan en un día especial), y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
 - **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`). El panel conviene instalarlo desde `admin.loscardalesfutbol.com`: en Android, si la app pública ya está instalada, Chrome no deja instalar `www…/admin` porque queda dentro de ella.
 - **Panel de administración:** se abre en `/admin` (por ejemplo `https://www.loscardalesfutbol.com/admin`; el link viejo `/#admin` lleva ahí). Desde ahí:
-  - se arman los partidos de cada fecha;
+  - se arman los partidos de cada fecha y se reprograman los postergados para el día especial en que se recuperan (día, predio, cancha y hora; siguen postergados hasta que se cargan y suman en su fecha original);
   - en cada partido se cargan el resultado (o el W.O.), las rojas (doble amarilla o directa, con aviso al delegado por WhatsApp) y lo que pagó cada equipo, en efectivo, por transferencia o en las dos partes;
   - en **Cuentas** se ve cuánto debe cada equipo y se anotan pagos sueltos y deudas anteriores;
   - se manejan los suspendidos, los equipos y delegados, y la configuración (incluido el valor del arancel).
-- **Veedores:** con una cuenta de veedor, el panel muestra solo la pantalla **Veedores**. El veedor elige el predio y la cancha, y carga los partidos de esa cancha en la fecha en juego: resultado, W.O., rojas y pago del arancel. No puede crear, borrar ni postergar partidos, ni entrar a las otras secciones.
+- **Veedores:** con una cuenta de veedor, el panel muestra solo la pantalla **Veedores**. El veedor elige el predio y la cancha, y carga los partidos de esa cancha en la fecha en juego: resultado, W.O., rojas y pago del arancel. Los postergados reprogramados van aparte, en el botón **Postergados**. No puede crear, borrar ni postergar partidos, ni entrar a las otras secciones.
 
 ## Cómo está armado
 
@@ -62,7 +62,7 @@ scripts/             importación del Excel
 
 **Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql`, `supabase/migracion-3-predios.sql`, `supabase/migracion-4-cancha-6-cura-borges.sql`, `supabase/migracion-5-control.sql`, `supabase/migracion-6-visitas.sql` y `supabase/migracion-7-veedores.sql`.
 
-**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. La 6 (`migracion-6-visitas.sql`) cuenta cuántas personas entran por día. La 7 (`migracion-7-veedores.sql`) agrega el rol de veedor (con sus reglas en la base), el tipo de cada roja y el pago de un partido en dos partes (uno por medio de pago). Cada migración se corre antes de publicar el código que la usa.
+**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. La 6 (`migracion-6-visitas.sql`) cuenta cuántas personas entran por día. La 7 (`migracion-7-veedores.sql`) agrega el rol de veedor (con sus reglas en la base), el tipo de cada roja, el pago de un partido en dos partes (uno por medio de pago) y el día en que se recupera un postergado. Cada migración se corre antes de publicar el código que la usa.
 
 **Probarla en la compu.** `npm test` incluye `supabase/base.test.js`, que corre el esquema, los datos y todas las migraciones en un Postgres local (PGlite) y revisa los permisos, las reglas y los triggers.
 
