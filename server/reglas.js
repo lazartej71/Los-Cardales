@@ -7,7 +7,7 @@
 
 import { CRITERIOS } from '../src/datos/constantes.js';
 import { pagosDePartido } from '../src/logica/cuentas.js';
-import { nombrePredio, validarLugar } from '../src/logica/lugar.js';
+import { nombrePredio, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
 import { esPartidoDeVeedor } from '../src/logica/veedores.js';
@@ -62,9 +62,11 @@ function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
 }
 
 // Un postergado que vuelve a jugarse (se le quita la postergación, o se le carga resultado o W.O.)
-// vuelve a ocupar su cancha: no puede pisar a otro partido
+// vuelve a ocupar su cancha en su fecha: no puede pisar a otro partido. Si se reprogramó para un día
+// especial (tiene día), se juega ese día y no ocupa nada en su fecha.
 function validarVuelveAJugarse(datos, partido, resultado) {
-  const vuelve = partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio;
+  const vuelve =
+    partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio && !partido.dia;
   if (vuelve && canchaOcupada(datos, partido.fecha, partido, partido.id)) {
     return fallo(`${textoOcupada(partido.fecha, partido).slice(0, -1)}: cambiale el lugar o la hora a este partido.`, 409);
   }
@@ -127,7 +129,9 @@ function validarCambioDe(datos, partido, cuerpo) {
   }
   if ('golesLocal' in c || 'golesVisitante' in c) {
     if (c.golesLocal === null && c.golesVisitante === null) {
-      return { valor: { goles_local: null, goles_visitante: null, ausente: null } };
+      // Un reprogramado sin resultado vuelve a postergado (se juega su día especial)
+      const vuelveAPostergado = partido.dia ? { postergado: true } : {};
+      return { valor: { goles_local: null, goles_visitante: null, ausente: null, ...vuelveAPostergado } };
     }
     if (!esEntero(c.golesLocal, 0, 99) || !esEntero(c.golesVisitante, 0, 99)) {
       return fallo('Los goles tienen que ser números enteros entre 0 y 99.');
@@ -137,6 +141,7 @@ function validarCambioDe(datos, partido, cuerpo) {
       valor: { goles_local: c.golesLocal, goles_visitante: c.golesVisitante, postergado: false, ausente: null },
     };
   }
+  if ('dia' in c) return validarReprogramacion(datos, partido, c);
   if ('predio' in c || 'cancha' in c || 'hora' in c) {
     return validarLugarLibre(datos, partido.fecha, c, partidoId);
   }
@@ -148,6 +153,27 @@ function validarCambioDe(datos, partido, cuerpo) {
     return { valor: { postergado: c.postergado } };
   }
   return fallo('No hay cambios para guardar.');
+}
+
+// Un postergado se reprograma para un día especial: día, predio, cancha y hora. Sigue postergado
+// hasta que se le carga el resultado. Ese día, dos partidos no pueden usar la misma cancha a la misma hora.
+function validarReprogramacion(datos, partido, cuerpo) {
+  if (!partido.postergado) return fallo('El día se carga solo en los postergados.');
+  if (!esFecha(cuerpo.dia)) return fallo('Elegí el día.');
+  const lugar = validarLugar(cuerpo);
+  if (lugar.error) return fallo(lugar.error);
+  const { predio, cancha, hora } = lugar.valor;
+  const ocupada = datos.partidos.some(
+    (p) => p.id !== partido.id && p.dia === cuerpo.dia && p.predio === predio && p.cancha === cancha && p.hora === hora
+  );
+  if (ocupada) {
+    const dia = textoDia(cuerpo.dia);
+    return fallo(
+      `La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido el ${dia[0].toLowerCase()}${dia.slice(1)} a las ${hora}.`,
+      409
+    );
+  }
+  return { valor: { dia: cuerpo.dia, ...lugar.valor } };
 }
 
 export function validarBorradoPartido(datos, partidoId) {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizarExpulsion, normalizarPartido } from './repositorio.js';
 
 describe('partidos leídos de Supabase', () => {
-  it('sin las columnas de la migración 3, llegan sin lugar ni hora', () => {
+  it('sin las columnas de las migraciones 3 y 7, llegan sin lugar, hora ni día', () => {
     expect(normalizarPartido({ id: 1, local_id: 2, goles_local: null })).toEqual({
       id: 1,
       localId: 2,
@@ -10,6 +10,7 @@ describe('partidos leídos de Supabase', () => {
       predio: null,
       cancha: null,
       hora: null,
+      dia: null,
     });
   });
 
@@ -38,11 +39,12 @@ describe('partidos leídos de Supabase', () => {
   });
 
   it('la hora llega sin segundos', () => {
-    expect(normalizarPartido({ id: 1, predio: 'los_cardales', cancha: 2, hora: '13:40:00' })).toEqual({
+    expect(normalizarPartido({ id: 1, predio: 'los_cardales', cancha: 2, hora: '13:40:00', dia: '2026-10-12' })).toEqual({
       id: 1,
       predio: 'los_cardales',
       cancha: 2,
       hora: '13:40',
+      dia: '2026-10-12',
     });
   });
 });

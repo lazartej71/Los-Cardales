@@ -50,6 +50,7 @@ describe('base en memoria de la simulación', () => {
       predio: null,
       cancha: null,
       hora: null,
+      dia: null,
     });
     expect((await repo.leerPublico()).partidos.at(-1)).toEqual(creado);
   });

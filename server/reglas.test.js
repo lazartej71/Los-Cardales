@@ -147,6 +147,53 @@ describe('validarCambioPartido', () => {
   });
 });
 
+describe('reprogramar un postergado para un día especial', () => {
+  const base = datos.partidos.find((p) => p.golesLocal === null);
+  const postergado = { ...base, id: 601, fecha: 4, postergado: true, predio: null, cancha: null, hora: null, dia: null };
+  const DIA = { dia: '2026-10-12', ...LUGAR };
+  const con = (...partidos) => ({ ...datos, partidos: [...datos.partidos, ...partidos] });
+
+  it('guarda el día, el predio, la cancha y la hora, y sigue postergado', () => {
+    expect(validarCambioPartido(con(postergado), 601, DIA)).toEqual({ valor: DIA });
+  });
+
+  it('el día va solo en los postergados', () => {
+    expect(validarCambioPartido(datos, base.id, DIA).error).toBe('El día se carga solo en los postergados.');
+  });
+
+  it('pide un día que exista y un lugar válido', () => {
+    for (const dia of ['mañana', '2026-02-30', '', null]) {
+      expect(validarCambioPartido(con(postergado), 601, { ...DIA, dia }).error).toBe('Elegí el día.');
+    }
+    expect(validarCambioPartido(con(postergado), 601, { ...DIA, cancha: 9 }).error).toBe('Elegí una cancha de Los Cardales.');
+  });
+
+  it('no deja dos partidos en la misma cancha el mismo día a la misma hora', () => {
+    const otro = { ...postergado, id: 602, ...DIA };
+    const resultado = validarCambioPartido(con(postergado, otro), 601, DIA);
+    expect(resultado).toEqual({
+      error: 'La cancha 2 de Los Cardales ya tiene un partido el lunes 12/10 a las 13:40.',
+      estado: 409,
+    });
+    expect(validarCambioPartido(con(postergado, otro), 601, { ...DIA, dia: '2026-10-13' }).valor.dia).toBe('2026-10-13');
+  });
+
+  it('al cargarle el resultado deja de estar postergado, aunque en su fecha esa cancha esté ocupada a esa hora', () => {
+    const reprogramado = { ...postergado, ...DIA };
+    const ocupaEnSuFecha = { ...base, id: 603, fecha: 4, ...LUGAR };
+    expect(validarCambioPartido(con(reprogramado, ocupaEnSuFecha), 601, { golesLocal: 1, golesVisitante: 0 })).toEqual({
+      valor: { goles_local: 1, goles_visitante: 0, postergado: false, ausente: null },
+    });
+  });
+
+  it('si se le quita el resultado, vuelve a postergado', () => {
+    const jugado = { ...postergado, ...DIA, postergado: false, golesLocal: 1, golesVisitante: 0 };
+    expect(validarCambioPartido(con(jugado), 601, { golesLocal: null, golesVisitante: null })).toEqual({
+      valor: { goles_local: null, goles_visitante: null, ausente: null, postergado: true },
+    });
+  });
+});
+
 describe('validarBorradoPartido', () => {
   it('no borra un partido con expulsiones', () => {
     expect(validarBorradoPartido(datos, datos.expulsiones[0].partidoId).estado).toBe(409);

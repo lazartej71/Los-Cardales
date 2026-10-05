@@ -343,6 +343,22 @@ describe('API para veedores', () => {
     ]);
   });
 
+  it('carga el resultado de un postergado reprogramado para un día especial', async () => {
+    const { app, guardados, datos, jugado } = armarVeedor();
+    Object.assign(jugado, {
+      golesLocal: null,
+      golesVisitante: null,
+      postergado: true,
+      dia: '2026-10-12',
+      predio: 'cura_borges',
+      cancha: 4,
+      hora: '10:00',
+    });
+    const cuerpo = { golesLocal: 0, golesVisitante: 0 };
+    expect((await pedir(app, `/admin/partidos/${jugado.id}`, { metodo: 'PATCH', cuerpo })).status).toBe(200);
+    expect(guardados[0].cambios).toEqual({ goles_local: 0, goles_visitante: 0, postergado: false, ausente: null });
+  });
+
   it('no posterga ni toca partidos de otra fecha', async () => {
     const { app, guardados, enJuego, jugado } = armarVeedor();
     const postergar = await pedir(app, `/admin/partidos/${enJuego.id}`, { metodo: 'PATCH', cuerpo: { postergado: true } });

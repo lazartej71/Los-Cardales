@@ -13,10 +13,10 @@ export const aCamel = (fila) =>
     Object.entries(fila).map(([clave, valor]) => [clave.replace(/_([a-z])/g, (_, letra) => letra.toUpperCase()), valor])
   );
 
-// Un partido de la base, con lugar y hora aunque la migración 3 todavía no se haya corrido
+// Un partido de la base, con lugar, hora y día aunque las migraciones 3 y 7 todavía no se hayan corrido
 // (por eso se lee con select('*')). Postgres devuelve la hora con segundos: "13:40:00" → "13:40".
 export function normalizarPartido(fila) {
-  const partido = { predio: null, cancha: null, hora: null, ...aCamel(fila) };
+  const partido = { predio: null, cancha: null, hora: null, dia: null, ...aCamel(fila) };
   return { ...partido, hora: partido.hora === null ? null : normalizarHora(partido.hora) };
 }
 

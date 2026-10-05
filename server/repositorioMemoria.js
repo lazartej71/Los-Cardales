@@ -10,7 +10,16 @@ import { aCamel, armarDatosAdmin } from './repositorio.js';
 
 // Lo que completa la base sola al insertar (los valores por defecto de esquema.sql y las migraciones)
 const POR_DEFECTO = {
-  partidos: { golesLocal: null, golesVisitante: null, postergado: false, ausente: null, predio: null, cancha: null, hora: null },
+  partidos: {
+    golesLocal: null,
+    golesVisitante: null,
+    postergado: false,
+    ausente: null,
+    predio: null,
+    cancha: null,
+    hora: null,
+    dia: null,
+  },
   expulsiones: { nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: null },
   tarjetas: { nombreJugador: '' },
   movimientos: { partidoId: null, metodo: null, nota: '' },
