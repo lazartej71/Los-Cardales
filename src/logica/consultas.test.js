@@ -27,6 +27,13 @@ describe('fechaEnJuego', () => {
     expect(fechaEnJuego(fechas([2, [jugado(2), pendiente(2)]], [3, [pendiente(3)]]))).toBe(2);
   });
 
+  // Un postergado que se reprograma deja de estar postergado, pero sigue en su fecha original
+  it('un postergado de la fecha 1 que se recupera no la hace volver a la 1', () => {
+    expect(fechaEnJuego(fechas([1, [pendiente(1)]], [2, [jugado(2)]], [3, [jugado(3), pendiente(3)]]))).toBe(3);
+    expect(fechaEnJuego(fechas([1, [pendiente(1)]], [2, [jugado(2)]], [3, [pendiente(3)]]))).toBe(3);
+    expect(fechaEnJuego(fechas([1, [pendiente(1)]], [2, [jugado(2)]]))).toBe(2);
+  });
+
   it('si todo está cargado es la última, y sin fechas es la 1', () => {
     expect(fechaEnJuego(fechas([1, [jugado(1)]], [2, [jugado(2)]]))).toBe(2);
     expect(fechaEnJuego([])).toBe(1);
