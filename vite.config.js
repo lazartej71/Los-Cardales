@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { getRequestListener } from '@hono/node-server';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
@@ -28,4 +29,13 @@ function servidorApi() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), servidorApi()],
+  build: {
+    // Dos páginas con la misma app: la vista pública y el panel, cada una con su tarjeta para compartir
+    rollupOptions: {
+      input: {
+        publico: fileURLToPath(new URL('./index.html', import.meta.url)),
+        panel: fileURLToPath(new URL('./admin.html', import.meta.url)),
+      },
+    },
+  },
 });

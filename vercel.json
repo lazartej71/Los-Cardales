@@ -9,6 +9,7 @@
   ],
   "rewrites": [
     { "source": "/api/:ruta*", "destination": "/api?__ruta=:ruta*" },
-    { "source": "/admin", "destination": "/index.html" }
-  ]
+    { "source": "/admin", "destination": "/admin.html" }
+  ],
+  "headers": [{ "source": "/admin", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }]
 }

@@ -1,0 +1,5 @@
+# Los buscadores pueden ver toda la página menos el panel
+User-agent: *
+Disallow: /admin
+
+Sitemap: https://www.loscardalesfutbol.com/sitemap.xml

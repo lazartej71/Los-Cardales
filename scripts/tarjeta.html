@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+  Fuente de public/tarjeta.jpg, la imagen que muestran WhatsApp, Facebook y X al compartir el link.
+  Para volver a generarla (por ejemplo, si cambia el logo): abrir este archivo en Chrome, DevTools →
+  modo celular con 1200 × 630 y "Capture screenshot"; guardarla como JPEG de menos de 300 KB.
+-->
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8" />
+<title>Tarjeta para compartir</title>
+<style>
+  html, body { margin: 0; padding: 0; }
+  .tarjeta {
+    position: relative; width: 1200px; height: 630px; overflow: hidden;
+    background:
+      radial-gradient(ellipse 45% 60% at 50% 42%, rgba(255, 120, 0, 0.34), transparent 70%),
+      radial-gradient(ellipse 130% 95% at 50% 0%, #17235e 0%, #060a22 72%);
+  }
+  /* Estrellas como en la portada de la página */
+  .tarjeta::before {
+    content: ""; position: absolute; inset: 0; opacity: 0.7;
+    background-image:
+      radial-gradient(1.5px 1.5px at 18px 26px, rgba(255, 255, 255, 0.85), transparent 70%),
+      radial-gradient(1.5px 1.5px at 96px 74px, rgba(255, 255, 255, 0.55), transparent 70%),
+      radial-gradient(2px 2px at 150px 18px, rgba(255, 240, 200, 0.8), transparent 70%),
+      radial-gradient(1.5px 1.5px at 58px 132px, rgba(255, 255, 255, 0.5), transparent 70%),
+      radial-gradient(1.5px 1.5px at 172px 118px, rgba(255, 255, 255, 0.7), transparent 70%),
+      radial-gradient(2px 2px at 120px 160px, rgba(200, 215, 255, 0.7), transparent 70%);
+    background-size: 190px 180px;
+  }
+  /* La línea de colores del logo, como abajo de la portada */
+  .tarjeta::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 10px;
+    background: linear-gradient(90deg, #fff000, #ffc000 35%, #ff7800 70%, #ff1800);
+  }
+  .logo {
+    position: absolute; left: 50%; top: 50%; width: 600px; height: 600px;
+    transform: translate(-50%, -52%);
+    filter: drop-shadow(0 8px 30px rgba(255, 120, 0, 0.25));
+  }
+</style>
+</head>
+<body>
+  <div class="tarjeta">
+    <img class="logo" src="../public/logo.png" alt="" />
+  </div>
+</body>
+</html>

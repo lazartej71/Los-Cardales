@@ -55,7 +55,8 @@ src/                 la app
 server/              API (Hono): rutas, reglas de validación y acceso a Supabase
 api/index.js         entrada del servidor en Vercel (vercel.json reescribe /api/*)
 supabase/            esquema.sql, datos-iniciales.sql (generado), migraciones y su prueba (base.test.js)
-scripts/             importación del Excel
+scripts/             importación del Excel y fuente de la imagen para compartir (tarjeta.html)
+index.html, admin.html  las dos páginas (vista pública y panel), cada una con su tarjeta para compartir
 ```
 
 ## Base de datos
@@ -100,3 +101,5 @@ El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el res
 ## Publicación
 
 Vercel, conectado al repositorio de GitHub. Requiere cargar las dos variables `VITE_SUPABASE_*` en el proyecto de Vercel. Cada cambio que se sube a GitHub se publica solo.
+
+**Al compartir el link** (WhatsApp, Facebook, X) se ve una tarjeta con el logo (`public/tarjeta.jpg`, 1200 × 630), el título y la descripción, que están fijos en `index.html` y `admin.html`. El panel lleva `noindex` y `robots.txt` lo deja afuera de los buscadores. WhatsApp y Facebook guardan un tiempo la vista previa de un link ya compartido; en Facebook se refresca con el *Sharing Debugger*.

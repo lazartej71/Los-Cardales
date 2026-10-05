@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { direccionDelPanelViejo, esPanel, manifiestoDe, sitioPublicoDesde } from './useRutaAdmin.js';
+import { direccionDelPanelViejo, esPanel, manifiestoDe, sitioPublicoDesde, tituloDePestana } from './useRutaAdmin.js';
 
 const leerJson = (ruta) => JSON.parse(readFileSync(new URL(ruta, import.meta.url), 'utf8'));
 
@@ -90,8 +90,17 @@ describe('instalar como app', () => {
     expect(sitioPublicoDesde('localhost')).toBeNull();
   });
 
-  it('en Vercel /admin abre la app', () => {
+  it('en Vercel /admin abre la app, con la página propia del panel', () => {
     const { rewrites } = leerJson('../../vercel.json');
-    expect(rewrites).toContainEqual({ source: '/admin', destination: '/index.html' });
+    expect(rewrites).toContainEqual({ source: '/admin', destination: '/admin.html' });
+  });
+});
+
+describe('título de la pestaña', () => {
+  it('dice si es el panel, y en la simulación lo avisa', () => {
+    expect(tituloDePestana('/')).toBe('Los Cardales Fútbol');
+    expect(tituloDePestana('/admin')).toBe('Panel · Los Cardales Fútbol');
+    expect(tituloDePestana('/admin', true)).toBe('SIMULACIÓN · Panel · Los Cardales Fútbol');
+    expect(tituloDePestana('/', true)).toBe('SIMULACIÓN · Los Cardales Fútbol');
   });
 });
