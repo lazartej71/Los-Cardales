@@ -165,7 +165,7 @@ export function validarBorradoPartido(datos, partidoId) {
   return { valor: partidoId };
 }
 
-// Un jugador de uno de los dos equipos de un partido: expulsiones (rojas) y amarillas
+// Un jugador de uno de los dos equipos de un partido (para las rojas)
 function validarJugadorDePartido(datos, cuerpo, sinPartido) {
   const { partidoId, equipoId, numeroCamiseta, nombreJugador = '' } = cuerpo || {};
   const partido = datos.partidos.find((p) => p.id === partidoId);
@@ -186,10 +186,6 @@ export function validarExpulsionNueva(datos, cuerpo) {
   if (jugador.error) return jugador;
   if (!TIPOS_ROJA.includes(cuerpo.tipo)) return fallo('Elegí si la roja fue por doble amarilla o directa.');
   return { valor: { ...jugador.valor, tipo: cuerpo.tipo } };
-}
-
-export function validarTarjetaNueva(datos, cuerpo) {
-  return validarJugadorDePartido(datos, cuerpo, 'Ese partido no existe.');
 }
 
 export function validarBorradoTarjeta(datos, tarjetaId) {

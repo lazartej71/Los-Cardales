@@ -86,7 +86,7 @@ describe('base en memoria de la simulación', () => {
 
     const admin = await repo.leerAdmin();
     expect(admin.expulsiones).toEqual([
-      { id: 1, partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 10, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0 },
+      { id: 1, partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 10, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: null },
     ]);
     expect(expulsion.id).toBe(1);
     expect(admin.equipos.find((e) => e.id === partido.localId)).toMatchObject({ delegado: 'Ana', telefonoDelegado: '5491151001234' });
@@ -171,6 +171,36 @@ describe('base en memoria de la simulación', () => {
 
   it('en la simulación la cuenta es superadmin', async () => {
     expect(await armar().repo.rol()).toBe('superadmin');
+    expect(await armar().repo.esVeedor()).toBe(false);
+  });
+
+  it('se puede probar como admin o como veedor según la sesión simulada', async () => {
+    const { crearRepositorio } = armar();
+    const admin = crearRepositorio('simulacion-admin');
+    expect([await admin.esAdmin(), await admin.esVeedor(), await admin.rol()]).toEqual([true, false, 'admin']);
+    const veedor = crearRepositorio('simulacion-veedor');
+    expect([await veedor.esAdmin(), await veedor.esVeedor()]).toEqual([false, true]);
+    expect(await veedor.usuarioActual()).toEqual({ id: 'simulacion-veedor' });
+  });
+
+  it('el veedor de la simulación no ve teléfonos ni amarillas, como en la base real', async () => {
+    const { inicial, repo, crearRepositorio } = armar();
+    const partido = inicial.partidos[0];
+    await repo.guardarDelegado({ equipo_id: partido.localId, nombre: 'Ana', telefono: '5491151001234' });
+    await repo.insertar('tarjetas', { partido_id: partido.id, equipo_id: partido.localId, numero_camiseta: 7 });
+    const datos = await crearRepositorio('simulacion-veedor').leerAdmin();
+    expect(datos.tarjetas).toEqual([]);
+    expect(datos.equipos.find((e) => e.id === partido.localId)).toMatchObject({ delegado: '', telefonoDelegado: '' });
+  });
+
+  it('lo que carga cada uno queda anotado con su rol', async () => {
+    const { inicial, crearRepositorio } = armar();
+    await crearRepositorio('simulacion-veedor').actualizar('partidos', inicial.partidos[0].id, { goles_local: 9 });
+    const [entrada] = await crearRepositorio('simulacion').leerActividad({
+      desde: '2000-01-01T00:00:00-03:00',
+      hasta: '2999-01-01T00:00:00-03:00',
+    });
+    expect(entrada.quien).toBe('Simulación (veedor)');
   });
 
   it('anota la actividad de cada alta, cambio y baja', async () => {

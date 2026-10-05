@@ -6,6 +6,11 @@
 import { Hono } from 'hono';
 import { rangoDelDia } from '../src/logica/actividad.js';
 import {
+  permisoVeedorBorrarRoja,
+  permisoVeedorPago,
+  permisoVeedorPagoNuevo,
+  permisoVeedorPartido,
+  permisoVeedorRojaNueva,
   validarBorradoExpulsion,
   validarBorradoMovimiento,
   validarBorradoPartido,
@@ -18,10 +23,10 @@ import {
   validarExpulsionNueva,
   validarMovimientoNuevo,
   validarPartidoNuevo,
-  validarTarjetaNueva,
 } from './reglas.js';
 
 const ERROR_INTERNO = 'Algo falló en el servidor. Probá de nuevo en un rato.';
+const NO_PUEDE_VEEDOR = 'Tu cuenta de veedor no puede hacer esto.';
 
 // Cuerpo JSON del pedido, o null si no vino o está mal formado
 async function leerCuerpo(c) {
@@ -67,7 +72,7 @@ export function crearApp({ crearRepositorio }) {
 
   const admin = new Hono();
 
-  // Solo pasan los pedidos con la sesión de un admin
+  // Solo pasan los pedidos con la sesión de un admin o de un veedor; el rol queda para cada ruta
   admin.use('*', async (c, next) => {
     const token = (c.req.header('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
     if (!token) return c.json({ error: 'Iniciá sesión para usar el panel.' }, 401);
@@ -75,13 +80,28 @@ export function crearApp({ crearRepositorio }) {
     if (!(await repositorio.usuarioActual())) {
       return c.json({ error: 'La sesión venció. Volvé a iniciar sesión.' }, 401);
     }
-    if (!(await repositorio.esAdmin())) {
-      return c.json({ error: 'Esta cuenta no tiene permiso de administrador.' }, 403);
-    }
+    const rol = (await repositorio.esAdmin())
+      ? await repositorio.rol()
+      : (await repositorio.esVeedor())
+        ? 'veedor'
+        : null;
+    if (!rol) return c.json({ error: 'Esta cuenta no tiene permiso para usar el panel.' }, 403);
     c.set('repositorio', repositorio);
+    c.set('rol', rol);
     c.header('Cache-Control', 'no-store');
     await next();
   });
+
+  const esVeedor = (c) => c.get('rol') === 'veedor';
+
+  // Lo que un veedor no usa nunca (crear o borrar partidos, sanciones, equipos, ajustes)
+  const sinVeedores = async (c, next) => {
+    if (esVeedor(c)) return c.json({ error: NO_PUEDE_VEEDOR }, 403);
+    await next();
+  };
+
+  // Si es un veedor, primero su permiso (null si puede); si no, o si puede, la regla de siempre
+  const reglaPara = (c, permisoVeedor, regla) => (esVeedor(c) && permisoVeedor()) || regla();
 
   // Si la regla falla responde el error; si no, guarda y devuelve lo guardado
   const aplicar = async (c, resultado, guardar, estadoOk = 200) => {
@@ -89,39 +109,38 @@ export function crearApp({ crearRepositorio }) {
     return c.json(await guardar(resultado.valor), estadoOk);
   };
 
-  // Borra una fila si la regla lo permite
-  const borrarFila = async (c, tabla, validar) => {
+  // Borra una fila si la regla lo permite (y, si es un veedor, su permiso)
+  const borrarFila = async (c, tabla, validar, permisoVeedor = () => null) => {
     const repo = c.get('repositorio');
     const id = idDeRuta(c);
-    return aplicar(c, validar(await repo.leerAdmin(), id), async () => {
+    const datos = await repo.leerAdmin();
+    const resultado = reglaPara(c, () => permisoVeedor(datos, id), () => validar(datos, id));
+    return aplicar(c, resultado, async () => {
       await repo.borrar(tabla, id);
       return { ok: true };
     });
   };
 
   admin.get('/datos', async (c) => {
-    const repo = c.get('repositorio');
-    const [datos, rol] = await Promise.all([repo.leerAdmin(), repo.rol()]);
-    return c.json({ ...datos, rol });
+    const datos = await c.get('repositorio').leerAdmin();
+    return c.json({ ...datos, rol: c.get('rol') });
   });
 
   // Personas por día en la vista pública: solo para el superadmin
   admin.get('/visitas', async (c) => {
-    const repo = c.get('repositorio');
-    if ((await repo.rol()) !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
-    return c.json(await repo.leerVisitas());
+    if (c.get('rol') !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
+    return c.json(await c.get('repositorio').leerVisitas());
   });
 
   // Registro de actividad de un día (hora de Argentina): solo para el superadmin
   admin.get('/actividad', async (c) => {
-    const repo = c.get('repositorio');
-    if ((await repo.rol()) !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
+    if (c.get('rol') !== 'superadmin') return c.json({ error: 'Esta sección es solo para el superadmin.' }, 403);
     const rango = rangoDelDia(c.req.query('dia'));
     if (!rango) return c.json({ error: 'Elegí un día válido.' }, 400);
-    return c.json(await repo.leerActividad(rango));
+    return c.json(await c.get('repositorio').leerActividad(rango));
   });
 
-  admin.post('/partidos', async (c) => {
+  admin.post('/partidos', sinVeedores, async (c) => {
     const repo = c.get('repositorio');
     const resultado = validarPartidoNuevo(await repo.leerPublico(), await leerCuerpo(c));
     return aplicar(c, resultado, (valor) => repo.insertar('partidos', valor), 201);
@@ -131,51 +150,70 @@ export function crearApp({ crearRepositorio }) {
     const repo = c.get('repositorio');
     const id = idDeRuta(c);
     // Con los datos del panel: para marcar un W.O. hay que mirar los pagos del partido
-    const resultado = validarCambioPartido(await repo.leerAdmin(), id, await leerCuerpo(c));
+    const [datos, cuerpo] = [await repo.leerAdmin(), await leerCuerpo(c)];
+    const resultado = reglaPara(
+      c,
+      () => permisoVeedorPartido(datos, id, cuerpo),
+      () => validarCambioPartido(datos, id, cuerpo)
+    );
     return aplicar(c, resultado, (valor) => repo.actualizar('partidos', id, valor));
   });
 
-  admin.delete('/partidos/:id', (c) => borrarFila(c, 'partidos', validarBorradoPartido));
+  admin.delete('/partidos/:id', sinVeedores, (c) => borrarFila(c, 'partidos', validarBorradoPartido));
 
   admin.post('/expulsiones', async (c) => {
     const repo = c.get('repositorio');
-    const resultado = validarExpulsionNueva(await repo.leerPublico(), await leerCuerpo(c));
+    const [datos, cuerpo] = [await repo.leerPublico(), await leerCuerpo(c)];
+    const resultado = reglaPara(
+      c,
+      () => permisoVeedorRojaNueva(datos, cuerpo),
+      () => validarExpulsionNueva(datos, cuerpo)
+    );
     return aplicar(c, resultado, (valor) => repo.insertar('expulsiones', valor), 201);
   });
 
-  admin.patch('/expulsiones/:id', async (c) => {
+  admin.patch('/expulsiones/:id', sinVeedores, async (c) => {
     const repo = c.get('repositorio');
     const id = idDeRuta(c);
     const resultado = validarCambioExpulsion(await repo.leerAdmin(), id, await leerCuerpo(c));
     return aplicar(c, resultado, (valor) => repo.actualizar('expulsiones', id, valor));
   });
 
-  admin.delete('/expulsiones/:id', (c) => borrarFila(c, 'expulsiones', validarBorradoExpulsion));
+  admin.delete('/expulsiones/:id', (c) =>
+    borrarFila(c, 'expulsiones', validarBorradoExpulsion, permisoVeedorBorrarRoja)
+  );
 
-  admin.post('/tarjetas', async (c) => {
-    const repo = c.get('repositorio');
-    const resultado = validarTarjetaNueva(await repo.leerPublico(), await leerCuerpo(c));
-    return aplicar(c, resultado, (valor) => repo.insertar('tarjetas', valor), 201);
-  });
-
-  admin.delete('/tarjetas/:id', (c) => borrarFila(c, 'tarjetas', validarBorradoTarjeta));
+  // Las amarillas ya no se cargan: solo se pueden borrar las que había
+  admin.delete('/tarjetas/:id', sinVeedores, (c) => borrarFila(c, 'tarjetas', validarBorradoTarjeta));
 
   admin.post('/movimientos', async (c) => {
     const repo = c.get('repositorio');
-    const resultado = validarMovimientoNuevo(await repo.leerAdmin(), await leerCuerpo(c));
+    const [datos, cuerpo] = [await repo.leerAdmin(), await leerCuerpo(c)];
+    const resultado = reglaPara(
+      c,
+      () => permisoVeedorPagoNuevo(datos, cuerpo),
+      () => validarMovimientoNuevo(datos, cuerpo)
+    );
     return aplicar(c, resultado, (valor) => repo.insertar('movimientos', valor), 201);
   });
 
   admin.patch('/movimientos/:id', async (c) => {
     const repo = c.get('repositorio');
     const id = idDeRuta(c);
-    const resultado = validarCambioMovimiento(await repo.leerAdmin(), id, await leerCuerpo(c));
+    const [datos, cuerpo] = [await repo.leerAdmin(), await leerCuerpo(c)];
+    const resultado = reglaPara(
+      c,
+      () => permisoVeedorPago(datos, id),
+      () => validarCambioMovimiento(datos, id, cuerpo)
+    );
     return aplicar(c, resultado, (valor) => repo.actualizar('movimientos', id, valor));
   });
 
-  admin.delete('/movimientos/:id', (c) => borrarFila(c, 'movimientos', validarBorradoMovimiento));
+  admin.delete('/movimientos/:id', (c) =>
+    borrarFila(c, 'movimientos', validarBorradoMovimiento, permisoVeedorPago)
+  );
 
-  admin.patch('/equipos/:id', async (c) => {
+  admin.patch('/equipos/:id', sinVeedores, async (c) => {
     const repo = c.get('repositorio');
     const id = idDeRuta(c);
     const resultado = validarCambioEquipo(await repo.leerPublico(), id, await leerCuerpo(c));
@@ -186,7 +224,7 @@ export function crearApp({ crearRepositorio }) {
     });
   });
 
-  admin.patch('/configuracion', async (c) => {
+  admin.patch('/configuracion', sinVeedores, async (c) => {
     const repo = c.get('repositorio');
     const resultado = validarConfiguracion(await leerCuerpo(c));
     return aplicar(c, resultado, (valor) => repo.actualizar('configuracion', 1, valor));

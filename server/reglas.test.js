@@ -17,7 +17,6 @@ import {
   validarExpulsionNueva,
   validarMovimientoNuevo,
   validarPartidoNuevo,
-  validarTarjetaNueva,
 } from './reglas.js';
 
 const datos = crearDatosEjemplo();
@@ -300,26 +299,8 @@ describe('borrar un partido con tarjetas o pagos', () => {
   });
 });
 
-describe('validarTarjetaNueva', () => {
-  const partido = datos.partidos[0];
-
-  it('acepta una amarilla de un equipo que jugó el partido', () => {
-    const cuerpo = { partidoId: partido.id, equipoId: partido.visitanteId, numeroCamiseta: 4, nombreJugador: ' Pérez ' };
-    expect(validarTarjetaNueva(datos, cuerpo)).toEqual({
-      valor: { partido_id: partido.id, equipo_id: partido.visitanteId, numero_camiseta: 4, nombre_jugador: 'Pérez' },
-    });
-  });
-
-  it('rechaza un equipo que no jugó o un número inválido', () => {
-    const otro = datos.equipos.find((e) => e.id !== partido.localId && e.id !== partido.visitanteId);
-    expect(validarTarjetaNueva(datos, { partidoId: partido.id, equipoId: otro.id, numeroCamiseta: 4 }).error).toMatch(
-      /uno de los dos/
-    );
-    expect(validarTarjetaNueva(datos, { partidoId: partido.id, equipoId: partido.localId, numeroCamiseta: 0 }).error).toMatch(
-      /camiseta/
-    );
-  });
-
+// Las amarillas ya no se cargan: solo se borran las que había
+describe('validarBorradoTarjeta', () => {
   it('responde 404 al borrar una tarjeta que no existe', () => {
     expect(validarBorradoTarjeta({ ...datos, tarjetas: [] }, 5).estado).toBe(404);
   });

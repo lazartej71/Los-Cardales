@@ -4,7 +4,7 @@ import { crearApp } from './app.js';
 import { crearRepositorioMemoria } from './repositorioMemoria.js';
 
 // Repositorio en memoria: registra lo que la API intenta guardar
-function armar({ admin = true, rol = 'admin' } = {}) {
+function armar({ admin = true, veedor = false, rol = 'admin' } = {}) {
   const datos = crearDatosEjemplo();
   const guardados = [];
   const pedidosActividad = [];
@@ -22,6 +22,7 @@ function armar({ admin = true, rol = 'admin' } = {}) {
     leerAdmin: async () => datos,
     usuarioActual: async () => (token === 'token-valido' ? { id: 'u1' } : null),
     esAdmin: async () => admin,
+    esVeedor: async () => veedor,
     rol: async () => rol,
     sumarVisita: async () => {
       visitas++;
@@ -108,8 +109,10 @@ describe('API de admin', () => {
     expect((await respuesta.json()).error).toMatch(/venció/);
   });
 
-  it('rechaza una cuenta que no es admin', async () => {
-    expect((await pedir(armar({ admin: false }).app, '/admin/datos')).status).toBe(403);
+  it('rechaza una cuenta que no es admin ni veedor', async () => {
+    const respuesta = await pedir(armar({ admin: false }).app, '/admin/datos');
+    expect(respuesta.status).toBe(403);
+    expect((await respuesta.json()).error).toBe('Esta cuenta no tiene permiso para usar el panel.');
   });
 
   it('le da los datos privados al admin', async () => {
@@ -275,26 +278,128 @@ describe('API de admin', () => {
     ]);
   });
 
-  it('agrega y borra una amarilla', async () => {
+  it('ya no se cargan amarillas, pero se pueden borrar las que había', async () => {
     const { app, guardados, datos } = armar();
     const jugado = datos.partidos[0];
     const cuerpo = { partidoId: jugado.id, equipoId: jugado.localId, numeroCamiseta: 7 };
-    expect((await pedir(app, '/admin/tarjetas', { metodo: 'POST', cuerpo })).status).toBe(201);
+    expect((await pedir(app, '/admin/tarjetas', { metodo: 'POST', cuerpo })).status).toBe(404);
     datos.tarjetas.push({ id: 3, partidoId: jugado.id, equipoId: jugado.localId, numeroCamiseta: 7, nombreJugador: '' });
     expect((await pedir(app, '/admin/tarjetas/3', { metodo: 'DELETE' })).status).toBe(200);
+    expect(guardados).toEqual([{ accion: 'borrar', tabla: 'tarjetas', id: 3 }]);
+  });
+
+  it('anota una roja con su tipo, y sin tipo no la guarda', async () => {
+    const { app, guardados, datos } = armar();
+    const jugado = datos.partidos[0];
+    const cuerpo = { partidoId: jugado.id, equipoId: jugado.localId, numeroCamiseta: 9 };
+    expect((await pedir(app, '/admin/expulsiones', { metodo: 'POST', cuerpo })).status).toBe(400);
+    const conTipo = { ...cuerpo, tipo: 'doble_amarilla' };
+    expect((await pedir(app, '/admin/expulsiones', { metodo: 'POST', cuerpo: conTipo })).status).toBe(201);
     expect(guardados).toEqual([
       {
         accion: 'insertar',
-        tabla: 'tarjetas',
-        fila: { partido_id: jugado.id, equipo_id: jugado.localId, numero_camiseta: 7, nombre_jugador: '' },
+        tabla: 'expulsiones',
+        fila: { partido_id: jugado.id, equipo_id: jugado.localId, numero_camiseta: 9, nombre_jugador: '', tipo: 'doble_amarilla' },
       },
-      { accion: 'borrar', tabla: 'tarjetas', id: 3 },
     ]);
   });
 
-  it('la plata y las tarjetas piden una sesión de admin', async () => {
+  it('la plata pide una sesión del panel', async () => {
     expect((await pedir(armar({ admin: false }).app, '/admin/movimientos', { metodo: 'POST', cuerpo: {} })).status).toBe(403);
-    expect((await pedir(armar().app, '/admin/tarjetas', { metodo: 'POST', cuerpo: {}, token: null })).status).toBe(401);
+    expect((await pedir(armar().app, '/admin/movimientos', { metodo: 'POST', cuerpo: {}, token: null })).status).toBe(401);
+  });
+});
+
+describe('API para veedores', () => {
+  // La fecha 3 está en juego y sus partidos tienen cancha; la 2 ya se jugó
+  function armarVeedor() {
+    const armado = armar({ admin: false, veedor: true });
+    armado.datos.partidos.forEach((p) => {
+      if (p.fecha === 3) Object.assign(p, { predio: 'los_cardales', cancha: 1, hora: `1${p.id % 10}:00` });
+    });
+    const enJuego = armado.datos.partidos.find((p) => p.fecha === 3);
+    const jugado = armado.datos.partidos.find((p) => p.fecha === 2);
+    return { ...armado, enJuego, jugado };
+  }
+  const NO_PUEDE = 'Tu cuenta de veedor no puede hacer esto.';
+
+  it('entra al panel y recibe los datos con su rol', async () => {
+    const respuesta = await pedir(armarVeedor().app, '/admin/datos');
+    expect(respuesta.status).toBe(200);
+    expect((await respuesta.json()).rol).toBe('veedor');
+  });
+
+  it('carga el resultado de un partido de la fecha en juego', async () => {
+    const { app, guardados, enJuego } = armarVeedor();
+    const cuerpo = { golesLocal: 2, golesVisitante: 1 };
+    expect((await pedir(app, `/admin/partidos/${enJuego.id}`, { metodo: 'PATCH', cuerpo })).status).toBe(200);
+    expect(guardados).toEqual([
+      {
+        accion: 'actualizar',
+        tabla: 'partidos',
+        id: enJuego.id,
+        cambios: { goles_local: 2, goles_visitante: 1, postergado: false, ausente: null },
+      },
+    ]);
+  });
+
+  it('no posterga ni toca partidos de otra fecha', async () => {
+    const { app, guardados, enJuego, jugado } = armarVeedor();
+    const postergar = await pedir(app, `/admin/partidos/${enJuego.id}`, { metodo: 'PATCH', cuerpo: { postergado: true } });
+    expect(postergar.status).toBe(403);
+    expect((await postergar.json()).error).toBe(NO_PUEDE);
+    const otraFecha = await pedir(app, `/admin/partidos/${jugado.id}`, {
+      metodo: 'PATCH',
+      cuerpo: { golesLocal: 0, golesVisitante: 0 },
+    });
+    expect(otraFecha.status).toBe(403);
+    expect((await otraFecha.json()).error).toMatch(/fecha en juego/);
+    expect(guardados).toEqual([]);
+  });
+
+  it('anota rojas y pagos de sus partidos, pero no deudas', async () => {
+    const { app, guardados, enJuego } = armarVeedor();
+    const roja = { partidoId: enJuego.id, equipoId: enJuego.localId, numeroCamiseta: 9, tipo: 'directa' };
+    expect((await pedir(app, '/admin/expulsiones', { metodo: 'POST', cuerpo: roja })).status).toBe(201);
+    const pago = {
+      tipo: 'pago',
+      equipoId: enJuego.localId,
+      partidoId: enJuego.id,
+      monto: 50000,
+      metodo: 'efectivo',
+      fecha: '2026-10-15',
+    };
+    expect((await pedir(app, '/admin/movimientos', { metodo: 'POST', cuerpo: pago })).status).toBe(201);
+    const deuda = { tipo: 'deuda_anterior', equipoId: enJuego.localId, monto: 1000, fecha: '2026-10-01' };
+    expect((await pedir(app, '/admin/movimientos', { metodo: 'POST', cuerpo: deuda })).status).toBe(403);
+    expect(guardados.map((g) => g.tabla)).toEqual(['expulsiones', 'movimientos']);
+  });
+
+  it('borra una roja de sus partidos sin sanción, pero no una que ya la tiene', async () => {
+    const { app, guardados, datos, enJuego } = armarVeedor();
+    datos.expulsiones.push({
+      id: 10, partidoId: enJuego.id, equipoId: enJuego.localId, numeroCamiseta: 4, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0,
+    });
+    expect((await pedir(app, '/admin/expulsiones/10', { metodo: 'DELETE' })).status).toBe(200);
+    expect((await pedir(app, '/admin/expulsiones/1', { metodo: 'DELETE' })).status).toBe(403);
+    expect(guardados).toEqual([{ accion: 'borrar', tabla: 'expulsiones', id: 10 }]);
+  });
+
+  it('no entra a nada más', async () => {
+    const { app, guardados } = armarVeedor();
+    for (const [metodo, ruta, cuerpo] of [
+      ['POST', '/admin/partidos', { categoriaId: 1, fecha: 4, localId: 1, visitanteId: 2 }],
+      ['DELETE', '/admin/partidos/1'],
+      ['PATCH', '/admin/expulsiones/2', { fechasSuspension: 1 }],
+      ['DELETE', '/admin/tarjetas/1'],
+      ['PATCH', '/admin/equipos/1', { nombre: 'Otro' }],
+      ['PATCH', '/admin/configuracion', { arancel: 1 }],
+      ['GET', '/admin/visitas'],
+      ['GET', '/admin/actividad?dia=2026-10-03'],
+    ]) {
+      expect((await pedir(app, ruta, { metodo, cuerpo })).status, `${metodo} ${ruta}`).toBe(403);
+    }
+    expect(guardados).toEqual([]);
   });
 });
 
