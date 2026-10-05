@@ -193,7 +193,8 @@ export function EditorPartido({
         </div>
       )}
 
-      {!veedor && <BloqueLugar partido={partido} acciones={acciones} />}
+      {/* Un reprogramado ya jugado no se mueve: se jugó en su día especial */}
+      {!veedor && !(partido.dia && !partido.postergado) && <BloqueLugar partido={partido} acciones={acciones} />}
       <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} conAviso={!veedor} />
       <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
     </article>

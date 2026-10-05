@@ -161,8 +161,9 @@ export function AdminResultados({ db, acciones, filtro, fecha: fechaElegida, onF
       {verPostergados ? (
         <>
           <p className="nota-fecha">
-            Partidos postergados de todas las fechas. Cuando se recupere uno, cargale el resultado: queda cargado en su
-            fecha original y sale de esta lista.
+            Partidos postergados de todas las fechas. Para recuperar uno, abrilo y reprogramalo con el día, la cancha y la
+            hora: los veedores lo ven en Postergados. Cuando se juegue, cargale el resultado: queda en su fecha original y
+            sale de esta lista.
           </p>
           <GrupoPartidos titulo={`Postergados de ${categoria.nombre} (${postergados.length})`}>
             {postergados.map((p) => renglon(p, `Fecha ${p.fecha}`))}

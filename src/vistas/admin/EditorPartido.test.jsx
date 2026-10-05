@@ -155,6 +155,28 @@ describe('lugar y hora en el editor', () => {
     expect(html).toContain('Guardar lugar');
   });
 
+  it('un postergado se reprograma: pide el día además del lugar', () => {
+    const html = dibujar({ postergado: true, golesLocal: null, golesVisitante: null });
+    expect(html).toContain('Reprogramar');
+    expect(html).toContain('Sin reprogramar');
+    expect(html).toMatch(/<label[^>]*for="lugar-1-dia"[^>]*>Día</);
+    expect(html).toContain('Guardar reprogramación');
+    expect(html).not.toContain('Lugar y hora');
+  });
+
+  it('un reprogramado muestra su día y lugar', () => {
+    const reprogramado = { postergado: true, golesLocal: null, golesVisitante: null, dia: '2026-10-12', predio: 'los_cardales', cancha: 2, hora: '13:40' };
+    const html = dibujar(reprogramado);
+    expect(html).toContain('Lunes 12/10 · Los Cardales · Cancha 2 · 13:40');
+    expect(html).toMatch(/id="lugar-1-dia"[^>]*value="2026-10-12"/);
+  });
+
+  it('un reprogramado ya jugado no se vuelve a reprogramar ni a mover', () => {
+    const html = dibujar({ dia: '2026-10-12', predio: 'los_cardales', cancha: 2, hora: '13:40' });
+    expect(html).not.toContain('Reprogramar');
+    expect(html).not.toContain('Lugar y hora');
+  });
+
   it('un partido sin lugar trae los campos vacíos para completarlo', () => {
     const html = dibujar({ predio: null, cancha: null, hora: null });
     expect(html).toContain('Lugar y hora');
