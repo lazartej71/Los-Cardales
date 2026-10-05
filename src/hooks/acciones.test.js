@@ -80,6 +80,10 @@ describe('acciones del panel', () => {
     expect(cliente.actualizarPartido).toHaveBeenCalledWith('tok', 1, { ausente: 'visitante' });
   });
 
+  it('ya no hay acción para cargar amarillas', () => {
+    expect(armar().acciones.crearTarjeta).toBeUndefined();
+  });
+
   it('anota un pago y vuelve a pedir los datos', async () => {
     const { acciones, cliente, recargar, avisos } = armar();
     const datos = { tipo: 'pago', equipoId: 1, partidoId: 2, monto: 95000, metodo: 'efectivo', fecha: '2026-10-15' };
@@ -87,5 +91,76 @@ describe('acciones del panel', () => {
     expect(cliente.crearMovimiento).toHaveBeenCalledWith('tok', datos);
     expect(recargar).toHaveBeenCalled();
     expect(avisos).toEqual([['ok', 'Pago guardado.']]);
+  });
+});
+
+describe('pago de un partido en dos partes', () => {
+  // Cliente falso que anota cada pedido; `fallarEn` hace fallar ese número de pedido (1, 2…)
+  function armarPagos(fallarEn = 0) {
+    const pedidos = [];
+    const avisos = [];
+    const recargar = vi.fn(async () => {});
+    const anotar = (nombre) =>
+      vi.fn(async (...args) => {
+        pedidos.push([nombre, ...args.slice(1)]);
+        if (pedidos.length === fallarEn) throw new ErrorApi('Ya tiene un pago en efectivo.', 409);
+        return { id: 50 };
+      });
+    const cliente = {
+      crearMovimiento: anotar('crear'),
+      actualizarMovimiento: anotar('cambiar'),
+      borrarMovimiento: anotar('borrar'),
+    };
+    const acciones = crearAcciones({
+      token: 'tok',
+      recargar,
+      avisar: (texto, tipo = 'ok') => avisos.push([tipo, texto]),
+      onSesionInvalida: vi.fn(),
+      cliente,
+    });
+    return { acciones, pedidos, avisos, recargar };
+  }
+  const base = { partidoId: 2, equipoId: 1, fecha: '2026-10-15' };
+
+  it('anota las dos partes y avisa una sola vez', async () => {
+    const { acciones, pedidos, avisos, recargar } = armarPagos();
+    const partes = [
+      { metodo: 'efectivo', monto: 50000, pago: null },
+      { metodo: 'transferencia', monto: 55000, pago: null },
+    ];
+    expect(await acciones.guardarPagos({ ...base, partes }, 'Pago guardado.')).toBe(true);
+    expect(pedidos).toEqual([
+      ['crear', { tipo: 'pago', equipoId: 1, partidoId: 2, monto: 50000, metodo: 'efectivo', fecha: '2026-10-15' }],
+      ['crear', { tipo: 'pago', equipoId: 1, partidoId: 2, monto: 55000, metodo: 'transferencia', fecha: '2026-10-15' }],
+    ]);
+    expect(recargar).toHaveBeenCalledTimes(1);
+    expect(avisos).toEqual([['ok', 'Pago guardado.']]);
+  });
+
+  it('cambia una parte, quita la otra y no manda la que no cambió', async () => {
+    const { acciones, pedidos } = armarPagos();
+    const partes = [
+      { metodo: 'efectivo', monto: 60000, pago: { id: 1, monto: 50000 } },
+      { metodo: 'transferencia', monto: null, pago: { id: 2, monto: 55000 } },
+    ];
+    await acciones.guardarPagos({ ...base, partes }, 'Pago guardado.');
+    expect(pedidos).toEqual([
+      ['cambiar', 1, { monto: 60000 }],
+      ['borrar', 2],
+    ]);
+    pedidos.length = 0;
+    await acciones.guardarPagos({ ...base, partes: [{ metodo: 'efectivo', monto: 5, pago: { id: 1, monto: 5 } }] }, 'Listo.');
+    expect(pedidos).toEqual([]);
+  });
+
+  it('si falla a mitad de camino, vuelve a pedir los datos (lo primero ya quedó) y avisa el motivo', async () => {
+    const { acciones, avisos, recargar } = armarPagos(2);
+    const partes = [
+      { metodo: 'efectivo', monto: 50000, pago: null },
+      { metodo: 'transferencia', monto: 55000, pago: null },
+    ];
+    expect(await acciones.guardarPagos({ ...base, partes }, 'Pago guardado.')).toBeNull();
+    expect(recargar).toHaveBeenCalledTimes(1);
+    expect(avisos).toEqual([['error', 'Ya tiene un pago en efectivo.']]);
   });
 });
