@@ -449,3 +449,71 @@ describe('migración 7: veedores, rojas con tipo y pagos en dos partes', () => {
     expect((await comoVeedor('select public.es_veedor() as veedor')).filas).toEqual([{ veedor: true }]);
   });
 });
+
+describe('migración 7: postergados que se recuperan en un día especial', () => {
+  const comoVeedor = (consulta) => como('authenticated', VEEDOR, consulta);
+  const LUGAR = `predio = 'los_cardales', cancha = 2, hora = '13:40'`;
+  const crear = async (fecha, local, visitante, extra = '') =>
+    (await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id${extra ? ', postergado' : ''})
+      values (1, ${fecha}, ${local}, ${visitante}${extra ? ', true' : ''}) returning id`)).id;
+  let reprogramado;
+  let normal;
+
+  it('un postergado se reprograma con día, predio, cancha y hora, y sigue postergado', async () => {
+    reprogramado = await crear(55, 3, 4, 'postergado');
+    const { filas, error } = await comoAdmin(`update public.partidos set dia = '2026-10-13', ${LUGAR}
+      where id = ${reprogramado} returning postergado, dia::text`);
+    expect(error).toBeUndefined();
+    expect(filas).toEqual([{ postergado: true, dia: '2026-10-13' }]);
+  });
+
+  it('el día va solo con el lugar completo', async () => {
+    const otro = await crear(56, 5, 6, 'postergado');
+    expect((await comoAdmin(`update public.partidos set dia = '2026-10-13' where id = ${otro}`)).error).toMatch(
+      /partidos_dia_check/
+    );
+  });
+
+  it('dos partidos con día no van a la misma cancha el mismo día a la misma hora', async () => {
+    const otro = await crear(57, 7, 8, 'postergado');
+    const mismo = await comoAdmin(`update public.partidos set dia = '2026-10-13', ${LUGAR} where id = ${otro}`);
+    expect(mismo.error).toMatch(/partidos_reprogramado_ocupado_idx/);
+    const otraHora = await comoAdmin(`update public.partidos set dia = '2026-10-13', predio = 'los_cardales',
+      cancha = 2, hora = '15:00' where id = ${otro}`);
+    expect(otraHora.error).toBeUndefined();
+  });
+
+  it('jugado su día, no choca con un partido de su fecha en esa cancha a esa hora', async () => {
+    normal = await crear(55, 9, 10);
+    expect((await comoAdmin(`update public.partidos set ${LUGAR} where id = ${normal}`)).error).toBeUndefined();
+    const jugado = await comoAdmin(`update public.partidos set goles_local = 2, goles_visitante = 1, postergado = false
+      where id = ${reprogramado}`);
+    expect(jugado.error).toBeUndefined();
+    await comoAdmin(`update public.partidos set goles_local = null, goles_visitante = null, postergado = true
+      where id = ${reprogramado}`);
+  });
+
+  it('el veedor carga el resultado de un reprogramado (deja de estar postergado) y lo puede quitar', async () => {
+    const cargar = await comoVeedor(`update public.partidos set goles_local = 1, goles_visitante = 0, postergado = false
+      where id = ${reprogramado}`);
+    expect(cargar.error).toBeUndefined();
+    const quitar = await comoVeedor(`update public.partidos set goles_local = null, goles_visitante = null,
+      postergado = true where id = ${reprogramado}`);
+    expect(quitar.error).toBeUndefined();
+    expect(await uno(`select postergado, goles_local from public.partidos where id = ${reprogramado}`)).toEqual({
+      postergado: true,
+      goles_local: null,
+    });
+  });
+
+  it('el veedor no posterga un partido normal, no cambia el día ni saca la postergación sin resultado', async () => {
+    const NO = 'Un veedor solo puede cargar el resultado o el W.O.';
+    for (const [cambio, id] of [
+      ['postergado = true', normal],
+      [`dia = '2026-10-20'`, reprogramado],
+      ['postergado = false', reprogramado],
+    ]) {
+      expect((await comoVeedor(`update public.partidos set ${cambio} where id = ${id}`)).error, cambio).toBe(NO);
+    }
+  });
+});

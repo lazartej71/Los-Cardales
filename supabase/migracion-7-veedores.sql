@@ -1,5 +1,6 @@
 -- =====================================================================
--- Migración 7: cuentas de veedores, rojas con tipo y pago del arancel en dos partes.
+-- Migración 7: cuentas de veedores, rojas con tipo, pago del arancel en dos partes y día de los
+-- postergados que se recuperan en un día especial.
 -- Ejecutar UNA vez en Supabase, después de migracion-6-visitas.sql:
 -- SQL Editor → New query → pegar todo → Run.
 -- No toca los datos del campeonato. Si se corre dos veces, falla al principio
@@ -42,15 +43,36 @@ drop index public.movimientos_pago_partido_idx;
 create unique index movimientos_pago_partido_metodo_idx on public.movimientos (partido_id, equipo_id, metodo)
   where partido_id is not null;
 
+-- ---------- Postergados que se recuperan en un día especial ----------
+
+-- Día en que se recupera un postergado (los partidos normales no lo llevan: la fecha ya dice el día)
+alter table public.partidos
+  add column dia date,
+  add constraint partidos_dia_check check (dia is null or predio is not null);
+
+-- Dos partidos con día no van a la misma cancha el mismo día a la misma hora
+create unique index partidos_reprogramado_ocupado_idx on public.partidos (dia, predio, cancha, hora)
+  where dia is not null;
+
+-- La cancha ocupada en la fecha (migración 3) no cuenta a los que se juegan en su día especial
+drop index public.partidos_cancha_ocupada_idx;
+create unique index partidos_cancha_ocupada_idx on public.partidos (fecha, predio, cancha, hora)
+  where predio is not null and not postergado and dia is null;
+
 -- ---------- Lo que puede hacer un veedor ----------
 
--- En un partido, solo el resultado y el W.O.
+-- En un partido, solo el resultado y el W.O. Un postergado reprogramado (con día) deja de estar
+-- postergado al cargarle el resultado, y vuelve a estarlo si se lo quitan.
 create function public.validar_cambio_veedor() returns trigger
 language plpgsql set search_path = '' as $$
 begin
-  if (select public.es_veedor())
-    and to_jsonb(new) - 'goles_local' - 'goles_visitante' - 'ausente'
-      is distinct from to_jsonb(old) - 'goles_local' - 'goles_visitante' - 'ausente' then
+  if not (select public.es_veedor()) then
+    return new;
+  end if;
+  if to_jsonb(new) - 'goles_local' - 'goles_visitante' - 'ausente' - 'postergado'
+      is distinct from to_jsonb(old) - 'goles_local' - 'goles_visitante' - 'ausente' - 'postergado'
+    or (new.postergado is distinct from old.postergado
+      and (old.dia is null or new.postergado <> (new.goles_local is null))) then
     raise exception 'Un veedor solo puede cargar el resultado o el W.O.';
   end if;
   return new;
