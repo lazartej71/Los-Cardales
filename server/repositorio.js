@@ -13,11 +13,27 @@ export const aCamel = (fila) =>
     Object.entries(fila).map(([clave, valor]) => [clave.replace(/_([a-z])/g, (_, letra) => letra.toUpperCase()), valor])
   );
 
-// Un partido de la base, con lugar y hora aunque la migración 3 todavía no se haya corrido
+// Un partido de la base, con lugar, hora y día aunque las migraciones 3 y 7 todavía no se hayan corrido
 // (por eso se lee con select('*')). Postgres devuelve la hora con segundos: "13:40:00" → "13:40".
 export function normalizarPartido(fila) {
-  const partido = { predio: null, cancha: null, hora: null, ...aCamel(fila) };
+  const partido = { predio: null, cancha: null, hora: null, dia: null, ...aCamel(fila) };
   return { ...partido, hora: partido.hora === null ? null : normalizarHora(partido.hora) };
+}
+
+// Una roja de la base, con su tipo aunque la migración 7 todavía no se haya corrido (por eso se
+// lee con select('*'))
+export function normalizarExpulsion(fila) {
+  const e = aCamel(fila);
+  return {
+    id: e.id,
+    partidoId: e.partidoId,
+    equipoId: e.equipoId,
+    numeroCamiseta: e.numeroCamiseta,
+    nombreJugador: e.nombreJugador,
+    fechasSuspension: e.fechasSuspension,
+    fechasCumplidas: e.fechasCumplidas,
+    tipo: e.tipo ?? null,
+  };
 }
 
 /**
@@ -97,12 +113,7 @@ export function crearRepositorioSupabase({ url, clave }) {
         const [publico, delegados, expulsiones, tarjetas, movimientos] = await Promise.all([
           leerPublico(),
           ejecutar(cliente.from('delegados').select('equipo_id, nombre, telefono')),
-          ejecutar(
-            cliente
-              .from('expulsiones')
-              .select('id, partido_id, equipo_id, numero_camiseta, nombre_jugador, fechas_suspension, fechas_cumplidas')
-              .order('id')
-          ),
+          ejecutar(cliente.from('expulsiones').select('*').order('id')),
           ejecutar(cliente.from('tarjetas').select('id, partido_id, equipo_id, numero_camiseta, nombre_jugador').order('id')),
           ejecutar(
             cliente.from('movimientos').select('id, equipo_id, partido_id, tipo, monto, metodo, fecha, nota').order('id')
@@ -110,7 +121,7 @@ export function crearRepositorioSupabase({ url, clave }) {
         ]);
         return armarDatosAdmin(publico, {
           delegados: delegados.map(aCamel),
-          expulsiones: expulsiones.map(aCamel),
+          expulsiones: expulsiones.map(normalizarExpulsion),
           tarjetas: tarjetas.map(aCamel),
           movimientos: movimientos.map(aCamel),
         });
@@ -124,6 +135,12 @@ export function crearRepositorioSupabase({ url, clave }) {
 
       async esAdmin() {
         return (await ejecutar(cliente.rpc('es_admin'))) === true;
+      },
+
+      // Si la migración 7 todavía no se corrió, la función no existe: no hay veedores
+      async esVeedor() {
+        const { data, error } = await cliente.rpc('es_veedor');
+        return !error && data === true;
       },
 
       // La fila propia de administradores (la regla de la base deja leer solo esa).

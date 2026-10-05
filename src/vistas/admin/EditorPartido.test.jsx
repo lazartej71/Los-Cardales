@@ -2,13 +2,14 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
 import { AvisoWhatsApp } from './AvisoWhatsApp.jsx';
+import { FormRoja } from './BloqueTarjetas.jsx';
 import { EditorPartido } from './EditorPartido.jsx';
 
 // Cualquier acción "sale bien" sin hacer nada
 const acciones = new Proxy({}, { get: () => async () => true });
 
 // Primer partido de los datos de ejemplo: Libre A1 3 – 2 Libre A2, fecha 1 (Libre A2 tiene una expulsión)
-function dibujar(cambiosPartido = {}, cambiosDb = {}) {
+function dibujar(cambiosPartido = {}, cambiosDb = {}, extra = {}) {
   const db = { ...crearDatosEjemplo(), ...cambiosDb };
   const partido = { ...db.partidos[0], ...cambiosPartido };
   db.partidos = [partido, ...db.partidos.slice(1)];
@@ -24,9 +25,26 @@ function dibujar(cambiosPartido = {}, cambiosDb = {}) {
       zonaVisitante={null}
       acciones={acciones}
       onCambio={() => {}}
+      {...extra}
     />
   );
 }
+
+describe('editor del partido para un veedor', () => {
+  it('carga resultado, W.O., rojas y arancel, pero no posterga, borra, cambia el lugar ni avisa', () => {
+    const html = dibujar({ golesLocal: null, golesVisitante: null }, {}, { veedor: true, titulo: 'Libre · fecha 1' });
+    expect(html).toContain('Libre · fecha 1');
+    expect(html).toContain('¿No se presentó alguien?');
+    expect(html).toContain('+ Roja');
+    expect(html).toContain('Total del día');
+    expect(html).toContain('>Guardar<');
+    for (const texto of ['Postergar', '> Borrar<', 'Lugar y hora', '>Avisar<']) expect(html).not.toContain(texto);
+  });
+
+  it('con el resultado cargado puede quitarlo', () => {
+    expect(dibujar({}, {}, { veedor: true })).toContain('Quitar resultado');
+  });
+});
 
 describe('editor del partido', () => {
   it('ofrece marcar que un equipo no se presentó', () => {
@@ -51,6 +69,25 @@ describe('editor del partido', () => {
     expect(html).toContain('Roja · N° 5 (Lucas Benítez)');
   });
 
+  it('ya no ofrece cargar amarillas, solo rojas', () => {
+    const html = dibujar();
+    expect(html).not.toContain('+ Amarilla');
+    expect(html).toContain('+ Roja');
+  });
+
+  it('cada roja dice su tipo, y la que no tiene sanción se puede borrar desde el partido', () => {
+    const db = crearDatosEjemplo();
+    const expulsiones = [
+      { ...db.expulsiones[0], tipo: 'directa' }, // con 2 fechas de suspensión
+      { id: 9, partidoId: 1, equipoId: 1, numeroCamiseta: 8, nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: 'doble_amarilla' },
+    ];
+    const html = dibujar({}, { expulsiones });
+    expect(html).toContain('Roja directa · N° 5 (Lucas Benítez)');
+    expect(html).toContain('Doble amarilla · N° 8');
+    expect(html).toContain('aria-label="Borrar la roja del N° 8"');
+    expect(html).not.toContain('aria-label="Borrar la roja del N° 5"');
+  });
+
   it('muestra lo que pagó cada equipo y cómo queda su cuenta', () => {
     const movimientos = [
       { id: 1, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 95000, metodo: 'efectivo', fecha: '2026-10-15', nota: '' },
@@ -60,6 +97,36 @@ describe('editor del partido', () => {
     expect(html).toContain('value="95.000"');
     // Libre A1 jugó 2 partidos ($210.000) y pagó $95.000
     expect(html).toContain('debe $115.000');
+  });
+
+  it('el pago va en dos partes, efectivo y transferencia, con el total del día', () => {
+    const movimientos = [
+      { id: 1, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 50000, metodo: 'efectivo', fecha: '2026-10-15', nota: '' },
+      { id: 2, equipoId: 1, partidoId: 1, tipo: 'pago', monto: 55000, metodo: 'transferencia', fecha: '2026-10-15', nota: '' },
+    ];
+    const html = dibujar({}, { movimientos });
+    expect(html).toMatch(/for="pago-1-1-efectivo"[^>]*>Efectivo</);
+    expect(html).toMatch(/id="pago-1-1-efectivo"[^>]*value="50.000"/);
+    expect(html).toMatch(/for="pago-1-1-transferencia"[^>]*>Transferencia</);
+    expect(html).toMatch(/id="pago-1-1-transferencia"[^>]*value="55.000"/);
+    expect(html).toContain('Total del día: $105.000');
+    // El rival todavía no pagó nada
+    expect(html).toContain('Total del día: $0');
+  });
+});
+
+describe('formulario de una roja', () => {
+  it('pide el tipo (doble amarilla o roja directa), el número y el nombre', () => {
+    const db = crearDatosEjemplo();
+    const partido = db.partidos[0];
+    const html = renderToString(
+      <FormRoja partido={partido} equipo={db.equipos[0]} acciones={acciones} onListo={() => {}} />
+    );
+    expect(html).toContain('Tipo de roja');
+    expect(html).toContain('>Doble amarilla<');
+    expect(html).toContain('>Roja directa<');
+    expect(html).toContain('N° de camiseta');
+    expect(html).toContain('Guardar roja');
   });
 });
 
@@ -86,6 +153,28 @@ describe('lugar y hora en el editor', () => {
     expect(html).toContain('Lugar y hora');
     expect(html).toContain('value="13:40"');
     expect(html).toContain('Guardar lugar');
+  });
+
+  it('un postergado se reprograma: pide el día además del lugar', () => {
+    const html = dibujar({ postergado: true, golesLocal: null, golesVisitante: null });
+    expect(html).toContain('Reprogramar');
+    expect(html).toContain('Sin reprogramar');
+    expect(html).toMatch(/<label[^>]*for="lugar-1-dia"[^>]*>Día</);
+    expect(html).toContain('Guardar reprogramación');
+    expect(html).not.toContain('Lugar y hora');
+  });
+
+  it('un reprogramado muestra su día y lugar', () => {
+    const reprogramado = { postergado: true, golesLocal: null, golesVisitante: null, dia: '2026-10-12', predio: 'los_cardales', cancha: 2, hora: '13:40' };
+    const html = dibujar(reprogramado);
+    expect(html).toContain('Lunes 12/10 · Los Cardales · Cancha 2 · 13:40');
+    expect(html).toMatch(/id="lugar-1-dia"[^>]*value="2026-10-12"/);
+  });
+
+  it('un reprogramado ya jugado no se vuelve a reprogramar ni a mover', () => {
+    const html = dibujar({ dia: '2026-10-12', predio: 'los_cardales', cancha: 2, hora: '13:40' });
+    expect(html).not.toContain('Reprogramar');
+    expect(html).not.toContain('Lugar y hora');
   });
 
   it('un partido sin lugar trae los campos vacíos para completarlo', () => {

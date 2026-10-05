@@ -1,5 +1,6 @@
 /**
  * Un partido en el panel: resultado (o W.O.), postergar o borrar, lugar y hora, tarjetas y arancel.
+ * veedor: solo resultado, W.O., rojas (sin aviso por WhatsApp) y arancel.
  */
 
 import { useState } from 'react';
@@ -13,7 +14,19 @@ import { BloqueArancel } from './BloqueArancel.jsx';
 import { BloqueLugar } from './BloqueLugar.jsx';
 import { BloqueTarjetas } from './BloqueTarjetas.jsx';
 
-export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal, zonaVisitante, acciones, onCambio }) {
+export function EditorPartido({
+  db,
+  partido,
+  numero,
+  local,
+  visitante,
+  zonaLocal,
+  zonaVisitante,
+  acciones,
+  onCambio,
+  veedor = false,
+  titulo = `Fecha ${partido.fecha}, partido ${numero}`,
+}) {
   const inicial = (v) => (v === null ? '' : String(v));
   const [golesLocal, setGolesLocal] = useState(inicial(partido.golesLocal));
   const [golesVisitante, setGolesVisitante] = useState(inicial(partido.golesVisitante));
@@ -77,7 +90,7 @@ export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal
     <article className="editor" aria-labelledby={`${idBase}-titulo`}>
       <div className="editor__cab">
         <h3 id={`${idBase}-titulo`} className="editor__titulo">
-          Fecha {partido.fecha}, partido {numero}
+          {titulo}
         </h3>
         <Pill tipo={tipoEstado}>{textoEstado}</Pill>
       </div>
@@ -150,19 +163,21 @@ export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal
             Quitar resultado
           </button>
         ) : (
-          <>
-            <button type="button" className="btn btn--fantasma btn--chico" onClick={postergar} disabled={guardando}>
-              {partido.postergado ? 'Quitar postergación' : 'Postergar'}
-            </button>
-            <button
-              type="button"
-              className="btn btn--fantasma btn--chico btn--texto-peligro"
-              onClick={() => setConfirmarBorrado(true)}
-              disabled={guardando || confirmarBorrado}
-            >
-              <Icono nombre="basura" tamano={16} /> Borrar
-            </button>
-          </>
+          !veedor && (
+            <>
+              <button type="button" className="btn btn--fantasma btn--chico" onClick={postergar} disabled={guardando}>
+                {partido.postergado ? 'Quitar postergación' : 'Postergar'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--fantasma btn--chico btn--texto-peligro"
+                onClick={() => setConfirmarBorrado(true)}
+                disabled={guardando || confirmarBorrado}
+              >
+                <Icono nombre="basura" tamano={16} /> Borrar
+              </button>
+            </>
+          )
         )}
       </div>
 
@@ -178,8 +193,9 @@ export function EditorPartido({ db, partido, numero, local, visitante, zonaLocal
         </div>
       )}
 
-      <BloqueLugar partido={partido} acciones={acciones} />
-      <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
+      {/* Un reprogramado ya jugado no se mueve: se jugó en su día especial */}
+      {!veedor && !(partido.dia && !partido.postergado) && <BloqueLugar partido={partido} acciones={acciones} />}
+      <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} conAviso={!veedor} />
       <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
     </article>
   );

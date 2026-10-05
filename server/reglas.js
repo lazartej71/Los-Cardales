@@ -6,10 +6,11 @@
  */
 
 import { CRITERIOS } from '../src/datos/constantes.js';
-import { pagoDePartido } from '../src/logica/cuentas.js';
-import { nombrePredio, validarLugar } from '../src/logica/lugar.js';
+import { pagosDePartido } from '../src/logica/cuentas.js';
+import { nombrePredio, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
+import { esPartidoDeVeedor } from '../src/logica/veedores.js';
 
 const fallo = (error, estado = 400) => ({ error, estado });
 const esEntero = (valor, min, max) => Number.isInteger(valor) && valor >= min && valor <= max;
@@ -18,6 +19,9 @@ const nombreDe = (datos, equipoId) => datos.equipos.find((e) => e.id === equipoI
 const MONTO_MAXIMO = 10000000;
 const METODOS = ['efectivo', 'transferencia'];
 const TIPOS_MOVIMIENTO = ['pago', 'deuda_anterior'];
+const TIPOS_ROJA = ['doble_amarilla', 'directa'];
+// 'efectivo' → "en efectivo"; 'transferencia' → "por transferencia"
+const conMedio = (metodo) => (metodo === 'efectivo' ? 'en efectivo' : 'por transferencia');
 
 // "2026-10-15": el formato de la base y un día que existe en el calendario
 function esFecha(valor) {
@@ -58,9 +62,11 @@ function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
 }
 
 // Un postergado que vuelve a jugarse (se le quita la postergación, o se le carga resultado o W.O.)
-// vuelve a ocupar su cancha: no puede pisar a otro partido
+// vuelve a ocupar su cancha en su fecha: no puede pisar a otro partido. Si se reprogramó para un día
+// especial (tiene día), se juega ese día y no ocupa nada en su fecha.
 function validarVuelveAJugarse(datos, partido, resultado) {
-  const vuelve = partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio;
+  const vuelve =
+    partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio && !partido.dia;
   if (vuelve && canchaOcupada(datos, partido.fecha, partido, partido.id)) {
     return fallo(`${textoOcupada(partido.fecha, partido).slice(0, -1)}: cambiale el lugar o la hora a este partido.`, 409);
   }
@@ -108,9 +114,13 @@ function validarCambioDe(datos, partido, cuerpo) {
       return fallo('Elegí cuál de los dos equipos no se presentó.');
     }
     const ausenteId = c.ausente === 'local' ? partido.localId : partido.visitanteId;
-    if (pagoDePartido(datos.movimientos || [], partidoId, ausenteId)) {
+    const pagos = pagosDePartido(datos.movimientos || [], partidoId, ausenteId);
+    if (pagos.length) {
+      const nombre = nombreDe(datos, ausenteId);
       return fallo(
-        `${nombreDe(datos, ausenteId)} tiene un pago anotado en este partido. Para que esa plata no se pierda, quitá ese pago y anotalo como pago suelto en Cuentas; después marcá que no se presentó.`,
+        pagos.length === 1
+          ? `${nombre} tiene un pago anotado en este partido. Para que esa plata no se pierda, quitá ese pago y anotalo como pago suelto en Cuentas; después marcá que no se presentó.`
+          : `${nombre} tiene dos pagos anotados en este partido. Para que esa plata no se pierda, quitá esos pagos y anotalos como pagos sueltos en Cuentas; después marcá que no se presentó.`,
         409
       );
     }
@@ -119,7 +129,9 @@ function validarCambioDe(datos, partido, cuerpo) {
   }
   if ('golesLocal' in c || 'golesVisitante' in c) {
     if (c.golesLocal === null && c.golesVisitante === null) {
-      return { valor: { goles_local: null, goles_visitante: null, ausente: null } };
+      // Un reprogramado sin resultado vuelve a postergado (se juega su día especial)
+      const vuelveAPostergado = partido.dia ? { postergado: true } : {};
+      return { valor: { goles_local: null, goles_visitante: null, ausente: null, ...vuelveAPostergado } };
     }
     if (!esEntero(c.golesLocal, 0, 99) || !esEntero(c.golesVisitante, 0, 99)) {
       return fallo('Los goles tienen que ser números enteros entre 0 y 99.');
@@ -129,6 +141,7 @@ function validarCambioDe(datos, partido, cuerpo) {
       valor: { goles_local: c.golesLocal, goles_visitante: c.golesVisitante, postergado: false, ausente: null },
     };
   }
+  if ('dia' in c) return validarReprogramacion(datos, partido, c);
   if ('predio' in c || 'cancha' in c || 'hora' in c) {
     return validarLugarLibre(datos, partido.fecha, c, partidoId);
   }
@@ -140,6 +153,27 @@ function validarCambioDe(datos, partido, cuerpo) {
     return { valor: { postergado: c.postergado } };
   }
   return fallo('No hay cambios para guardar.');
+}
+
+// Un postergado se reprograma para un día especial: día, predio, cancha y hora. Sigue postergado
+// hasta que se le carga el resultado. Ese día, dos partidos no pueden usar la misma cancha a la misma hora.
+function validarReprogramacion(datos, partido, cuerpo) {
+  if (!partido.postergado) return fallo('El día se carga solo en los postergados.');
+  if (!esFecha(cuerpo.dia)) return fallo('Elegí el día.');
+  const lugar = validarLugar(cuerpo);
+  if (lugar.error) return fallo(lugar.error);
+  const { predio, cancha, hora } = lugar.valor;
+  const ocupada = datos.partidos.some(
+    (p) => p.id !== partido.id && p.dia === cuerpo.dia && p.predio === predio && p.cancha === cancha && p.hora === hora
+  );
+  if (ocupada) {
+    const dia = textoDia(cuerpo.dia);
+    return fallo(
+      `La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido el ${dia[0].toLowerCase()}${dia.slice(1)} a las ${hora}.`,
+      409
+    );
+  }
+  return { valor: { dia: cuerpo.dia, ...lugar.valor } };
 }
 
 export function validarBorradoPartido(datos, partidoId) {
@@ -157,7 +191,7 @@ export function validarBorradoPartido(datos, partidoId) {
   return { valor: partidoId };
 }
 
-// Un jugador de uno de los dos equipos de un partido: expulsiones (rojas) y amarillas
+// Un jugador de uno de los dos equipos de un partido (para las rojas)
 function validarJugadorDePartido(datos, cuerpo, sinPartido) {
   const { partidoId, equipoId, numeroCamiseta, nombreJugador = '' } = cuerpo || {};
   const partido = datos.partidos.find((p) => p.id === partidoId);
@@ -174,11 +208,10 @@ function validarJugadorDePartido(datos, cuerpo, sinPartido) {
 }
 
 export function validarExpulsionNueva(datos, cuerpo) {
-  return validarJugadorDePartido(datos, cuerpo, 'Elegí el partido en el que fue la expulsión.');
-}
-
-export function validarTarjetaNueva(datos, cuerpo) {
-  return validarJugadorDePartido(datos, cuerpo, 'Ese partido no existe.');
+  const jugador = validarJugadorDePartido(datos, cuerpo, 'Elegí el partido en el que fue la expulsión.');
+  if (jugador.error) return jugador;
+  if (!TIPOS_ROJA.includes(cuerpo.tipo)) return fallo('Elegí si la roja fue por doble amarilla o directa.');
+  return { valor: { ...jugador.valor, tipo: cuerpo.tipo } };
 }
 
 export function validarBorradoTarjeta(datos, tarjetaId) {
@@ -254,9 +287,10 @@ export function validarMovimientoNuevo(datos, cuerpo) {
     const lado = partido.localId === c.equipoId ? 'local' : partido.visitanteId === c.equipoId ? 'visitante' : null;
     if (!lado) return fallo('El equipo tiene que ser uno de los dos que jugaron ese partido.');
     if (partido.ausente === lado) return fallo(`${nombreDe(datos, c.equipoId)} no se presentó: no paga este partido.`);
-    if (pagoDePartido(datos.movimientos || [], partidoId, c.equipoId)) {
+    // Un pago por medio: la otra parte del mismo partido va con el otro medio
+    if (pagosDePartido(datos.movimientos || [], partidoId, c.equipoId).some((m) => m.metodo === c.metodo)) {
       return fallo(
-        `${nombreDe(datos, c.equipoId)} ya tiene un pago anotado en este partido: corregilo en lugar de anotar otro.`,
+        `${nombreDe(datos, c.equipoId)} ya tiene un pago ${conMedio(c.metodo)} anotado en este partido: corregilo en lugar de anotar otro.`,
         409
       );
     }
@@ -270,7 +304,21 @@ export function validarCambioMovimiento(datos, movimientoId, cuerpo) {
   const c = cuerpo || {};
   const cambios = Object.fromEntries(['monto', 'metodo', 'fecha', 'nota'].filter((k) => k in c).map((k) => [k, c[k]]));
   if (!Object.keys(cambios).length) return fallo('No hay cambios para guardar.');
-  return validarCamposMovimiento(cambios, movimiento.tipo);
+  const campos = validarCamposMovimiento(cambios, movimiento.tipo);
+  if (campos.error) return campos;
+  const otraParte =
+    movimiento.partidoId !== null &&
+    'metodo' in campos.valor &&
+    pagosDePartido(datos.movimientos, movimiento.partidoId, movimiento.equipoId).some(
+      (m) => m.id !== movimiento.id && m.metodo === campos.valor.metodo
+    );
+  if (otraParte) {
+    return fallo(
+      `${nombreDe(datos, movimiento.equipoId)} ya tiene un pago ${conMedio(campos.valor.metodo)} anotado en este partido: cambiá ese en lugar de este.`,
+      409
+    );
+  }
+  return campos;
 }
 
 export function validarBorradoMovimiento(datos, movimientoId) {
@@ -313,4 +361,48 @@ export function validarConfiguracion(cuerpo) {
   }
   if (!Object.keys(valor).length) return fallo('No hay cambios para guardar.');
   return { valor };
+}
+
+// ---------- Veedores ----------
+// Además de las reglas de siempre, un veedor solo toca los partidos que ve (la fecha en juego, en
+// cada cancha) y solo resultado, W.O., rojas sin sanción y pagos de partidos.
+// Devuelven null si puede, o el error 403.
+
+const NO_PUEDE_VEEDOR = 'Tu cuenta de veedor no puede hacer esto.';
+const CAMBIOS_DE_VEEDOR = ['golesLocal', 'golesVisitante', 'ausente'];
+
+const fueraDeSusPartidos = (datos, partidoId) =>
+  esPartidoDeVeedor(datos.partidos, partidoId)
+    ? null
+    : fallo('Ese partido no es de la fecha en juego: pedile al organizador que lo corrija.', 403);
+
+export function permisoVeedorPartido(datos, partidoId, cuerpo) {
+  const claves = Object.keys(cuerpo || {});
+  if (!claves.length || claves.some((k) => !CAMBIOS_DE_VEEDOR.includes(k))) return fallo(NO_PUEDE_VEEDOR, 403);
+  return fueraDeSusPartidos(datos, partidoId);
+}
+
+export const permisoVeedorRojaNueva = (datos, cuerpo) => fueraDeSusPartidos(datos, cuerpo?.partidoId);
+
+export function permisoVeedorBorrarRoja(datos, expulsionId) {
+  const roja = (datos.expulsiones || []).find((e) => e.id === expulsionId);
+  if (!roja) return null; // responde la regla de siempre (404)
+  if (roja.fechasSuspension !== null) {
+    return fallo('Esa roja ya tiene sanción: para borrarla, hablá con el organizador.', 403);
+  }
+  return fueraDeSusPartidos(datos, roja.partidoId);
+}
+
+export function permisoVeedorPagoNuevo(datos, cuerpo) {
+  if (cuerpo?.tipo !== 'pago' || cuerpo.partidoId === null || cuerpo.partidoId === undefined) {
+    return fallo(NO_PUEDE_VEEDOR, 403);
+  }
+  return fueraDeSusPartidos(datos, cuerpo.partidoId);
+}
+
+export function permisoVeedorPago(datos, movimientoId) {
+  const movimiento = (datos.movimientos || []).find((m) => m.id === movimientoId);
+  if (!movimiento) return null; // responde la regla de siempre (404)
+  if (movimiento.tipo !== 'pago' || movimiento.partidoId === null) return fallo(NO_PUEDE_VEEDOR, 403);
+  return fueraDeSusPartidos(datos, movimiento.partidoId);
 }

@@ -13,6 +13,7 @@ const leer = (archivo) => readFileSync(new URL(archivo, import.meta.url), 'utf8'
 const ADMIN = '11111111-1111-1111-1111-111111111111';
 const OTRO = '22222222-2222-2222-2222-222222222222';
 const SUPER = '33333333-3333-3333-3333-333333333333';
+const VEEDOR = '44444444-4444-4444-4444-444444444444';
 let db;
 let partidoId;
 
@@ -60,6 +61,7 @@ beforeAll(async () => {
   // La 5 va después de las cuentas: al final pasa a superadmin la de ljdev
   await db.exec(leer('./migracion-5-control.sql'));
   await db.exec(leer('./migracion-6-visitas.sql'));
+  await db.exec(leer('./migracion-7-veedores.sql'));
 }, 60000);
 
 describe('carga inicial', () => {
@@ -116,12 +118,13 @@ describe('migración 2: tarjetas, W.O. y cuentas', () => {
     expect(amarilla.filas).toEqual([{ nombre_jugador: '' }]);
   });
 
-  it('un solo pago por equipo y partido', async () => {
+  // Desde la migración 7, uno por cada medio de pago
+  it('un solo pago en efectivo por equipo y partido', async () => {
     const otra = await comoAdmin(
       `insert into public.movimientos (equipo_id, partido_id, tipo, monto, metodo, fecha)
        values (1, ${partidoId}, 'pago', 10000, 'efectivo', '2026-10-15')`
     );
-    expect(otra.error).toMatch(/movimientos_pago_partido_idx/);
+    expect(otra.error).toMatch(/movimientos_pago_partido/);
   });
 
   it('la amarilla tiene que ser de uno de los dos equipos del partido', async () => {
@@ -319,5 +322,198 @@ describe('migración 6: visitas', () => {
     await expect(db.exec(leer('./migracion-6-visitas.sql'))).rejects.toThrow(/already exists/);
     await db.exec('rollback');
     expect(await uno(`select personas from public.visitas where dia = ${hoy}`)).toEqual({ personas: 3 });
+  });
+});
+
+describe('migración 7: veedores, rojas con tipo y pagos en dos partes', () => {
+  const comoVeedor = (consulta) => como('authenticated', VEEDOR, consulta);
+  const pago = (metodo, monto) =>
+    `insert into public.movimientos (equipo_id, partido_id, tipo, monto, metodo, fecha)
+     values (1, ${id}, 'pago', ${monto}, '${metodo}', '2026-10-15') returning id`;
+  // Partido de la fecha 50 entre los equipos 1 y 2, sin resultado
+  let id;
+
+  beforeAll(async () => {
+    await db.exec(`
+      insert into auth.users values ('${VEEDOR}', 'veedor1@loscardalesfutbol.com');
+      insert into public.administradores (user_id, nombre, rol) values ('${VEEDOR}', 'Veedor Juan', 'veedor');
+    `);
+    id = (await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+      values (1, 50, 1, 2) returning id`)).id;
+  });
+
+  it('el veedor no es admin, y su fila dice que es veedor', async () => {
+    expect((await comoVeedor('select public.es_admin() as admin, public.es_veedor() as veedor')).filas).toEqual([
+      { admin: false, veedor: true },
+    ]);
+    expect((await comoVeedor('select rol from public.administradores')).filas).toEqual([{ rol: 'veedor' }]);
+    expect((await comoAdmin('select public.es_admin() as admin, public.es_veedor() as veedor')).filas).toEqual([
+      { admin: true, veedor: false },
+    ]);
+  });
+
+  it('carga el resultado y el W.O. de un partido, lo deshace, y no cambia nada más', async () => {
+    expect((await comoVeedor(`update public.partidos set goles_local = 2, goles_visitante = 1 where id = ${id}`)).error)
+      .toBeUndefined();
+    expect((await comoVeedor(`update public.partidos set ausente = 'visitante', goles_local = 3, goles_visitante = 0
+      where id = ${id}`)).error).toBeUndefined();
+    expect((await comoVeedor(`update public.partidos set ausente = null, goles_local = null, goles_visitante = null
+      where id = ${id}`)).error).toBeUndefined();
+    for (const cambio of ['fecha = 51', 'postergado = true', `predio = 'los_cardales', cancha = 1, hora = '10:00'`]) {
+      expect((await comoVeedor(`update public.partidos set ${cambio} where id = ${id}`)).error).toBe(
+        'Un veedor solo puede cargar el resultado o el W.O.'
+      );
+    }
+    // Al admin no le cambia nada
+    expect((await comoAdmin(`update public.partidos set fecha = 51 where id = ${id}`)).error).toBeUndefined();
+    await comoAdmin(`update public.partidos set fecha = 50 where id = ${id}`);
+  });
+
+  it('no crea ni borra partidos', async () => {
+    expect((await comoVeedor(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+      values (1, 52, 3, 4)`)).error).toMatch(/row-level security/);
+    await comoVeedor(`delete from public.partidos where id = ${id}`);
+    expect(await uno(`select count(*)::int as n from public.partidos where id = ${id}`)).toEqual({ n: 1 });
+  });
+
+  it('agrega rojas con tipo y borra solo las que no tienen sanción', async () => {
+    const roja = (tipo) => `insert into public.expulsiones (partido_id, equipo_id, numero_camiseta, tipo)
+      values (${id}, 1, 10, ${tipo}) returning id, tipo`;
+    const directa = await comoVeedor(roja(`'directa'`));
+    expect(directa.filas).toEqual([{ id: directa.filas[0].id, tipo: 'directa' }]);
+    const doble = await comoVeedor(roja(`'doble_amarilla'`));
+    expect(doble.error).toBeUndefined();
+    expect((await comoVeedor(roja(`'otra'`))).error).toMatch(/expulsiones_tipo_check/);
+    // Una roja vieja, sin tipo, sigue siendo válida
+    expect((await comoAdmin(roja('null'))).error).toBeUndefined();
+    // La sanción la pone el organizador: el veedor no puede cargar una roja que ya la traiga
+    const conSancionDeEntrada = await comoVeedor(`insert into public.expulsiones
+      (partido_id, equipo_id, numero_camiseta, tipo, fechas_suspension) values (${id}, 1, 11, 'directa', 0)`);
+    expect(conSancionDeEntrada.error).toMatch(/row-level security/);
+    const conCumplidas = await comoVeedor(`insert into public.expulsiones
+      (partido_id, equipo_id, numero_camiseta, tipo, fechas_cumplidas) values (${id}, 1, 11, 'directa', 1)`);
+    expect(conCumplidas.error).toMatch(/row-level security|expulsiones_check/);
+
+    const [conSancion, sinSancion] = [directa.filas[0].id, doble.filas[0].id];
+    await comoAdmin(`update public.expulsiones set fechas_suspension = 2 where id = ${conSancion}`);
+    await comoVeedor(`update public.expulsiones set fechas_suspension = 0 where id = ${conSancion}`);
+    await comoVeedor(`delete from public.expulsiones where id in (${conSancion}, ${sinSancion})`);
+    expect((await db.query(`select id, fechas_suspension from public.expulsiones where id in (${conSancion}, ${sinSancion})`))
+      .rows).toEqual([{ id: conSancion, fechas_suspension: 2 }]);
+  });
+
+  it('anota pagos de un partido en efectivo y por transferencia, uno de cada uno', async () => {
+    const efectivo = await comoVeedor(pago('efectivo', 50000));
+    expect(efectivo.error).toBeUndefined();
+    expect((await comoVeedor(pago('transferencia', 55000))).error).toBeUndefined();
+    expect((await comoVeedor(pago('efectivo', 1000))).error).toMatch(/movimientos_pago_partido_metodo_idx/);
+    const pagoId = efectivo.filas[0].id;
+    expect((await comoVeedor(`update public.movimientos set monto = 60000 where id = ${pagoId} returning monto`)).filas)
+      .toEqual([{ monto: 60000 }]);
+    await comoVeedor(`delete from public.movimientos where id = ${pagoId}`);
+    expect(await uno(`select count(*)::int as n from public.movimientos where id = ${pagoId}`)).toEqual({ n: 0 });
+  });
+
+  it('no anota deudas anteriores ni pagos sueltos', async () => {
+    const deuda = `insert into public.movimientos (equipo_id, tipo, monto, fecha) values (1, 'deuda_anterior', 10, '2026-10-01')`;
+    const suelto = `insert into public.movimientos (equipo_id, tipo, monto, metodo, fecha)
+      values (1, 'pago', 10, 'efectivo', '2026-10-01')`;
+    for (const consulta of [deuda, suelto]) {
+      expect((await comoVeedor(consulta)).error).toMatch(/row-level security/);
+    }
+  });
+
+  it('lee las rojas y los pagos, pero no los teléfonos de los delegados ni las amarillas', async () => {
+    const cuantos = async (tabla) => (await comoVeedor(`select count(*)::int as n from public.${tabla}`)).filas[0].n;
+    expect(await cuantos('movimientos')).toBe((await uno('select count(*)::int as n from public.movimientos')).n);
+    expect(await cuantos('expulsiones')).toBe((await uno('select count(*)::int as n from public.expulsiones')).n);
+    await db.exec(`insert into public.delegados (equipo_id, nombre, telefono) values (1, 'Delegado', '5491112345678')
+      on conflict (equipo_id) do nothing`);
+    expect(await cuantos('delegados')).toBe(0);
+    expect(await cuantos('tarjetas')).toBe(0);
+    expect(await cuantos('actividad')).toBe(0);
+  });
+
+  it('lo que hace el veedor queda en el registro con su nombre', async () => {
+    await comoVeedor(`update public.partidos set goles_local = 1, goles_visitante = 1 where id = ${id}`);
+    expect(await uno('select quien, tabla, cambios from public.actividad order by id desc limit 1')).toEqual({
+      quien: 'Veedor Juan',
+      tabla: 'partidos',
+      cambios: ['goles_local', 'goles_visitante'],
+    });
+  });
+
+  it('si la migración se corre dos veces, falla al principio y no cambia nada', async () => {
+    await expect(db.exec(leer('./migracion-7-veedores.sql'))).rejects.toThrow(/already exists/);
+    await db.exec('rollback');
+    expect((await comoVeedor('select public.es_veedor() as veedor')).filas).toEqual([{ veedor: true }]);
+  });
+});
+
+describe('migración 7: postergados que se recuperan en un día especial', () => {
+  const comoVeedor = (consulta) => como('authenticated', VEEDOR, consulta);
+  const LUGAR = `predio = 'los_cardales', cancha = 2, hora = '13:40'`;
+  const crear = async (fecha, local, visitante, extra = '') =>
+    (await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id${extra ? ', postergado' : ''})
+      values (1, ${fecha}, ${local}, ${visitante}${extra ? ', true' : ''}) returning id`)).id;
+  let reprogramado;
+  let normal;
+
+  it('un postergado se reprograma con día, predio, cancha y hora, y sigue postergado', async () => {
+    reprogramado = await crear(55, 3, 4, 'postergado');
+    const { filas, error } = await comoAdmin(`update public.partidos set dia = '2026-10-13', ${LUGAR}
+      where id = ${reprogramado} returning postergado, dia::text`);
+    expect(error).toBeUndefined();
+    expect(filas).toEqual([{ postergado: true, dia: '2026-10-13' }]);
+  });
+
+  it('el día va solo con el lugar completo', async () => {
+    const otro = await crear(56, 5, 6, 'postergado');
+    expect((await comoAdmin(`update public.partidos set dia = '2026-10-13' where id = ${otro}`)).error).toMatch(
+      /partidos_dia_check/
+    );
+  });
+
+  it('dos partidos con día no van a la misma cancha el mismo día a la misma hora', async () => {
+    const otro = await crear(57, 7, 8, 'postergado');
+    const mismo = await comoAdmin(`update public.partidos set dia = '2026-10-13', ${LUGAR} where id = ${otro}`);
+    expect(mismo.error).toMatch(/partidos_reprogramado_ocupado_idx/);
+    const otraHora = await comoAdmin(`update public.partidos set dia = '2026-10-13', predio = 'los_cardales',
+      cancha = 2, hora = '15:00' where id = ${otro}`);
+    expect(otraHora.error).toBeUndefined();
+  });
+
+  it('jugado su día, no choca con un partido de su fecha en esa cancha a esa hora', async () => {
+    normal = await crear(55, 9, 10);
+    expect((await comoAdmin(`update public.partidos set ${LUGAR} where id = ${normal}`)).error).toBeUndefined();
+    const jugado = await comoAdmin(`update public.partidos set goles_local = 2, goles_visitante = 1, postergado = false
+      where id = ${reprogramado}`);
+    expect(jugado.error).toBeUndefined();
+    await comoAdmin(`update public.partidos set goles_local = null, goles_visitante = null, postergado = true
+      where id = ${reprogramado}`);
+  });
+
+  it('el veedor carga el resultado de un reprogramado (deja de estar postergado) y lo puede quitar', async () => {
+    const cargar = await comoVeedor(`update public.partidos set goles_local = 1, goles_visitante = 0, postergado = false
+      where id = ${reprogramado}`);
+    expect(cargar.error).toBeUndefined();
+    const quitar = await comoVeedor(`update public.partidos set goles_local = null, goles_visitante = null,
+      postergado = true where id = ${reprogramado}`);
+    expect(quitar.error).toBeUndefined();
+    expect(await uno(`select postergado, goles_local from public.partidos where id = ${reprogramado}`)).toEqual({
+      postergado: true,
+      goles_local: null,
+    });
+  });
+
+  it('el veedor no posterga un partido normal, no cambia el día ni saca la postergación sin resultado', async () => {
+    const NO = 'Un veedor solo puede cargar el resultado o el W.O.';
+    for (const [cambio, id] of [
+      ['postergado = true', normal],
+      [`dia = '2026-10-20'`, reprogramado],
+      ['postergado = false', reprogramado],
+    ]) {
+      expect((await comoVeedor(`update public.partidos set ${cambio} where id = ${id}`)).error, cambio).toBe(NO);
+    }
   });
 });

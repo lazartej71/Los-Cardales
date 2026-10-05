@@ -8,7 +8,7 @@ import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { Stepper } from '../../componentes/Stepper.jsx';
 import { detalleExpulsion } from '../../logica/consultas.js';
-import { estadoExpulsion, linkWhatsApp, mensajeExpulsion, soloDigitos } from '../../logica/expulsiones.js';
+import { estadoExpulsion, linkWhatsApp, mensajeExpulsion, nombreRoja, soloDigitos } from '../../logica/expulsiones.js';
 
 const ESTADOS_SANCION = [
   { id: 'pendiente', etiqueta: 'Pendientes de tribunal' },
@@ -116,6 +116,7 @@ function TarjetaSancion({ expulsion, detalle, estado, acciones, confirmando, onP
   const [suspension, setSuspension] = useState(suspensionGuardada);
   const [guardando, setGuardando] = useState(false);
   const idBase = `sancion-${expulsion.id}`;
+  const tipo = expulsion.tipo ? `${nombreRoja(expulsion.tipo)} · ` : '';
   const quien = `N° ${expulsion.numeroCamiseta} de ${detalle.equipo.nombre}`;
   const telefono = soloDigitos(detalle.equipo.telefonoDelegado);
 
@@ -158,7 +159,7 @@ function TarjetaSancion({ expulsion, detalle, estado, acciones, confirmando, onP
             {expulsion.nombreJugador || 'Jugador sin nombre'}
           </h3>
           <p className="sancion__equipo">
-            {quien}, {detalle.categoria.nombre} {detalle.zona.nombre}
+            {`${tipo}${quien}, ${detalle.categoria.nombre} ${detalle.zona.nombre}`}
           </p>
         </div>
         <span className="sancion__estado">

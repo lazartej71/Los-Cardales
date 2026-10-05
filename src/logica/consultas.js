@@ -78,11 +78,20 @@ export const ETIQUETA_ESTADO_FECHA = {
   postergada: 'Postergada',
 };
 
-// La fecha que se está jugando: la primera con partidos pendientes de carga (sin contar los
-// postergados, que no la frenan); si todo está cargado, la última.
+// La fecha que se está jugando: la última con resultados o, si esa ya está completa (los postergados
+// no cuentan), la siguiente armada. Sin resultados todavía, la primera con partidos por jugar.
 export function fechaEnJuego(fechas) {
-  const conPendientes = fechas.find((f) => f.partidos.some((p) => !p.postergado && !tieneResultado(p)));
-  if (conPendientes) return conPendientes.fecha;
+  const conPendientes = (f) => f.partidos.some((p) => !p.postergado && !tieneResultado(p));
+  // La última fecha con algún resultado: un postergado viejo que se recupera no la hace volver atrás
+  let i = fechas.length - 1;
+  while (i >= 0 && !fechas[i].partidos.some(tieneResultado)) i--;
+  if (i >= 0) {
+    const siguiente = fechas[i + 1];
+    return !conPendientes(fechas[i]) && siguiente ? siguiente.fecha : fechas[i].fecha;
+  }
+  // Todavía sin resultados: la primera con partidos por jugar
+  const primera = fechas.find(conPendientes);
+  if (primera) return primera.fecha;
   return fechas.length ? fechas[fechas.length - 1].fecha : 1;
 }
 

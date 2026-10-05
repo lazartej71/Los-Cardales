@@ -30,9 +30,22 @@ export function validarLugar(lugar) {
   return { valor: { predio, cancha, hora: horaNormal } };
 }
 
+const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// "2026-10-12" → "Lunes 12/10" (el día en que se recupera un postergado)
+export function textoDia(dia) {
+  if (!dia) return '';
+  const [anio, mes, numero] = dia.split('-').map(Number);
+  const semana = DIAS[new Date(Date.UTC(anio, mes - 1, numero)).getUTCDay()];
+  return `${semana} ${String(numero).padStart(2, '0')}/${String(mes).padStart(2, '0')}`;
+}
+
+// Un postergado reprogramado suma el día: "Lunes 12/10 · Los Cardales · Cancha 2 · 13:40"
 const armarTexto = (partido, cancha) => {
   const predio = predioPorId(partido.predio);
-  return predio ? `${predio.nombre} · ${cancha}${partido.cancha} · ${partido.hora}` : '';
+  if (!predio) return '';
+  const lugar = `${predio.nombre} · ${cancha}${partido.cancha} · ${partido.hora}`;
+  return partido.dia ? `${textoDia(partido.dia)} · ${lugar}` : lugar;
 };
 
 export const textoLugar = (partido) => armarTexto(partido, 'Cancha ');

@@ -52,6 +52,17 @@ describe('texto del registro de actividad', () => {
     expect(texto('baja', 'expulsiones', tarjeta)).toBe(`Borró la roja del N° 10 de BRANCA en ${CRUCE}`);
   });
 
+  it('una roja con tipo dice cuál fue', () => {
+    const roja = (tipo) => ({ partidoId: 7, equipoId: 1, numeroCamiseta: 10, tipo });
+    expect(texto('alta', 'expulsiones', roja('directa'))).toBe(`Cargó la roja directa del N° 10 de BRANCA en ${CRUCE}`);
+    expect(texto('baja', 'expulsiones', roja('doble_amarilla'))).toBe(
+      `Borró la doble amarilla del N° 10 de BRANCA en ${CRUCE}`
+    );
+    expect(texto('cambio', 'expulsiones', roja('directa'), ['fechas_suspension'])).toBe(
+      `Cambió la sanción del N° 10 de BRANCA en ${CRUCE}`
+    );
+  });
+
   it('pagos y deudas', () => {
     const pago = { tipo: 'pago', equipoId: 1, monto: 105000, metodo: 'efectivo' };
     expect(texto('alta', 'movimientos', pago)).toBe('Anotó un pago de $105.000 de BRANCA (efectivo)');

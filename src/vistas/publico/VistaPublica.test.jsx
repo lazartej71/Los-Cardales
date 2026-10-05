@@ -164,4 +164,37 @@ describe('VistaPublica', () => {
       expect(dibujar(zonaUnica, { seccion: 'fixture' })).not.toContain('class="lugar');
     });
   });
+
+  describe('postergados que se recuperan en un día especial', () => {
+    const postergado = { id: 3, categoriaId: 5, fecha: 1, localId: 3, visitanteId: 4, golesLocal: null, golesVisitante: null, postergado: true };
+    const reprogramado = { ...postergado, dia: '2026-10-12', predio: 'los_cardales', cancha: 2, hora: '10:00' };
+    const jugadoFecha2 = { id: 9, categoriaId: 5, fecha: 2, localId: 1, visitanteId: 2, golesLocal: 1, golesVisitante: 0, postergado: false };
+    const conPartido = (partido) => ({ ...zonaUnica, partidos: [partido, jugadoFecha2] });
+    const BLOQUE = /fecha-bloque__titulo">Postergados</;
+
+    it('el fixture los muestra arriba, aparte, con su fecha original, el día y el lugar', () => {
+      const html = dibujar(conPartido(reprogramado), { seccion: 'fixture' });
+      expect(html).toMatch(BLOQUE);
+      expect(html).toContain('Postergado de la fecha 1');
+      expect(html).toContain('Lunes 12/10 · Los Cardales · Cancha 2 · 10:00');
+      expect(html.search(BLOQUE)).toBeLessThan(html.indexOf('>Fecha 1<'));
+      // Nunca como una fecha nueva
+      expect(html).not.toContain('>Fecha 3<');
+    });
+
+    it('en su fecha original dice cuándo se juega, en vez del lugar tachado', () => {
+      const html = dibujar(conPartido(reprogramado), { seccion: 'fixture' });
+      expect(html).toContain('Se juega el lunes 12/10');
+      expect(html).not.toContain('lugar--tachado');
+    });
+
+    it('un postergado sin reprogramar no aparece en el bloque', () => {
+      expect(dibujar(conPartido(postergado), { seccion: 'fixture' })).not.toMatch(BLOQUE);
+    });
+
+    it('una vez jugado sale del bloque y queda en su fecha', () => {
+      const jugado = { ...reprogramado, postergado: false, golesLocal: 2, golesVisitante: 2 };
+      expect(dibujar(conPartido(jugado), { seccion: 'fixture' })).not.toMatch(BLOQUE);
+    });
+  });
 });

@@ -10,7 +10,7 @@ import {
   hoyEnArgentina,
   leerMonto,
   motivoSinCobro,
-  pagoDePartido,
+  pagosDePartido,
 } from './cuentas.js';
 
 const ARANCEL = 105000;
@@ -100,6 +100,18 @@ describe('calcularCuentas', () => {
     expect(describirPartidoEnCuenta(fila)).toBe('pagó $90.000 de $105.000 · efectivo');
   });
 
+  it('un pago en dos partes (efectivo y transferencia) suma el total del partido', () => {
+    const pendiente = [partido(9, 6, 1, 2)];
+    const movimientos = [
+      pago(1, 50000, { partidoId: 9 }),
+      pago(1, 55000, { partidoId: 9, metodo: 'transferencia' }),
+    ];
+    const cuentas = calcularCuentas({ equipos, partidos: pendiente, movimientos, arancel: ARANCEL });
+    expect(cuentas.get(1)).toEqual({ cobrado: ARANCEL, pagado: ARANCEL, saldo: 0 });
+    const [fila] = detalleCuenta({ equipoId: 1, equipos, partidos: pendiente, movimientos, arancel: ARANCEL }).partidos;
+    expect(describirPartidoEnCuenta(fila)).toBe('pagó $105.000 de $105.000 · $50.000 efectivo + $55.000 transferencia');
+  });
+
   it('si el partido se posterga, lo que pagó queda a favor', () => {
     const postergado = [partido(9, 6, 1, 2, { postergado: true })];
     expect(saldoDeBranca([pago(1, ARANCEL, { partidoId: 9 })], postergado)).toBe(-ARANCEL);
@@ -132,11 +144,12 @@ describe('detalleCuenta', () => {
     const detalle = detalleCuenta({ equipoId: 1, equipos, partidos, movimientos: movimientosDelEjemplo, arancel: ARANCEL });
     expect(detalle.saldo).toBe(-105000);
     expect(detalle.deudas.map((m) => m.monto)).toEqual([10000]);
-    expect(detalle.partidos.map((p) => [p.partido.fecha, p.rivalId, p.cobrado, p.motivo, p.pago?.monto])).toEqual([
-      [2, 2, ARANCEL, null, 95000],
-      [3, 3, ARANCEL, null, 115000],
-      [4, 3, 0, 'postergado', 105000],
-    ]);
+    expect(detalle.partidos.map((p) => [p.partido.fecha, p.rivalId, p.cobrado, p.motivo, p.pagos.map((m) => m.monto)]))
+      .toEqual([
+        [2, 2, ARANCEL, null, [95000]],
+        [3, 3, ARANCEL, null, [115000]],
+        [4, 3, 0, 'postergado', [105000]],
+      ]);
     expect(detalle.pagosSueltos.map((m) => m.monto)).toEqual([10000]);
   });
 });
@@ -145,19 +158,26 @@ describe('textos', () => {
   it('describe cada partido de la cuenta', () => {
     const efectivo = { monto: 95000, metodo: 'efectivo' };
     const transferencia = { monto: ARANCEL, metodo: 'transferencia' };
-    expect(describirPartidoEnCuenta({ cobrado: ARANCEL, motivo: null, pago: efectivo })).toBe(
+    expect(describirPartidoEnCuenta({ cobrado: ARANCEL, motivo: null, pagos: [efectivo] })).toBe(
       'pagó $95.000 de $105.000 · efectivo'
     );
-    expect(describirPartidoEnCuenta({ cobrado: ARANCEL, motivo: null, pago: null })).toBe('sin pago de $105.000');
-    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'pendiente', pago: null })).toBe(
+    expect(describirPartidoEnCuenta({ cobrado: ARANCEL, motivo: null, pagos: [] })).toBe('sin pago de $105.000');
+    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'pendiente', pagos: [] })).toBe(
       'sin pago · se cobra cuando se juegue'
     );
-    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'postergado', pago: transferencia })).toBe(
+    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'postergado', pagos: [transferencia] })).toBe(
       'pagó $105.000 · transferencia · postergado'
     );
-    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'ausente', pago: null })).toBe(
+    expect(describirPartidoEnCuenta({ cobrado: 0, motivo: 'ausente', pagos: [] })).toBe(
       'sin pago · no se presentó: no paga'
     );
+    expect(
+      describirPartidoEnCuenta({
+        cobrado: ARANCEL,
+        motivo: null,
+        pagos: [{ monto: 40000, metodo: 'efectivo' }, { monto: 50000, metodo: 'transferencia' }],
+      })
+    ).toBe('pagó $90.000 de $105.000 · $40.000 efectivo + $50.000 transferencia');
   });
 
   it('muestra saldos, pesos y fechas como en la Argentina', () => {
@@ -193,10 +213,16 @@ describe('leerMonto', () => {
   });
 });
 
-describe('pagoDePartido', () => {
-  it('encuentra el pago de ese equipo en ese partido', () => {
-    expect(pagoDePartido(movimientosDelEjemplo, 1, 1).monto).toBe(95000);
-    expect(pagoDePartido(movimientosDelEjemplo, 1, 2)).toBeNull();
+describe('pagosDePartido', () => {
+  it('encuentra los pagos de ese equipo en ese partido, primero el de efectivo', () => {
+    expect(pagosDePartido(movimientosDelEjemplo, 1, 1).map((m) => m.monto)).toEqual([95000]);
+    expect(pagosDePartido(movimientosDelEjemplo, 1, 2)).toEqual([]);
+    const dosPartes = [
+      pago(1, 55000, { partidoId: 7, metodo: 'transferencia' }),
+      pago(1, 50000, { partidoId: 7 }),
+      pago(1, 9000, { partidoId: 8 }),
+    ];
+    expect(pagosDePartido(dosPartes, 7, 1).map((m) => m.metodo)).toEqual(['efectivo', 'transferencia']);
   });
 });
 

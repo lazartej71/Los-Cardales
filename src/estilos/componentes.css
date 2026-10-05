@@ -82,6 +82,10 @@ summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
   font-size: 13.5px; letter-spacing: 0.02em; text-align: center;
 }
 .lugar--tachado { text-decoration: line-through; opacity: 0.7; }
+/* Postergados que se recuperan en un día especial: bloque aparte arriba del fixture */
+.fecha-bloque--postergados { padding: 4px 12px 2px; border: 1px solid var(--marca-borde); border-radius: var(--radio); }
+.fecha-bloque--postergados .fecha-bloque__cab { border-bottom-color: var(--marca-borde); }
+.partido-origen { padding-top: 10px; text-align: center; font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tinta-suave); }
 .partido-linea {
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center; gap: 10px; padding-block: 11px;

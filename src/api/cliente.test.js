@@ -54,4 +54,8 @@ describe('cliente de la API', () => {
       ['/api/admin/tarjetas/3', 'DELETE'],
     ]);
   });
+
+  it('ya no carga amarillas', () => {
+    expect(api.crearTarjeta).toBeUndefined();
+  });
 });

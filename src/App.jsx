@@ -1,5 +1,6 @@
 /**
  * Raíz de la app: sesión, datos y elección entre la vista pública y el panel (/admin).
+ * En el panel, una cuenta de veedor ve solo la pantalla de veedores.
  * En la simulación (npm run simulacion) suma un cartel fijo: lo cargado no llega a la base real.
  */
 
@@ -10,6 +11,7 @@ import { avisarVisita } from './api/visitas.js';
 import { EstadoDeCarga } from './componentes/EstadoDeCarga.jsx';
 import { LimiteDeError } from './componentes/LimiteDeError.jsx';
 import { Toast } from './componentes/Toast.jsx';
+import { ROLES_SIMULACION, rolSimulado } from './datos/constantes.js';
 import { useAcciones } from './hooks/useAcciones.js';
 import { useDatos } from './hooks/useDatos.js';
 import { useRutaAdmin } from './hooks/useRutaAdmin.js';
@@ -19,11 +21,21 @@ import { hoyEnArgentina } from './logica/cuentas.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
 import { PantallaLogin } from './vistas/admin/PantallaLogin.jsx';
 import { VistaPublica } from './vistas/publico/VistaPublica.jsx';
+import { PanelVeedor } from './vistas/veedor/PanelVeedor.jsx';
+
+// El almacenamiento del navegador, o null si no se puede usar (ventana privada, sitio bloqueado)
+function almacenLocal() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export function App({ simulacion = SIMULACION }) {
   const [toast, avisar] = useToast();
   const { enAdmin, salirDelPanel } = useRutaAdmin();
-  const { sesion, cargando: cargandoSesion, ingresar, salir } = useSesion({ simulacion });
+  const { sesion, cargando: cargandoSesion, ingresar, salir, verComo } = useSesion({ simulacion });
   const token = sesion ? sesion.access_token : null;
   const modo = enAdmin && token ? 'admin' : 'publico';
   const { db, error, recargar } = useDatos({ modo, token });
@@ -76,6 +88,13 @@ export function App({ simulacion = SIMULACION }) {
     avisarVisita({ almacen, hoy: hoyEnArgentina(), enviar: api.visita });
   }, [enAdmin, simulacion]);
 
+  // Simulación: antes de cambiar de cuenta vuelve a Partidos; si quedara abierta Control (solo superadmin),
+  // pediría la actividad con la cuenta nueva, recibiría "sin permiso" y cerraría la sesión
+  const probarComo = (rol) => {
+    setUiAdmin((u) => ({ ...u, seccion: 'resultados', partidoAbiertoId: null }));
+    verComo(rol);
+  };
+
   const cerrarSesion = async () => {
     await salir();
     setUiAdmin((u) => ({ ...u, equipoCuentaId: null, busquedaCuentas: '', partidoAbiertoId: null }));
@@ -96,6 +115,10 @@ export function App({ simulacion = SIMULACION }) {
     );
   } else if (!db) {
     contenido = <EstadoDeCarga error={error} onReintentar={recargar} />;
+  } else if (enAdmin && db.rol === 'veedor') {
+    contenido = (
+      <PanelVeedor db={db} acciones={acciones} almacen={almacenLocal()} onVerSitio={salirDelPanel} onSalir={cerrarSesion} />
+    );
   } else if (enAdmin) {
     contenido = (
       <PanelAdmin
@@ -115,7 +138,21 @@ export function App({ simulacion = SIMULACION }) {
     <>
       {simulacion && (
         <div className="cartel-simulacion">
-          <strong>MODO SIMULACIÓN</strong> · nada se guarda en la base real
+          <span className="cartel-simulacion__texto">
+            <strong>MODO SIMULACIÓN</strong> · nada se guarda en la base real
+          </span>
+          {enAdmin && token && (
+            <label className="cartel-simulacion__rol">
+              Ver como
+              <select value={rolSimulado(token)} onChange={(e) => probarComo(e.target.value)}>
+                {ROLES_SIMULACION.map((r) => (
+                  <option key={r.valor} value={r.valor}>
+                    {r.etiqueta}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       <LimiteDeError onReiniciar={salirDelPanel}>

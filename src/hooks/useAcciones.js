@@ -32,6 +32,30 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
     }
   }
 
+  // El pago de un equipo en un partido, en hasta dos partes (una por medio): crea, cambia o borra
+  // cada parte y avisa una sola vez. partes: [{ metodo, monto (o null), pago (el que ya había, o null) }].
+  // Si falla a mitad de camino, lo anterior ya quedó guardado: igual se vuelven a pedir los datos.
+  async function guardarPagos({ partidoId, equipoId, fecha, partes }, mensajeOk) {
+    const pedidos = partes.flatMap(({ metodo, monto, pago }) => {
+      if (pago && monto === null) return [() => cliente.borrarMovimiento(token, pago.id)];
+      if (pago && monto !== pago.monto) return [() => cliente.actualizarMovimiento(token, pago.id, { monto })];
+      if (!pago && monto !== null) {
+        return [() => cliente.crearMovimiento(token, { tipo: 'pago', equipoId, partidoId, monto, metodo, fecha })];
+      }
+      return [];
+    });
+    if (!pedidos.length) return true;
+    let hechos = 0;
+    const resultado = await ejecutar(async () => {
+      for (const pedido of pedidos) {
+        await pedido();
+        hechos++;
+      }
+    }, mensajeOk);
+    if (resultado === null && hechos > 0) await recargar();
+    return resultado;
+  }
+
   return {
     leerActividad: (dia) => leer(() => cliente.actividad(token, dia)),
     leerVisitas: () => leer(() => cliente.visitas(token)),
@@ -45,8 +69,8 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
     guardarLugar: (id, lugar, mensaje) => ejecutar(() => cliente.actualizarPartido(token, id, lugar), mensaje),
     marcarAusente: (id, ausente, mensaje) => ejecutar(() => cliente.actualizarPartido(token, id, { ausente }), mensaje),
     borrarPartido: (id, mensaje) => ejecutar(() => cliente.borrarPartido(token, id), mensaje),
-    crearTarjeta: (datos, mensaje) => ejecutar(() => cliente.crearTarjeta(token, datos), mensaje),
     borrarTarjeta: (id, mensaje) => ejecutar(() => cliente.borrarTarjeta(token, id), mensaje),
+    guardarPagos,
     crearMovimiento: (datos, mensaje) => ejecutar(() => cliente.crearMovimiento(token, datos), mensaje),
     actualizarMovimiento: (id, cambios, mensaje) =>
       ejecutar(() => cliente.actualizarMovimiento(token, id, cambios), mensaje),

@@ -42,7 +42,6 @@ export const api = {
   crearExpulsion: (token, cuerpo) => pedir('/admin/expulsiones', { metodo: 'POST', cuerpo, token }),
   actualizarExpulsion: (token, id, cuerpo) => pedir(`/admin/expulsiones/${id}`, { metodo: 'PATCH', cuerpo, token }),
   borrarExpulsion: (token, id) => pedir(`/admin/expulsiones/${id}`, { metodo: 'DELETE', token }),
-  crearTarjeta: (token, cuerpo) => pedir('/admin/tarjetas', { metodo: 'POST', cuerpo, token }),
   borrarTarjeta: (token, id) => pedir(`/admin/tarjetas/${id}`, { metodo: 'DELETE', token }),
   crearMovimiento: (token, cuerpo) => pedir('/admin/movimientos', { metodo: 'POST', cuerpo, token }),
   actualizarMovimiento: (token, id, cuerpo) => pedir(`/admin/movimientos/${id}`, { metodo: 'PATCH', cuerpo, token }),

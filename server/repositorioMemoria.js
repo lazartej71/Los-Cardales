@@ -4,13 +4,23 @@
  * Tiene la misma forma que crearRepositorioSupabase, así la API no nota la diferencia.
  */
 
+import { rolSimulado } from '../src/datos/constantes.js';
 import { hoyEnArgentina } from '../src/logica/cuentas.js';
 import { aCamel, armarDatosAdmin } from './repositorio.js';
 
 // Lo que completa la base sola al insertar (los valores por defecto de esquema.sql y las migraciones)
 const POR_DEFECTO = {
-  partidos: { golesLocal: null, golesVisitante: null, postergado: false, ausente: null, predio: null, cancha: null, hora: null },
-  expulsiones: { nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0 },
+  partidos: {
+    golesLocal: null,
+    golesVisitante: null,
+    postergado: false,
+    ausente: null,
+    predio: null,
+    cancha: null,
+    hora: null,
+    dia: null,
+  },
+  expulsiones: { nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: null },
   tarjetas: { nombreJugador: '' },
   movimientos: { partidoId: null, metodo: null, nota: '' },
 };
@@ -60,11 +70,11 @@ export function crearRepositorioMemoria(cargarDatosReales) {
     return copia({ categorias, zonas, equipos, tablaInicial, partidos: [...partidos].sort(porFechaEId), configuracion });
   }
 
-  function anotar(db, accion, tabla, fila, cambios = null) {
+  function anotar(db, quien, accion, tabla, fila, cambios = null) {
     db.actividad.push({
       id: db.actividad.length + 1,
       creadoEn: new Date().toISOString(),
-      quien: 'Simulación',
+      quien,
       accion,
       tabla,
       fila: copia(fila),
@@ -73,22 +83,33 @@ export function crearRepositorioMemoria(cargarDatosReales) {
   }
 
   return function crearRepositorio(token) {
+    // La sesión simulada dice con qué rol se prueba (el selector "Ver como" del cartel de la simulación)
+    const rol = rolSimulado(token);
+    const veedor = rol === 'veedor';
+    const quien = rol === 'superadmin' ? 'Simulación' : `Simulación (${rol})`;
+
     return {
       leerPublico,
 
+      // Como las reglas de la base: el veedor no ve los teléfonos de los delegados ni las amarillas
       async leerAdmin() {
         const publico = await leerPublico();
         const { delegados, expulsiones, tarjetas, movimientos } = await base();
-        return armarDatosAdmin(publico, copia({ delegados, expulsiones, tarjetas, movimientos }));
+        const privados = veedor ? { delegados: [], expulsiones, tarjetas: [], movimientos } : { delegados, expulsiones, tarjetas, movimientos };
+        return armarDatosAdmin(publico, copia(privados));
       },
 
-      // En la simulación no hay login: cualquier sesión es la del admin
+      // En la simulación no hay login: cualquier sesión entra, con el rol que diga
       async usuarioActual() {
-        return token ? { id: 'simulacion' } : null;
+        return token ? { id: token } : null;
       },
 
       async esAdmin() {
-        return true;
+        return !veedor;
+      },
+
+      async esVeedor() {
+        return veedor;
       },
 
       async sumarVisita() {
@@ -104,9 +125,9 @@ export function crearRepositorioMemoria(cargarDatosReales) {
           .sort((a, b) => b.dia.localeCompare(a.dia));
       },
 
-      // En la simulación se ve todo, también la pestaña Control
+      // Como en la base real: el rol de una cuenta del panel (por defecto se ve todo, también Control)
       async rol() {
-        return 'superadmin';
+        return rol === 'superadmin' ? 'superadmin' : 'admin';
       },
 
       async leerActividad({ desde, hasta }) {
@@ -122,7 +143,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         const id = ++db.ultimoId[tabla];
         const nueva = { id, ...POR_DEFECTO[tabla], ...aCamel(fila) };
         db[tabla].push(nueva);
-        anotar(db, 'alta', tabla, nueva);
+        anotar(db, quien, 'alta', tabla, nueva);
         return copia(nueva);
       },
 
@@ -134,7 +155,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
           .filter((columna) => JSON.stringify(fila[aClave(columna)]) !== JSON.stringify(cambios[columna]))
           .sort();
         Object.assign(fila, aCamel(cambios));
-        if (distintas.length) anotar(db, 'cambio', tabla, fila, distintas);
+        if (distintas.length) anotar(db, quien, 'cambio', tabla, fila, distintas);
         return copia(fila);
       },
 
@@ -142,14 +163,14 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         const db = await base();
         const borrada = db[tabla].find((f) => f.id === id);
         db[tabla] = db[tabla].filter((f) => f.id !== id);
-        if (borrada) anotar(db, 'baja', tabla, borrada);
+        if (borrada) anotar(db, quien, 'baja', tabla, borrada);
       },
 
       async guardarDelegado(fila) {
         const db = await base();
         const delegado = aCamel(fila);
         db.delegados = [...db.delegados.filter((d) => d.equipoId !== delegado.equipoId), delegado];
-        anotar(db, 'cambio', 'delegados', delegado, Object.keys(fila).filter((c) => c !== 'equipo_id').sort());
+        anotar(db, quien, 'cambio', 'delegados', delegado, Object.keys(fila).filter((c) => c !== 'equipo_id').sort());
       },
     };
   };

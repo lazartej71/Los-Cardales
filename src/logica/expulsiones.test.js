@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../datos/datosEjemplo.js';
 import { detalleExpulsion } from './consultas.js';
-import { estadoExpulsion, linkWhatsApp, mensajeExpulsion } from './expulsiones.js';
+import { estadoExpulsion, linkWhatsApp, mensajeExpulsion, nombreRoja } from './expulsiones.js';
 import { validarCamiseta, validarGoles } from './validaciones.js';
 
 describe('estadoExpulsion', () => {
@@ -44,6 +44,20 @@ describe('aviso por WhatsApp', () => {
         '_Mensaje automático de Los Cardales Fútbol_',
       ].join('\n')
     );
+  });
+
+  it('dice si fue por doble amarilla o roja directa (las viejas, sin tipo, no lo dicen)', () => {
+    expect(armar({ tipo: 'directa', fechasSuspension: 2 })).toContain('👕 N° 5 · Lucas Benítez\n🟥 Por *roja directa*\n⛔');
+    expect(armar({ tipo: 'doble_amarilla', fechasSuspension: 2 })).toContain('\n🟨🟨 Por *doble amarilla*\n');
+    expect(armar({ tipo: null, fechasSuspension: 2 })).not.toContain('Por *');
+  });
+
+  it('nombre de cada tipo de roja', () => {
+    expect([nombreRoja('doble_amarilla'), nombreRoja('directa'), nombreRoja(null)]).toEqual([
+      'Doble amarilla',
+      'Roja directa',
+      'Roja',
+    ]);
   });
 
   it('sin nombre del jugador ni del delegado', () => {
