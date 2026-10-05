@@ -1,0 +1,214 @@
+/**
+ * Pantalla de los veedores: eligen el predio, después la cancha, y cargan los partidos de esa cancha en la
+ * fecha en juego (resultado, W.O., rojas y arancel). Una barra fija arriba vuelve a elegir otra cancha.
+ * inicial: { predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
+ */
+
+import { useState } from 'react';
+import { Icono } from '../../componentes/Icono.jsx';
+import { Logo } from '../../componentes/Logo.jsx';
+import { PREDIOS } from '../../datos/constantes.js';
+import { canchasDe, nombrePredio } from '../../logica/lugar.js';
+import { tieneResultado } from '../../logica/tabla.js';
+import { fechaDeVeedores, partidosDeCancha, partidosDePredio, resumenPartidos } from '../../logica/veedores.js';
+import { EditorPartido } from '../admin/EditorPartido.jsx';
+import { RenglonPartido } from '../admin/RenglonPartido.jsx';
+import { guardarCancha, leerCanchaGuardada } from './canchaGuardada.js';
+
+// "3 partidos · 1 por cargar", "1 partido · todos cargados", "Sin partidos"
+function textoResumen({ total, porCargar }) {
+  if (total === 0) return 'Sin partidos';
+  return `${total} ${total === 1 ? 'partido' : 'partidos'} · ${porCargar ? `${porCargar} por cargar` : 'todos cargados'}`;
+}
+
+export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerSitio, onSalir }) {
+  const [eleccion, setEleccion] = useState(() => ({
+    predio: null,
+    cancha: null,
+    abierto: null,
+    ...leerCanchaGuardada(almacen),
+    ...inicial,
+  }));
+  const { predio, cancha, abierto } = eleccion;
+  const fecha = fechaDeVeedores(db.partidos);
+
+  const elegir = (cambios) => {
+    const nueva = { ...eleccion, abierto: null, ...cambios };
+    setEleccion(nueva);
+    guardarCancha(almacen, nueva);
+    window.scrollTo(0, 0);
+  };
+
+  let contenido;
+  if (!predio) {
+    contenido = (
+      <>
+        <p className="admin-intro">Elegí el predio donde estás.</p>
+        <div className="veedor-opciones">
+          {PREDIOS.map((p) => {
+            const resumen = resumenPartidos(partidosDePredio(db.partidos, p.id));
+            return (
+              <Opcion
+                key={p.id}
+                titulo={p.nombre}
+                detalle={textoResumen(resumen)}
+                apagada={resumen.total === 0}
+                onElegir={() => elegir({ predio: p.id, cancha: null })}
+              />
+            );
+          })}
+        </div>
+      </>
+    );
+  } else if (!cancha) {
+    contenido = (
+      <>
+        <Barra texto="Predios" lugar={nombrePredio(predio)} onVolver={() => elegir({ predio: null, cancha: null })} />
+        <p className="admin-intro">{`Elegí la cancha de ${nombrePredio(predio)}.`}</p>
+        <div className="veedor-opciones veedor-opciones--canchas">
+          {canchasDe(predio).map((numero) => {
+            const resumen = resumenPartidos(partidosDeCancha(db.partidos, predio, numero));
+            return (
+              <Opcion
+                key={numero}
+                titulo={`Cancha ${numero}`}
+                detalle={textoResumen(resumen)}
+                apagada={resumen.total === 0}
+                onElegir={() => elegir({ cancha: numero })}
+              />
+            );
+          })}
+        </div>
+      </>
+    );
+  } else {
+    contenido = (
+      <>
+        <Barra
+          texto="Cambiar cancha"
+          lugar={`${nombrePredio(predio)} · Cancha ${cancha}`}
+          onVolver={() => elegir({ cancha: null })}
+        />
+        <PartidosDeCancha
+          db={db}
+          partidos={partidosDeCancha(db.partidos, predio, cancha)}
+          fecha={fecha}
+          abierto={abierto}
+          onAbrir={(id) => setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }))}
+          acciones={acciones}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="admin veedor">
+      <header className="admin-cabecera">
+        <div className="contenedor admin-cabecera__inner">
+          <div className="admin-cabecera__marca">
+            <Logo className="admin-cabecera__logo" />
+            <div>
+              <p className="admin-cabecera__sub">{db.configuracion.nombreCampeonato}</p>
+              <h1 className="admin-cabecera__titulo">Veedores</h1>
+            </div>
+          </div>
+          <div className="admin-cabecera__acciones">
+            <button type="button" className="btn-cabecera" onClick={onVerSitio}>
+              <Icono nombre="ojo" tamano={18} />
+              <span>Ver sitio</span>
+            </button>
+            <button type="button" className="btn-cabecera" onClick={onSalir}>
+              <Icono nombre="salir" tamano={18} />
+              <span>Cerrar sesión</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="contenedor veedor-main">
+        <h2 className="admin-main__titulo">{`Veedores · Fecha ${fecha}`}</h2>
+        {contenido}
+      </main>
+    </div>
+  );
+}
+
+// Botón grande para elegir un predio o una cancha
+function Opcion({ titulo, detalle, apagada, onElegir }) {
+  return (
+    <button type="button" className="veedor-opcion" disabled={apagada} onClick={onElegir}>
+      <span className="veedor-opcion__titulo">{titulo}</span>
+      <span className="veedor-opcion__detalle">{detalle}</span>
+    </button>
+  );
+}
+
+// Barra fija arriba: volver al paso anterior y dónde está el veedor
+function Barra({ texto, lugar, onVolver }) {
+  return (
+    <div className="veedor-barra">
+      <button type="button" className="btn btn--secundario btn--chico" onClick={onVolver}>
+        <span aria-hidden="true">←</span> {texto}
+      </button>
+      <span className="veedor-barra__lugar">{lugar}</span>
+    </div>
+  );
+}
+
+function PartidosDeCancha({ db, partidos, fecha, abierto, onAbrir, acciones }) {
+  if (!partidos.length) return <p className="vacio-texto">{`No hay partidos en esta cancha en la fecha ${fecha}.`}</p>;
+
+  const equipo = (id) => db.equipos.find((e) => e.id === id);
+  const categoria = (p) => db.categorias.find((c) => c.id === p.categoriaId)?.nombre ?? '';
+  const porCargar = partidos.filter((p) => !tieneResultado(p));
+  const cargados = partidos.filter(tieneResultado);
+
+  const renglon = (p) => (
+    <RenglonPartido
+      key={p.id}
+      partido={p}
+      detalle={categoria(p)}
+      local={equipo(p.localId)}
+      visitante={equipo(p.visitanteId)}
+      abierto={abierto === p.id}
+      onTocar={() => onAbrir(p.id)}
+    >
+      <EditorPartido
+        key={`${p.id}-${p.golesLocal}-${p.golesVisitante}-${p.ausente}`}
+        db={db}
+        partido={p}
+        local={equipo(p.localId)}
+        visitante={equipo(p.visitanteId)}
+        zonaLocal={null}
+        zonaVisitante={null}
+        acciones={acciones}
+        onCambio={() => {}}
+        veedor
+        titulo={`${categoria(p)} · fecha ${p.fecha}`}
+      />
+    </RenglonPartido>
+  );
+
+  return (
+    <>
+      {porCargar.length > 0 ? (
+        <Grupo titulo={`Por cargar (${porCargar.length})`}>{porCargar.map(renglon)}</Grupo>
+      ) : (
+        <p className="fecha-completa">
+          <Icono nombre="check" tamano={18} />
+          Listo: cargaste todos los partidos de esta cancha.
+        </p>
+      )}
+      {cargados.length > 0 && <Grupo titulo={`Cargados (${cargados.length})`}>{cargados.map(renglon)}</Grupo>}
+    </>
+  );
+}
+
+function Grupo({ titulo, children }) {
+  return (
+    <section className="grupo-partidos" aria-label={titulo}>
+      <h3 className="grupo-partidos__titulo">{titulo}</h3>
+      <ul className="renglones">{children}</ul>
+    </section>
+  );
+}

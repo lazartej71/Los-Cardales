@@ -1,5 +1,6 @@
 /**
  * Raíz de la app: sesión, datos y elección entre la vista pública y el panel (/admin).
+ * En el panel, una cuenta de veedor ve solo la pantalla de veedores.
  * En la simulación (npm run simulacion) suma un cartel fijo: lo cargado no llega a la base real.
  */
 
@@ -19,6 +20,16 @@ import { hoyEnArgentina } from './logica/cuentas.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
 import { PantallaLogin } from './vistas/admin/PantallaLogin.jsx';
 import { VistaPublica } from './vistas/publico/VistaPublica.jsx';
+import { PanelVeedor } from './vistas/veedor/PanelVeedor.jsx';
+
+// El almacenamiento del navegador, o null si no se puede usar (ventana privada, sitio bloqueado)
+function almacenLocal() {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export function App({ simulacion = SIMULACION }) {
   const [toast, avisar] = useToast();
@@ -96,6 +107,10 @@ export function App({ simulacion = SIMULACION }) {
     );
   } else if (!db) {
     contenido = <EstadoDeCarga error={error} onReintentar={recargar} />;
+  } else if (enAdmin && db.rol === 'veedor') {
+    contenido = (
+      <PanelVeedor db={db} acciones={acciones} almacen={almacenLocal()} onVerSitio={salirDelPanel} onSalir={cerrarSesion} />
+    );
   } else if (enAdmin) {
     contenido = (
       <PanelAdmin

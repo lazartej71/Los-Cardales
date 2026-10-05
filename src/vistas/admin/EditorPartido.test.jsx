@@ -9,7 +9,7 @@ import { EditorPartido } from './EditorPartido.jsx';
 const acciones = new Proxy({}, { get: () => async () => true });
 
 // Primer partido de los datos de ejemplo: Libre A1 3 – 2 Libre A2, fecha 1 (Libre A2 tiene una expulsión)
-function dibujar(cambiosPartido = {}, cambiosDb = {}) {
+function dibujar(cambiosPartido = {}, cambiosDb = {}, extra = {}) {
   const db = { ...crearDatosEjemplo(), ...cambiosDb };
   const partido = { ...db.partidos[0], ...cambiosPartido };
   db.partidos = [partido, ...db.partidos.slice(1)];
@@ -25,9 +25,26 @@ function dibujar(cambiosPartido = {}, cambiosDb = {}) {
       zonaVisitante={null}
       acciones={acciones}
       onCambio={() => {}}
+      {...extra}
     />
   );
 }
+
+describe('editor del partido para un veedor', () => {
+  it('carga resultado, W.O., rojas y arancel, pero no posterga, borra, cambia el lugar ni avisa', () => {
+    const html = dibujar({ golesLocal: null, golesVisitante: null }, {}, { veedor: true, titulo: 'Libre · fecha 1' });
+    expect(html).toContain('Libre · fecha 1');
+    expect(html).toContain('¿No se presentó alguien?');
+    expect(html).toContain('+ Roja');
+    expect(html).toContain('Total del día');
+    expect(html).toContain('>Guardar<');
+    for (const texto of ['Postergar', '> Borrar<', 'Lugar y hora', '>Avisar<']) expect(html).not.toContain(texto);
+  });
+
+  it('con el resultado cargado puede quitarlo', () => {
+    expect(dibujar({}, {}, { veedor: true })).toContain('Quitar resultado');
+  });
+});
 
 describe('editor del partido', () => {
   it('ofrece marcar que un equipo no se presentó', () => {
