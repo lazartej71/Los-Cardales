@@ -15,7 +15,7 @@ Que los veedores carguen desde la cancha lo que pasa en cada partido: resultado 
 | Tema | Decisión |
 | --- | --- |
 | Pantalla del veedor | Una sola sección, **Veedores**: elige el predio, después la cancha, y ve solo los partidos de esa cancha. Tiene un botón fijo arriba para volver a elegir otra cancha. |
-| Qué partidos ve | Los de esa cancha en la fecha en juego, ordenados por hora y sin los postergados. También un postergado que se recupera en esa cancha, mientras no tenga resultado. |
+| Qué partidos ve | Los de esa cancha en la fecha en juego, ordenados por hora y sin los postergados. Los postergados reprogramados van aparte, en **Postergados** (ver más abajo). |
 | Qué carga | Resultado, W.O. ("no se presentó"), rojas y pago del arancel. |
 | Correcciones | Puede cambiar o quitar el resultado, deshacer un W.O., borrar una roja que todavía no tiene sanción y cambiar o quitar un pago, siempre en los partidos que ve. |
 | Lo que no puede | Crear, borrar o postergar partidos, cambiar el lugar o la hora, poner sanciones, avisar por WhatsApp, y entrar a Cuentas, Suspendidos, Equipos, Ajustes o Control. |
@@ -79,6 +79,18 @@ Así, un postergado de la fecha 1 que se reprograma no hace volver la fecha en j
 - **Cuentas:** el pago de un partido se ve como "$50.000 efectivo + $55.000 transferencia".
 - **Suspendidos, aviso por WhatsApp y Control** muestran el tipo de roja.
 
+## Postergados que se recuperan en un día especial
+
+Agregado el 2026-10-05, aprobado en el chat. Los postergados se recuperan en un día especial (por ejemplo, un feriado). Ese día no es una fecha más: en todos lados se ven como **Postergados**.
+
+- **Postergar** sigue igual: el partido queda postergado hasta que se le carga el resultado.
+- **Reprogramar** (nuevo): en el panel, el bloque "Lugar y hora" de un postergado pasa a llamarse **Reprogramar** y pide **día**, predio, cancha y hora. Al guardarlo, el partido **sigue postergado**: no cuenta para la fecha en juego, no la frena y nunca aparece como una fecha nueva.
+- Al cargarle el resultado o el W.O., suma en su **fecha original** y deja de estar postergado. Si se le quita el resultado, vuelve a postergado.
+- **Veedores:** en la primera pantalla, debajo de los predios de la fecha en juego, un botón **Postergados** (solo si hay reprogramados). Adentro: predio → cancha → partidos por día y hora, cada uno con "Postergado de la fecha 1 · Lunes 13/10", en **Por cargar** y **Cargados** (así el veedor puede corregir). Reemplaza lo de antes: un postergado ya no aparece mezclado con la fecha en juego.
+- **Vista pública:** el Fixture suma arriba un bloque abierto **Postergados** con los reprogramados que falta jugar ("Postergado de la fecha 1 · Lunes 13/10 · Los Cardales · Cancha 2 · 13:40"). En su fecha original sigue la etiqueta POSTERGADO con "Se juega el lunes 13/10" (en lugar del lugar tachado). Jugado, queda con su resultado en su fecha.
+- **Base (migración 7):** columna `partidos.dia date`, que solo puede ir con el lugar completo. Dos partidos con día no pueden tener la misma cancha el mismo día a la misma hora. El índice de cancha ocupada de la migración 3 deja afuera a los que tienen día. El veedor puede pasar un reprogramado de postergado a jugado (y al revés) solo junto con cargar o quitar el resultado.
+- **API:** reprogramar es un cambio con `{ dia, predio, cancha, hora }`, solo para postergados ("El día se carga solo en los postergados."). Errores: "Elegí el día." y "La cancha 2 de Los Cardales ya tiene un partido el lunes 13/10 a las 13:40." (409).
+
 ## Simulación
 
 - El cartel de la simulación tiene un selector **Ver como: superadmin / admin / veedor**. Cambia la sesión simulada y la base en memoria responde con ese rol.
@@ -100,5 +112,4 @@ Así, un postergado de la fecha 1 que se reprograma no hace volver la fecha en j
 ## Fuera de alcance
 
 - Asignar a cada veedor un predio o una cancha fija.
-- Un veedor que corrige un partido recuperado ya cargado: después de cargarlo sale de su lista (lo corrige el organizador).
 - Crear o dar de baja veedores desde el panel.
