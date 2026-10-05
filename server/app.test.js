@@ -344,7 +344,7 @@ describe('API para veedores', () => {
   });
 
   it('carga el resultado de un postergado reprogramado para un día especial', async () => {
-    const { app, guardados, datos, jugado } = armarVeedor();
+    const { app, guardados, jugado } = armarVeedor();
     Object.assign(jugado, {
       golesLocal: null,
       golesVisitante: null,
