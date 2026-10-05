@@ -6,7 +6,7 @@ import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
 import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
-import { textoLugar } from '../../logica/lugar.js';
+import { textoDia, textoLugar } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 
 // Aclaración de la fecha que se cargó como tabla inicial (sin el detalle de los partidos)
@@ -41,14 +41,43 @@ export function SeccionPosiciones({ activa, filas, criterios, partidos, conTabla
   );
 }
 
-// Cada fecha se pliega: viene abierta solo la que se está jugando
+// Postergados reprogramados para un día especial que falta jugar, por día y hora
+function reprogramadosPorJugar(fechas) {
+  return fechas
+    .flatMap((f) => f.partidos)
+    .filter((p) => p.postergado && p.dia && p.predio)
+    .sort((a, b) => a.dia.localeCompare(b.dia) || a.hora.localeCompare(b.hora) || a.id - b.id);
+}
+
+// Cada fecha se pliega: viene abierta solo la que se está jugando. Arriba, aparte y abiertos, los
+// postergados que se recuperan en un día especial (no son una fecha más)
 export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial }) {
+  const reprogramados = reprogramadosPorJugar(fechas);
   return (
     <section className={`seccion seccion--fixture${activa ? ' seccion--activa' : ''}`} aria-labelledby="titulo-fixture">
       <div className="seccion__cab">
         <h2 id="titulo-fixture" className="seccion__titulo">Fixture</h2>
       </div>
       {fechas.length === 0 && <p className="vacio-texto">Todavía no hay partidos programados.</p>}
+      {reprogramados.length > 0 && (
+        <details className="fecha-bloque fecha-bloque--postergados" open>
+          <summary className="fecha-bloque__cab">
+            <h3 className="fecha-bloque__titulo">Postergados</h3>
+            <Pill tipo="postergado">{reprogramados.length === 1 ? '1 por jugar' : `${reprogramados.length} por jugar`}</Pill>
+          </summary>
+          <ul className="lista-partidos">
+            {reprogramados.map((p) => (
+              <li key={p.id}>
+                <p className="partido-origen">{`Postergado de la fecha ${p.fecha}`}</p>
+                <LineaPartido partido={p} info={info} />
+                <p className="lugar">
+                  <strong>{textoLugar(p)}</strong>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {fechas.map(({ fecha, partidos }) => {
         const esFechaInicial = fecha === 1 && conTablaInicial;
         const estado = esFechaInicial ? 'jugada' : estadoFecha(partidos);
@@ -77,9 +106,18 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
 }
 
 // Dónde y a qué hora se juega, bien visible. Si el partido se postergó, tachado: ese lugar ya no vale.
+// Si ya se reprogramó para un día especial, cuándo se juega (el detalle está en el bloque Postergados).
 function EtiquetaLugar({ partido }) {
   const texto = textoLugar(partido);
   if (!texto) return null;
+  if (partido.postergado && partido.dia) {
+    const dia = textoDia(partido.dia);
+    return (
+      <p className="lugar">
+        <strong>{`Se juega el ${dia[0].toLowerCase()}${dia.slice(1)}`}</strong>
+      </p>
+    );
+  }
   return (
     <p className={partido.postergado ? 'lugar lugar--tachado' : 'lugar'}>
       <strong>{texto}</strong>
