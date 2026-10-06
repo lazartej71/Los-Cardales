@@ -46,6 +46,14 @@ function armar({ admin = true, veedor = false, rol = 'admin' } = {}) {
     guardarDelegado: async (fila) => {
       guardados.push({ accion: 'delegado', fila });
     },
+    subirEscudo: async (equipoId, valor) => {
+      guardados.push({ accion: 'escudo', equipoId, tipo: valor.tipo, extension: valor.extension, peso: valor.bytes.length });
+      return { ok: true };
+    },
+    quitarEscudo: async (equipoId) => {
+      guardados.push({ accion: 'quitar escudo', equipoId });
+      return { ok: true };
+    },
   });
   return { app: crearApp({ crearRepositorio }), guardados, datos, pedidosActividad, visitas: () => visitas };
 }
@@ -56,6 +64,9 @@ function pedir(app, ruta, { metodo = 'GET', cuerpo, token = 'token-valido' } = {
   const body = cuerpo === undefined ? undefined : JSON.stringify(cuerpo);
   return app.request(`/api${ruta}`, { method: metodo, headers, body });
 }
+
+// Un WebP mínimo (solo la firma de los primeros bytes) como lo manda el navegador
+const WEBP = `data:image/webp;base64,${btoa('RIFF\x10\x00\x00\x00WEBPVP8 ')}`;
 
 describe('API pública', () => {
   it('devuelve los datos sin expulsiones ni teléfonos', async () => {
@@ -419,7 +430,85 @@ describe('API para veedores', () => {
   });
 });
 
+describe('escudos (solo el superadmin)', () => {
+  it('el superadmin sube el escudo de un equipo', async () => {
+    const { app, guardados, datos } = armar({ rol: 'superadmin' });
+    const id = datos.equipos[0].id;
+    const respuesta = await pedir(app, `/admin/equipos/${id}/escudo`, { metodo: 'PUT', cuerpo: { imagen: WEBP } });
+    expect(respuesta.status).toBe(200);
+    expect(await respuesta.json()).toEqual({ ok: true });
+    expect(guardados).toEqual([{ accion: 'escudo', equipoId: id, tipo: 'image/webp', extension: 'webp', peso: 16 }]);
+  });
+
+  it('el superadmin quita el escudo de un equipo', async () => {
+    const { app, guardados, datos } = armar({ rol: 'superadmin' });
+    const id = datos.equipos[0].id;
+    expect((await pedir(app, `/admin/equipos/${id}/escudo`, { metodo: 'DELETE' })).status).toBe(200);
+    expect(guardados).toEqual([{ accion: 'quitar escudo', equipoId: id }]);
+  });
+
+  it('una imagen inválida no se guarda', async () => {
+    const { app, guardados, datos } = armar({ rol: 'superadmin' });
+    const respuesta = await pedir(app, `/admin/equipos/${datos.equipos[0].id}/escudo`, {
+      metodo: 'PUT',
+      cuerpo: { imagen: 'hola' },
+    });
+    expect(respuesta.status).toBe(400);
+    expect(await respuesta.json()).toEqual({ error: 'El escudo tiene que ser una imagen WebP o PNG de hasta 100 KB.' });
+    expect(guardados).toEqual([]);
+  });
+
+  it('el equipo tiene que existir', async () => {
+    const { app, guardados } = armar({ rol: 'superadmin' });
+    for (const [metodo, cuerpo] of [
+      ['PUT', { imagen: WEBP }],
+      ['DELETE', undefined],
+    ]) {
+      const respuesta = await pedir(app, '/admin/equipos/99999/escudo', { metodo, cuerpo });
+      expect(respuesta.status, metodo).toBe(404);
+      expect(await respuesta.json()).toEqual({ error: 'Ese equipo no existe.' });
+    }
+    expect(guardados).toEqual([]);
+  });
+
+  it('el admin y el veedor reciben 403 y no se guarda nada', async () => {
+    for (const opciones of [{ rol: 'admin' }, { admin: false, veedor: true }]) {
+      const { app, guardados, datos } = armar(opciones);
+      const ruta = `/admin/equipos/${datos.equipos[0].id}/escudo`;
+      for (const [metodo, cuerpo] of [
+        ['PUT', { imagen: WEBP }],
+        ['DELETE', undefined],
+      ]) {
+        const respuesta = await pedir(app, ruta, { metodo, cuerpo });
+        expect(respuesta.status, `${JSON.stringify(opciones)} ${metodo}`).toBe(403);
+        expect(await respuesta.json()).toEqual({ error: 'Los escudos los cambia solo el superadmin.' });
+      }
+      expect(guardados).toEqual([]);
+    }
+  });
+});
+
 describe('API de la simulación (base en memoria)', () => {
+  it('el superadmin sube un escudo y la vista pública lo muestra; con "Ver como" admin, no puede', async () => {
+    const datos = crearDatosEjemplo();
+    const publico = {
+      categorias: datos.categorias,
+      zonas: datos.zonas,
+      equipos: datos.equipos.map(({ id, zonaId, nombre }) => ({ id, zonaId, nombre })),
+      tablaInicial: datos.tablaInicial,
+      partidos: datos.partidos,
+      configuracion: datos.configuracion,
+    };
+    const app = crearApp({ crearRepositorio: crearRepositorioMemoria(async () => publico) });
+    const id = datos.equipos[0].id;
+    const ruta = `/admin/equipos/${id}/escudo`;
+    const cuerpo = { imagen: WEBP };
+    expect((await pedir(app, ruta, { metodo: 'PUT', cuerpo, token: 'simulacion-admin' })).status).toBe(403);
+    expect((await pedir(app, ruta, { metodo: 'PUT', cuerpo, token: 'simulacion' })).status).toBe(200);
+    const vista = await (await pedir(app, '/publico', { token: null })).json();
+    expect(vista.equipos.find((e) => e.id === id).escudo).toBe(WEBP);
+  });
+
   it('aplica las mismas reglas y lo cargado aparece en la vista pública', async () => {
     const datos = crearDatosEjemplo();
     const publico = {

@@ -14,6 +14,7 @@ import {
   validarCambioMovimiento,
   validarCambioPartido,
   validarConfiguracion,
+  validarEscudo,
   validarExpulsionNueva,
   validarMovimientoNuevo,
   validarPartidoNuevo,
@@ -579,5 +580,41 @@ describe('lo que puede hacer un veedor', () => {
     expect(permisoVeedorPago(conPagos, 2).estado).toBe(403);
     expect(permisoVeedorPago(conPagos, 3)).toEqual(NO_PUEDE);
     expect(permisoVeedorPago(conPagos, 99)).toBeNull();
+  });
+});
+describe('escudo de un equipo', () => {
+  const id = datos.equipos[0].id;
+  const WEBP = `data:image/webp;base64,${btoa('RIFF\x10\x00\x00\x00WEBPVP8 ')}`;
+  const PNG = `data:image/png;base64,${btoa('\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR')}`;
+  const INVALIDO = { error: 'El escudo tiene que ser una imagen WebP o PNG de hasta 100 KB.', estado: 400 };
+
+  it('acepta un WebP o un PNG y dice cómo guardarlo', () => {
+    const webp = validarEscudo(datos, id, { imagen: WEBP });
+    expect(webp.valor).toMatchObject({ imagen: WEBP, tipo: 'image/webp', extension: 'webp' });
+    expect(webp.valor.bytes).toBeInstanceOf(Uint8Array);
+    expect(webp.valor.bytes).toHaveLength(16);
+    expect(validarEscudo(datos, id, { imagen: PNG }).valor).toMatchObject({ tipo: 'image/png', extension: 'png' });
+  });
+
+  it('mira los primeros bytes: no alcanza con que el texto diga PNG', () => {
+    for (const imagen of [
+      `data:image/png;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg"></svg>')}`,
+      `data:image/png;base64,${btoa('GIF89a')}`,
+      WEBP.replace('image/webp', 'image/png'),
+    ]) {
+      expect(validarEscudo(datos, id, { imagen }), imagen.slice(0, 40)).toEqual(INVALIDO);
+    }
+  });
+
+  it('rechaza otros formatos, texto suelto y más de 100 KB', () => {
+    const pesado = `data:image/webp;base64,${btoa(`RIFF\x00\x00\x00\x00WEBP${'x'.repeat(100 * 1024)}`)}`;
+    for (const imagen of ['data:image/gif;base64,R0lGODlh', 'hola', '', undefined, pesado, 'data:image/png;base64,***']) {
+      expect(validarEscudo(datos, id, { imagen })).toEqual(INVALIDO);
+    }
+    expect(validarEscudo(datos, id, null)).toEqual(INVALIDO);
+  });
+
+  it('el equipo tiene que existir', () => {
+    expect(validarEscudo(datos, 99999, { imagen: WEBP })).toEqual({ error: 'Ese equipo no existe.', estado: 404 });
   });
 });
