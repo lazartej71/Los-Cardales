@@ -223,6 +223,20 @@ describe('panel de administración', () => {
       'title="Libre A1"><span class="equipo-celda"><img class="escudo" src="https://x/e.webp"'
     );
   });
+
+  it('en Partidos, los renglones llevan el escudo arriba del nombre si algún equipo de la fecha tiene', () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A1' ? { ...e, escudo: 'https://x/e.webp' } : e));
+    const html = dibujar('resultados', { db });
+    expect(html).toContain('class="renglon__boton renglon__boton--escudos"');
+    expect(html).toMatch(/<img class="escudo" src="https:\/\/x\/e\.webp"[^>]*\/><span class="renglon__nombre">Libre A1<\/span>/);
+  });
+
+  it('sin escudos, los renglones de Partidos se ven como siempre', () => {
+    const html = dibujar('resultados');
+    expect(html).not.toContain('renglon__boton--escudos');
+    expect(html).not.toContain('renglon__nombre');
+  });
 });
 
 describe('pestaña Control', () => {

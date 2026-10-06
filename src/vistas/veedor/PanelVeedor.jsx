@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
 import { PREDIOS } from '../../datos/constantes.js';
+import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { canchasDe, nombrePredio } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 import {
@@ -193,6 +194,8 @@ function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, 
   }
 
   const equipo = (id) => db.equipos.find((e) => e.id === id);
+  // Escudos en los renglones si algún equipo de esta cancha tiene
+  const conEscudos = hayEscudos(equiposDePartidos(partidos, equipo));
   const categoria = (p) => db.categorias.find((c) => c.id === p.categoriaId)?.nombre ?? '';
   // Un postergado dice de qué fecha es (suma en esa fecha al cargarle el resultado)
   const detalle = (p) => (postergados ? `${categoria(p)} · Postergado de la fecha ${p.fecha}` : categoria(p));
@@ -206,6 +209,7 @@ function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, 
       detalle={detalle(p)}
       local={equipo(p.localId)}
       visitante={equipo(p.visitanteId)}
+      conEscudos={conEscudos}
       abierto={abierto === p.id}
       onTocar={() => onAbrir(p.id)}
     >

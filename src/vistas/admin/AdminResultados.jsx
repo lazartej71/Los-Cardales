@@ -19,6 +19,7 @@ import {
   tieneTablaInicial,
   zonasDeCategoria,
 } from '../../logica/consultas.js';
+import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { calcularTabla, tieneResultado } from '../../logica/tabla.js';
 import { EditorPartido } from './EditorPartido.jsx';
 import { NuevoPartido } from './NuevoPartido.jsx';
@@ -90,6 +91,10 @@ export function AdminResultados({ db, acciones, filtro, fecha: fechaElegida, onF
   const equipoPorId = new Map(db.equipos.map((e) => [e.id, e]));
   const zonaPorId = new Map(db.zonas.map((z) => [z.id, z]));
   const zonaDe = (equipoId) => (zonas.length > 1 ? zonaPorId.get(equipoPorId.get(equipoId)?.zonaId)?.nombre : null);
+  // Escudos en los renglones si algún equipo de la lista que se ve tiene
+  const conEscudos = hayEscudos(
+    equiposDePartidos(verPostergados ? postergados : partidosFecha, (id) => equipoPorId.get(id))
+  );
 
   const opcionesFecha = [
     ...fechas.map((f) => {
@@ -118,6 +123,7 @@ export function AdminResultados({ db, acciones, filtro, fecha: fechaElegida, onF
       detalle={detalle}
       local={equipoPorId.get(p.localId)}
       visitante={equipoPorId.get(p.visitanteId)}
+      conEscudos={conEscudos}
       abierto={abierto === p.id}
       onTocar={() => onAbrir(abierto === p.id ? null : p.id)}
     >

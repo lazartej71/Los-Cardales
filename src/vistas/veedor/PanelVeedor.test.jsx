@@ -89,6 +89,15 @@ describe('pantalla del veedor', () => {
   it('sin postergados reprogramados no aparece el botón Postergados', () => {
     expect(dibujar()).not.toContain('Postergados');
   });
+
+  it('con algún escudo en la cancha, los renglones lo muestran arriba del nombre; sin escudos, como siempre', () => {
+    const db = armarDb();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A1' ? { ...e, escudo: 'https://x/e.webp' } : e));
+    const html = dibujar({ predio: 'los_cardales', cancha: 2 }, db);
+    expect(html).toContain('class="renglon__boton renglon__boton--escudos"');
+    expect(html).toContain('src="https://x/e.webp"');
+    expect(dibujar({ predio: 'los_cardales', cancha: 2 })).not.toContain('renglon__boton--escudos');
+  });
 });
 
 describe('postergados en la pantalla del veedor', () => {
