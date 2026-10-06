@@ -4,24 +4,25 @@ Fecha: 2026-10-05. Estado: aprobado por el usuario en el chat, después de ver l
 
 ## Objetivo
 
-Que la tabla de posiciones y los resultados muestren el escudo de cada equipo, y que el superadmin los suba desde el panel con la imagen grande que tenga, sin tener que achicarla antes.
+Que la tabla de posiciones, el fixture, los resultados y los partidos del panel y de los veedores muestren el escudo de cada equipo, y que el superadmin los suba desde el panel con la imagen grande que tenga, sin tener que achicarla antes.
 
 ## Decisiones tomadas con el usuario
 
 | Tema | Decisión |
 | --- | --- |
 | Estilo | **Chapita**: el escudo va dentro de un círculo blanco, así se ven parejos aunque el logo tenga fondo blanco o formas distintas. |
-| Dónde se ve | En la vista pública: **Posiciones** (entre la posición y el nombre) y **Resultados** (antes del nombre, en cada renglón). El **Fixture** queda como está. |
+| Dónde se ve | Vista pública: **Posiciones** (entre la posición y el nombre), **Fixture** (escudo **arriba del nombre**) y **Resultados** (antes del nombre, en cada renglón). Panel y **Veedores**: los **renglones de partidos**, también con el escudo **arriba del nombre**, y las **tablas** del panel. |
 | Quién los carga | **Solo el superadmin**, desde el panel → **Equipos**. Franco ve Equipos como hoy, sin el bloque Escudo. |
 | Cómo se cargan | De a uno, con vista previa antes de guardar. No hay carga de varios juntos. |
 | Dónde se guardan | En **Supabase Storage** (carpeta pública `escudos`), no en la base: la base guarda solo el nombre del archivo. |
 
-## Cómo se ve (vista pública)
+## Cómo se ve
 
-- **Posiciones:** chapita de 28 px en la celda del equipo, antes del nombre. El nombre se sigue cortando con "…" si no entra.
-- **Resultados:** la misma chapita antes del nombre, en los dos renglones de cada partido.
-- **Equipo sin escudo:** sus iniciales en un círculo del mismo tamaño, para que la columna no quede despareja. Las iniciales son la primera letra de hasta dos palabras de 3 o más letras (BARRIO POLICIAL → BP, ALEX F.C → A). Si no hay ninguna palabra así, van las dos primeras letras del nombre.
-- **Zona sin escudos:** si ningún equipo de la zona tiene escudo, Posiciones y Resultados se ven como hoy, sin chapitas ni iniciales. Así, mientras se cargan, no aparecen de golpe 98 círculos con iniciales.
+- **Posiciones** (vista pública y tablas del panel): chapita de 28 px en la celda del equipo, antes del nombre. El nombre se sigue cortando con "…" si no entra.
+- **Resultados** (vista pública): la misma chapita antes del nombre, en los dos renglones de cada partido.
+- **Fixture** (vista pública, con el bloque Postergados) y **renglones de partidos** (panel → Partidos, con su lista de Postergados, y la pantalla de Veedores): la chapita va **arriba del nombre**, centrada sobre él, y el nombre queda centrado debajo. Así los nombres conservan todo el ancho y se parten en renglones igual que hoy; los escudos de los dos equipos quedan a la misma altura y el marcador, centrado en el alto del partido. En la maqueta, con el escudo al lado, cerca de la mitad de los nombres pasaba a dos o tres renglones.
+- **Equipo sin escudo:** sus iniciales en un círculo del mismo tamaño, para que no quede despareja. Las iniciales son la primera letra de hasta dos palabras de 3 o más letras (BARRIO POLICIAL → BP, ALEX F.C → A). Si no hay ninguna palabra así, van las dos primeras letras del nombre.
+- **Lista sin escudos:** cada tabla o lista de partidos muestra chapitas (e iniciales para los que no tienen) solo si **algún equipo de esa lista** tiene escudo. Si no, se ve como hoy. Así, mientras se cargan, no aparecen de golpe 98 círculos con iniciales. Es por lista y no por zona porque la lista del veedor mezcla categorías.
 - La imagen es decorativa (`alt=""`), porque el nombre está al lado. Lleva `width` y `height` para que la tabla no salte al cargar, y `loading="lazy"`.
 
 ## Cómo se carga (panel → Equipos)
@@ -82,7 +83,9 @@ Un cambio en `equipos` que toca `escudo` se lee "Cambió el escudo de BRANCA", o
 - `src/logica/escudos.js` (sin navegador, con pruebas): `iniciales(nombre)`, `hayEscudos(equipos)`, `recorteDeContenido({ data, width, height })` y `medidaFinal(ancho, alto, lado = 128)`.
 - `src/logica/prepararEscudo.js` (solo navegador): abre el archivo, recorta, achica y convierte. Se prueba en la simulación con Chrome.
 - `src/componentes/Escudo.jsx`: la chapita o las iniciales.
-- `TablaPosiciones` recibe `conEscudos` y la tarjeta de resultados lo toma de `info`. Solo la vista pública los activa: las tablas del panel (Partidos y Ajustes) quedan como hoy.
+- `TablaPosiciones` decide sola con `hayEscudos` de sus filas, así vale para la vista pública y para las tablas del panel (Partidos y la vista previa de Ajustes).
+- Fixture y Resultados: `info` suma el equipo de cada id. Cada fecha del fixture (y el bloque Postergados) y la fecha elegida en Resultados calculan si tienen escudos con los equipos de sus partidos.
+- `RenglonPartido` recibe `conEscudos`, que calcula cada lista (panel → Partidos, Postergados y Veedores) con los equipos que muestra.
 - `src/vistas/admin/BloqueEscudo.jsx`: el bloque del panel, con sus tres estados.
 - `useAcciones`: `subirEscudo` y `quitarEscudo`. `api`: `subirEscudo` y `quitarEscudo`.
 - `server/reglas.js`: `validarEscudo`. `server/app.js`: las dos rutas. `server/repositorio.js` y `server/repositorioMemoria.js`: `subirEscudo` y `quitarEscudo`, y `escudo` en cada equipo.
@@ -92,11 +95,11 @@ Un cambio en `equipos` que toca `escudo` se lee "Cambió el escudo de BRANCA", o
 - **Lógica:** iniciales, recorte (transparente, blanco, vacía), medida final y `hayEscudos`.
 - **API:** permisos (admin y veedor reciben 403), equipo inexistente, formato falso (texto que dice PNG pero no lo es), peso de más, subir, cambiar y quitar en la simulación.
 - **Base (PGlite):** la migración 8 con un esquema `storage` de mentira. El superadmin sube y borra en `escudos` y el admin no, el `check` del nombre y el trigger que frena a Franco.
-- **Pantallas:** la tabla y los resultados con escudo, con iniciales y sin nada (zona sin escudos), y el bloque del panel solo para el superadmin.
-- **Recorrido en la simulación (Chrome, 390 px):** subir una imagen grande, ver la vista previa, guardarla, verla en Posiciones y Resultados, cambiarla y quitarla.
+- **Pantallas:** la tabla, el fixture, los resultados y el renglón de partido con escudo, con iniciales y sin nada (lista sin escudos), y el bloque del panel solo para el superadmin.
+- **Recorrido en la simulación (Chrome, 390 px):** subir una imagen grande, ver la vista previa, guardarla, verla en Posiciones, Fixture, Resultados, el panel y Veedores, cambiarla y quitarla.
 
 ## Fuera de este cambio
 
-- Escudos en el Fixture y en las listas de partidos del panel.
+- Escudos dentro del editor del partido.
 - Carga de varios escudos juntos.
 - Quitar el fondo blanco de los logos (la chapita lo disimula).
