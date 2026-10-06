@@ -108,6 +108,13 @@ summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
 .partido-linea__equipo--local { text-align: right; }
 .es-perdedor { color: var(--tinta-suave); font-weight: 500; }
 .partido-linea__centro { display: grid; justify-items: center; gap: 4px; }
+/* Fixture con escudos: el escudo arriba del nombre, así el nombre conserva todo el ancho */
+.partido-linea--escudos { align-items: start; }
+.partido-linea--escudos .partido-linea__centro { align-self: center; }
+.partido-linea--escudos .partido-linea__equipo {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center;
+}
+.equipo-nombre { min-width: 0; max-width: 100%; }
 .marcador {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-width: 66px; padding: 4px 10px; border-radius: 8px;
@@ -130,6 +137,8 @@ summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
 .resultado__fila + .resultado__fila { border-top: 1px solid var(--linea); }
 .resultado__equipo { min-width: 0; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
 .resultado__fila--perdedor .resultado__equipo { color: var(--tinta-suave); font-weight: 500; }
+/* Resultados con escudos: el escudo antes del nombre */
+.resultado--escudos .resultado__equipo { display: flex; align-items: center; gap: 10px; }
 .resultado__goles {
   flex: none; display: grid; place-items: center; width: 44px; height: 42px; border-radius: 7px;
   background: var(--marcador); color: var(--sobre-marcador);

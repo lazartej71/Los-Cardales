@@ -223,4 +223,20 @@ describe('escudos en la vista pública', () => {
     expect(html).toContain('class="tabla"');
     expect(html).not.toContain('equipo-celda');
   });
+
+  it('el fixture y los resultados llevan los escudos si algún equipo de la fecha tiene', () => {
+    const html = dibujar(conEscudos('Libre A1'));
+    expect(html).toContain('class="partido-linea partido-linea--escudos"');
+    expect(html).toMatch(/class="resultado( resultado--pendiente)? resultado--escudos"/);
+    expect(html).toMatch(
+      /<span class="escudo escudo--iniciales" aria-hidden="true">L<\/span><span class="equipo-nombre">Libre A2<\/span>/
+    );
+  });
+
+  it('sin escudos, el fixture y los resultados se ven como siempre', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).not.toContain('partido-linea--escudos');
+    expect(html).not.toContain('resultado--escudos');
+    expect(html).not.toContain('equipo-nombre');
+  });
 });

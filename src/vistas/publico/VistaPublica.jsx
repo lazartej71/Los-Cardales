@@ -46,12 +46,13 @@ export function VistaPublica({ db, ui, setUi }) {
     [partidos, conTablaInicial]
   );
 
-  // Nombre de cada equipo y, si es de otra zona (partidos entre zonas), el nombre de su zona
+  // Cada equipo (nombre y escudo) y, si es de otra zona (partidos entre zonas), el nombre de su zona
   const info = useMemo(() => {
     const equiposPorId = new Map(db.equipos.map((e) => [e.id, e]));
     const zonasPorId = new Map(db.zonas.map((z) => [z.id, z]));
     return {
       nombreDe: (id) => equiposPorId.get(id)?.nombre ?? '—',
+      equipoDe: (id) => equiposPorId.get(id) ?? null,
       zonaAjena: (id) => {
         const equipo = equiposPorId.get(id);
         return equipo && zona && equipo.zonaId !== zona.id ? zonasPorId.get(equipo.zonaId)?.nombre ?? null : null;
