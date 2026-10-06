@@ -90,6 +90,13 @@ describe('tarjeta al compartir el link', () => {
     expect(publico).toContain('<script type="module" src="/src/main.jsx"></script>');
   });
 
+  it('el navegador se conecta a Supabase desde el principio, así los escudos llegan antes', () => {
+    // Vite reemplaza %VITE_SUPABASE_URL% por la dirección del proyecto al armar la página
+    for (const pagina of ['../index.html', '../admin.html']) {
+      expect(leer(pagina), pagina).toContain('<link rel="preconnect" href="%VITE_SUPABASE_URL%" />');
+    }
+  });
+
   it('la imagen mide 1200 × 630 y pesa menos de 300 KB (WhatsApp no muestra las muy pesadas)', () => {
     const jpeg = readFileSync(new URL('../public/tarjeta.jpg', import.meta.url));
     expect([jpeg[0], jpeg[1]]).toEqual([0xff, 0xd8]);
