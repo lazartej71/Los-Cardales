@@ -562,7 +562,16 @@ describe('migración 8: escudos', () => {
     expect((await comoAdmin(`update public.equipos set escudo = null where id = 1`)).error).toBe(NO);
   });
 
-  it('desde el SQL Editor (sin sesión) se puede corregir un escudo', async () => {
+  it('tampoco se crea un equipo con escudo si no es el superadmin', async () => {
+    const crear = (escudo) => `insert into public.equipos (zona_id, nombre, escudo)
+      values ((select min(id) from public.zonas), 'PRUEBA', ${escudo}) returning id`;
+    expect((await comoAdmin(crear(`'equipo-1-9.webp'`))).error).toBe(NO);
+    const sinEscudo = await comoAdmin(crear('null'));
+    expect(sinEscudo.error).toBeUndefined();
+    await comoAdmin(`delete from public.equipos where id = ${sinEscudo.filas[0].id}`);
+  });
+
+  it('desde el SQL Editor (rol postgres, sin sesión) se puede corregir un escudo', async () => {
     await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
     expect(await uno(`update public.equipos set escudo = null where id = 1 returning escudo`)).toEqual({ escudo: null });
   });

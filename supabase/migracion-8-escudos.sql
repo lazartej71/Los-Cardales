@@ -13,13 +13,14 @@ begin;
 alter table public.equipos
   add column escudo text check (escudo ~ '^equipo-[0-9]+-[0-9]+\.(webp|png)$');
 
--- Solo el superadmin cambia el escudo; el resto de la fila sigue como siempre (Franco cambia el nombre).
--- Desde el SQL Editor (sin sesión) se puede corregir a mano.
+-- Desde la app (roles anon y authenticated), solo el superadmin pone o cambia un escudo, también al crear
+-- un equipo; el resto de la fila sigue como siempre (Franco cambia el nombre). Desde el SQL Editor
+-- (rol postgres) se puede corregir a mano.
 create function public.validar_cambio_escudo() returns trigger
 language plpgsql set search_path = '' as $$
 begin
-  if new.escudo is distinct from old.escudo
-    and (select auth.uid()) is not null
+  if current_user in ('anon', 'authenticated')
+    and new.escudo is distinct from (case when tg_op = 'UPDATE' then old.escudo end)
     and not (select public.es_superadmin()) then
     raise exception 'Los escudos los cambia solo el superadmin.';
   end if;
@@ -28,7 +29,7 @@ end;
 $$;
 
 create trigger equipos_escudo
-before update on public.equipos
+before insert or update on public.equipos
 for each row execute function public.validar_cambio_escudo();
 
 -- Bucket público: cualquiera ve los escudos por su dirección, sin reglas. Hasta 100 KB, WebP o PNG.
