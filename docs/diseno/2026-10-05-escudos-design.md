@@ -38,7 +38,7 @@ En la tarjeta de cada equipo, debajo del título, el superadmin ve el bloque **E
 ### Qué hace el navegador con la imagen
 
 1. Acepta PNG, JPG o WebP de hasta 15 MB. Si no la puede abrir: "No pude abrir esa imagen. Probá con un PNG o un JPG."
-2. **Recorta los bordes vacíos:** saca las filas y columnas de los bordes que son todas transparentes o casi blancas. Si la imagen queda vacía (por ejemplo, un logo blanco sobre transparente), usa la imagen entera.
+2. **Recorta los bordes vacíos:** saca las filas y columnas de los bordes que no tienen nada. Si la imagen tiene transparencia, "nada" es lo transparente (así no se come el aro blanco de un escudo). Si no tiene (un JPG), es lo casi blanco. Si no queda nada, usa la imagen entera.
 3. **La achica** para que el lado más largo mida 128 px, sin deformarla. Si es más chica, no la agranda.
 4. **La convierte** a WebP. Safari no sabe generar WebP y devuelve PNG; en ese caso se manda como PNG (pesa unos 15–30 KB, igual liviano).
 5. Si después de todo eso pesa más de 100 KB (no debería pasar con 128 px), avisa y no la sube.
