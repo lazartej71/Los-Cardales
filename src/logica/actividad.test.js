@@ -75,6 +75,12 @@ describe('texto del registro de actividad', () => {
 
   it('equipos, delegados y ajustes', () => {
     expect(texto('cambio', 'equipos', { id: 1, nombre: 'BRANCA' }, ['nombre'])).toBe('Cambió los datos de BRANCA');
+    expect(texto('cambio', 'equipos', { id: 1, nombre: 'BRANCA', escudo: 'equipo-1-5.webp' }, ['escudo'])).toBe(
+      'Cambió el escudo de BRANCA'
+    );
+    expect(texto('cambio', 'equipos', { id: 1, nombre: 'BRANCA', escudo: null }, ['escudo'])).toBe(
+      'Quitó el escudo de BRANCA'
+    );
     expect(texto('cambio', 'delegados', { equipoId: 2 }, ['telefono'])).toBe('Cambió el delegado de BARRIO POLICIAL');
     expect(texto('alta', 'delegados', { equipoId: 2 })).toBe('Cambió el delegado de BARRIO POLICIAL');
     expect(texto('cambio', 'configuracion', {}, ['arancel'])).toBe('Cambió los ajustes (arancel)');

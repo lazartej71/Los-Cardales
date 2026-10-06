@@ -80,6 +80,8 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
       ejecutar(() => cliente.actualizarExpulsion(token, id, cambios), mensaje),
     borrarExpulsion: (id, mensaje) => ejecutar(() => cliente.borrarExpulsion(token, id), mensaje),
     actualizarEquipo: (id, cambios, mensaje) => ejecutar(() => cliente.actualizarEquipo(token, id, cambios), mensaje),
+    subirEscudo: (id, imagen, mensaje) => ejecutar(() => cliente.subirEscudo(token, id, imagen), mensaje),
+    quitarEscudo: (id, mensaje) => ejecutar(() => cliente.quitarEscudo(token, id), mensaje),
     actualizarConfiguracion: (cambios, mensaje) =>
       ejecutar(() => cliente.actualizarConfiguracion(token, cambios), mensaje),
   };
