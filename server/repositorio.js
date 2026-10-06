@@ -7,6 +7,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { normalizarHora } from '../src/logica/lugar.js';
 
+// Escudos: bucket público de Storage; cada archivo se guarda con caché de un año (el nombre lleva versión)
+const BUCKET_ESCUDOS = 'escudos';
+const UN_ANIO = '31536000';
+
 // goles_local → golesLocal
 export const aCamel = (fila) =>
   Object.fromEntries(
@@ -36,6 +40,17 @@ export function normalizarExpulsion(fila) {
   };
 }
 
+// Un equipo de la base, con la dirección pública de su escudo (o null). Se lee con select('*') para que
+// ande aunque la migración 8 todavía no se haya corrido.
+export function normalizarEquipo(fila, direccionEscudo) {
+  return {
+    id: fila.id,
+    zonaId: fila.zona_id,
+    nombre: fila.nombre,
+    escudo: fila.escudo ? direccionEscudo(fila.escudo) : null,
+  };
+}
+
 /**
  * Lo que recibe el panel: lo público más el delegado de cada equipo y las expulsiones.
  * La usa también la base en memoria de la simulación, para que devuelva lo mismo.
@@ -55,9 +70,10 @@ export function armarDatosAdmin(publico, { delegados, expulsiones, tarjetas, mov
   };
 }
 
-export function crearRepositorioSupabase({ url, clave }) {
+// crearCliente: el de supabase-js; las pruebas pasan uno falso para revisar los pedidos sin red
+export function crearRepositorioSupabase({ url, clave, crearCliente = createClient }) {
   return function crearRepositorio(token) {
-    const cliente = createClient(url, clave, {
+    const cliente = crearCliente(url, clave, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       global: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
     });
@@ -68,11 +84,20 @@ export function crearRepositorioSupabase({ url, clave }) {
       return data;
     }
 
+    // Dirección pública de un escudo del bucket (se arma sin pedirle nada a Supabase)
+    const direccionEscudo = (archivo) => cliente.storage.from(BUCKET_ESCUDOS).getPublicUrl(archivo).data.publicUrl;
+
+    // El archivo del escudo que tiene hoy el equipo (o null)
+    async function escudoGuardado(equipoId) {
+      const fila = await ejecutar(cliente.from('equipos').select('*').eq('id', equipoId).single());
+      return fila.escudo ?? null;
+    }
+
     async function leerPublico() {
       const [categorias, zonas, equipos, tablaInicial, partidos, configuracion] = await Promise.all([
         ejecutar(cliente.from('categorias').select('id, nombre, orden').order('orden')),
         ejecutar(cliente.from('zonas').select('id, categoria_id, nombre').order('id')),
-        ejecutar(cliente.from('equipos').select('id, zona_id, nombre').order('id')),
+        ejecutar(cliente.from('equipos').select('*').order('id')),
         ejecutar(cliente.from('tabla_inicial').select('equipo_id, pj, pg, pe, pp, gf, gc')),
         ejecutar(
           cliente
@@ -88,7 +113,7 @@ export function crearRepositorioSupabase({ url, clave }) {
       return {
         categorias,
         zonas: zonas.map(aCamel),
-        equipos: equipos.map(aCamel),
+        equipos: equipos.map((e) => normalizarEquipo(e, direccionEscudo)),
         tablaInicial: tablaInicial.map(aCamel),
         partidos: partidos.map(normalizarPartido),
         configuracion: aCamel(configuracion),
@@ -178,6 +203,31 @@ export function crearRepositorioSupabase({ url, clave }) {
 
       async guardarDelegado(fila) {
         await ejecutar(cliente.from('delegados').upsert(fila, { onConflict: 'equipo_id' }));
+      },
+
+      // Sube el escudo nuevo, lo guarda en el equipo y borra el anterior. Si no se puede guardar en el
+      // equipo, borra el archivo recién subido. Si falla el borrado del viejo, sobra un archivo y nada más.
+      async subirEscudo(equipoId, { bytes, tipo, extension }) {
+        const anterior = await escudoGuardado(equipoId);
+        const archivo = `equipo-${equipoId}-${Date.now()}.${extension}`;
+        const escudos = cliente.storage.from(BUCKET_ESCUDOS);
+        await ejecutar(escudos.upload(archivo, bytes, { contentType: tipo, cacheControl: UN_ANIO, upsert: false }));
+        try {
+          // Con .single(), si no se actualiza ninguna fila es un error (y no un "guardado" falso)
+          await ejecutar(cliente.from('equipos').update({ escudo: archivo }).eq('id', equipoId).select('id').single());
+        } catch (error) {
+          await escudos.remove([archivo]);
+          throw error;
+        }
+        if (anterior) await escudos.remove([anterior]);
+        return { ok: true };
+      },
+
+      async quitarEscudo(equipoId) {
+        const anterior = await escudoGuardado(equipoId);
+        await ejecutar(cliente.from('equipos').update({ escudo: null }).eq('id', equipoId).select('id').single());
+        if (anterior) await cliente.storage.from(BUCKET_ESCUDOS).remove([anterior]);
+        return { ok: true };
       },
     };
   };

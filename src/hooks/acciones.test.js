@@ -92,6 +92,21 @@ describe('acciones del panel', () => {
     expect(recargar).toHaveBeenCalled();
     expect(avisos).toEqual([['ok', 'Pago guardado.']]);
   });
+
+  it('sube y quita el escudo de un equipo, vuelve a pedir los datos y avisa', async () => {
+    const { acciones, avisos, recargar, cliente } = armar();
+    cliente.subirEscudo = vi.fn(async () => ({ ok: true }));
+    cliente.quitarEscudo = vi.fn(async () => ({ ok: true }));
+    expect(await acciones.subirEscudo(4, 'data:image/png;base64,AA', 'Escudo guardado en BRANCA.')).toEqual({ ok: true });
+    expect(cliente.subirEscudo).toHaveBeenCalledWith('tok', 4, 'data:image/png;base64,AA');
+    await acciones.quitarEscudo(4, 'Escudo quitado de BRANCA.');
+    expect(cliente.quitarEscudo).toHaveBeenCalledWith('tok', 4);
+    expect(recargar).toHaveBeenCalledTimes(2);
+    expect(avisos).toEqual([
+      ['ok', 'Escudo guardado en BRANCA.'],
+      ['ok', 'Escudo quitado de BRANCA.'],
+    ]);
+  });
 });
 
 describe('pago de un partido en dos partes', () => {

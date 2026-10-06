@@ -1,7 +1,7 @@
 /**
  * Prueba la base completa en un Postgres local (PGlite): esquema.sql, datos-iniciales.sql y las
  * migraciones, en el orden en que se corren en Supabase. Simula lo que Supabase trae de fábrica:
- * el esquema auth, auth.uid() y los roles de la API (anon y authenticated).
+ * el esquema auth, auth.uid(), los roles de la API (anon y authenticated) y las tablas de Storage.
  * Las pruebas comparten la base y corren en orden: cada una parte de lo que dejó la anterior.
  */
 
@@ -47,6 +47,21 @@ beforeAll(async () => {
     alter default privileges in schema public grant all on tables to anon, authenticated;
     alter default privileges in schema public grant all on sequences to anon, authenticated;
     alter default privileges in schema public grant all on functions to anon, authenticated;
+    -- Storage, como viene en Supabase: buckets y archivos, con RLS en los archivos
+    create schema storage;
+    create table storage.buckets (
+      id text primary key, name text not null, public boolean not null default false,
+      file_size_limit bigint, allowed_mime_types text[]
+    );
+    create table storage.objects (
+      id uuid primary key default gen_random_uuid(),
+      bucket_id text references storage.buckets (id),
+      name text not null
+    );
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to anon, authenticated;
+    grant select on storage.buckets to anon, authenticated;
+    grant select, insert, update, delete on storage.objects to anon, authenticated;
   `);
   await db.exec(leer('./esquema.sql'));
   await db.exec(leer('./datos-iniciales.sql'));
@@ -62,6 +77,7 @@ beforeAll(async () => {
   await db.exec(leer('./migracion-5-control.sql'));
   await db.exec(leer('./migracion-6-visitas.sql'));
   await db.exec(leer('./migracion-7-veedores.sql'));
+  await db.exec(leer('./migracion-8-escudos.sql'));
 }, 60000);
 
 describe('carga inicial', () => {
@@ -514,6 +530,56 @@ describe('migración 7: postergados que se recuperan en un día especial', () =>
       ['postergado = false', reprogramado],
     ]) {
       expect((await comoVeedor(`update public.partidos set ${cambio} where id = ${id}`)).error, cambio).toBe(NO);
+    }
+  });
+});
+describe('migración 8: escudos', () => {
+  const comoSuper = (consulta) => como('authenticated', SUPER, consulta);
+  const subir = (nombre) => `insert into storage.objects (bucket_id, name) values ('escudos', '${nombre}') returning name`;
+  const borrar = (nombre) => `delete from storage.objects where name = '${nombre}' returning name`;
+  const NO = 'Los escudos los cambia solo el superadmin.';
+
+  it('crea el bucket público de escudos: hasta 100 KB, WebP o PNG', async () => {
+    expect(
+      await uno(`select public, file_size_limit::int as limite, allowed_mime_types as tipos
+        from storage.buckets where id = 'escudos'`)
+    ).toEqual({ public: true, limite: 102400, tipos: ['image/webp', 'image/png'] });
+  });
+
+  it('solo el superadmin sube y borra escudos', async () => {
+    expect((await comoSuper(subir('equipo-1-1.webp'))).filas).toEqual([{ name: 'equipo-1-1.webp' }]);
+    expect((await comoAdmin(subir('equipo-1-2.webp'))).error).toMatch(/row-level security/);
+    expect((await como('anon', null, subir('equipo-1-3.webp'))).error).toMatch(/row-level security/);
+    expect((await comoAdmin(borrar('equipo-1-1.webp'))).filas).toEqual([]);
+    expect((await comoSuper(borrar('equipo-1-1.webp'))).filas).toEqual([{ name: 'equipo-1-1.webp' }]);
+  });
+
+  it('solo el superadmin cambia el escudo de un equipo; el admin sigue cambiando el nombre', async () => {
+    expect((await comoAdmin(`update public.equipos set escudo = 'equipo-1-5.webp' where id = 1`)).error).toBe(NO);
+    const puesto = await comoSuper(`update public.equipos set escudo = 'equipo-1-5.webp' where id = 1 returning escudo`);
+    expect(puesto.filas).toEqual([{ escudo: 'equipo-1-5.webp' }]);
+    expect((await comoAdmin(`update public.equipos set nombre = nombre where id = 1`)).error).toBeUndefined();
+    expect((await comoAdmin(`update public.equipos set escudo = null where id = 1`)).error).toBe(NO);
+  });
+
+  it('tampoco se crea un equipo con escudo si no es el superadmin', async () => {
+    const crear = (escudo) => `insert into public.equipos (zona_id, nombre, escudo)
+      values ((select min(id) from public.zonas), 'PRUEBA', ${escudo}) returning id`;
+    expect((await comoAdmin(crear(`'equipo-1-9.webp'`))).error).toBe(NO);
+    const sinEscudo = await comoAdmin(crear('null'));
+    expect(sinEscudo.error).toBeUndefined();
+    await comoAdmin(`delete from public.equipos where id = ${sinEscudo.filas[0].id}`);
+  });
+
+  it('desde el SQL Editor (rol postgres, sin sesión) se puede corregir un escudo', async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    expect(await uno(`update public.equipos set escudo = null where id = 1 returning escudo`)).toEqual({ escudo: null });
+  });
+
+  it('el escudo es solo un nombre de archivo con versión', async () => {
+    for (const malo of ['https://otro.com/logo.png', 'equipo-1.webp', 'equipo-1-5.gif']) {
+      const cambio = await comoSuper(`update public.equipos set escudo = '${malo}' where id = 1`);
+      expect(cambio.error, malo).toMatch(/equipos_escudo_check/);
     }
   });
 });

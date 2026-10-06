@@ -215,6 +215,47 @@ describe('panel de administración', () => {
     const db = { ...crearDatosEjemplo(), categorias: [], zonas: [], equipos: [], partidos: [], expulsiones: [] };
     expect(dibujar('resultados', { db })).toContain('Todavía no hay categorías cargadas');
   });
+
+  it('la tabla del panel muestra los escudos si algún equipo de la zona tiene', () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A1' ? { ...e, escudo: 'https://x/e.webp' } : e));
+    expect(dibujar('resultados', { db })).toContain(
+      'title="Libre A1"><span class="equipo-celda"><img class="escudo" src="https://x/e.webp"'
+    );
+  });
+
+  it('en Partidos, los renglones llevan el escudo arriba del nombre si algún equipo de la fecha tiene', () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A1' ? { ...e, escudo: 'https://x/e.webp' } : e));
+    const html = dibujar('resultados', { db });
+    expect(html).toContain('class="renglon__boton renglon__boton--escudos"');
+    expect(html).toMatch(/<img class="escudo" src="https:\/\/x\/e\.webp"[^>]*\/><span class="renglon__nombre">Libre A1<\/span>/);
+  });
+
+  it('sin escudos, los renglones de Partidos se ven como siempre', () => {
+    const html = dibujar('resultados');
+    expect(html).not.toContain('renglon__boton--escudos');
+    expect(html).not.toContain('renglon__nombre');
+  });
+
+  it('en Equipos, el superadmin ve el bloque Escudo y el admin no', () => {
+    const db = crearDatosEjemplo();
+    const superadmin = dibujar('equipos', { db: { ...db, rol: 'superadmin' } });
+    expect(superadmin).toContain('Subir escudo');
+    expect(superadmin).toContain('accept="image/png,image/jpeg,image/webp"');
+    expect(dibujar('equipos', { db: { ...db, rol: 'admin' } })).not.toContain('bloque-escudo');
+  });
+
+  it('un equipo con escudo lo muestra en su tarjeta, y el superadmin lo puede cambiar o quitar', () => {
+    const db = { ...crearDatosEjemplo(), rol: 'superadmin' };
+    db.equipos = db.equipos.map((e, i) => (i === 0 ? { ...e, escudo: 'https://x/e.webp' } : e));
+    const html = dibujar('equipos', { db });
+    expect(html).toContain(
+      '<span class="equipo-form__escudo equipo-form__escudo--imagen"><img class="escudo" src="https://x/e.webp"'
+    );
+    expect(html).toContain('Cambiar escudo');
+    expect(html).toContain('>Quitar</button>');
+  });
 });
 
 describe('pestaña Control', () => {

@@ -4,11 +4,13 @@
 
 import { useState } from 'react';
 import { CampoTexto } from '../../componentes/CampoTexto.jsx';
+import { Escudo } from '../../componentes/Escudo.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { FiltroCategoriaZona } from '../../componentes/Segmentado.jsx';
 import { equiposDeZona } from '../../logica/consultas.js';
 import { soloDigitos } from '../../logica/expulsiones.js';
 import { validarTelefono } from '../../logica/validaciones.js';
+import { BloqueEscudo } from './BloqueEscudo.jsx';
 
 export function AdminEquipos({ db, acciones, filtro }) {
   const equipos = equiposDeZona(db.equipos, filtro.zonaId);
@@ -22,14 +24,19 @@ export function AdminEquipos({ db, acciones, filtro }) {
       </div>
       <div className="equipos">
         {equipos.map((e) => (
-          <EditorEquipo key={`${e.id}|${e.nombre}|${e.delegado}|${e.telefonoDelegado}`} equipo={e} acciones={acciones} />
+          <EditorEquipo
+            key={`${e.id}|${e.nombre}|${e.delegado}|${e.telefonoDelegado}`}
+            equipo={e}
+            acciones={acciones}
+            superadmin={db.rol === 'superadmin'}
+          />
         ))}
       </div>
     </>
   );
 }
 
-function EditorEquipo({ equipo, acciones }) {
+function EditorEquipo({ equipo, acciones, superadmin }) {
   const delegadoGuardado = equipo.delegado || '';
   const telefonoGuardado = equipo.telefonoDelegado || '';
   const [nombre, setNombre] = useState(equipo.nombre);
@@ -63,11 +70,12 @@ function EditorEquipo({ equipo, acciones }) {
   return (
     <form className="panel" onSubmit={guardar} noValidate aria-labelledby={`${idBase}-titulo`}>
       <div className="equipo-form__cab">
-        <span className="equipo-form__escudo">
-          <Icono nombre="camiseta" />
+        <span className={`equipo-form__escudo${equipo.escudo ? ' equipo-form__escudo--imagen' : ''}`}>
+          {equipo.escudo ? <Escudo equipo={equipo} /> : <Icono nombre="camiseta" />}
         </span>
         <h3 id={`${idBase}-titulo`} className="equipo-form__titulo">{equipo.nombre}</h3>
       </div>
+      {superadmin && <BloqueEscudo equipo={equipo} acciones={acciones} />}
       <CampoTexto
         id={`${idBase}-nombre`}
         etiqueta="Nombre del equipo"

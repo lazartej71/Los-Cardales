@@ -38,6 +38,19 @@
 }
 .pos--1 { background: var(--oro); color: var(--sobre-oro); }
 .pos--2 { background: var(--naranja); color: var(--sobre-marca); }
+/* Escudos: la imagen tal cual (los logos con fondo propio ya vienen dentro de un círculo blanco),
+   o las iniciales en un círculo si el equipo todavía no tiene */
+.escudo { flex: none; width: 28px; height: 28px; }
+img.escudo { display: block; object-fit: contain; }
+.escudo--iniciales {
+  border-radius: 50%;
+  display: inline-grid; place-items: center;
+  font-family: var(--fuente); font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
+  background: var(--superficie-2); color: var(--tinta-suave); border: 1px solid var(--linea-fuerte);
+}
+.equipo-celda { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.equipo-celda__nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 480px) { .tabla--escudos .col-equipo { max-width: 190px; } }
 /* Celular: la tabla entra entera, sin scroll de costado. El equipo ocupa lo que sobra y,
    si el nombre no entra, se corta con "…"; los números se achican un poco. */
 @media (max-width: 479px) {
@@ -94,6 +107,13 @@ summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
 .partido-linea__equipo--local { text-align: right; }
 .es-perdedor { color: var(--tinta-suave); font-weight: 500; }
 .partido-linea__centro { display: grid; justify-items: center; gap: 4px; }
+/* Fixture con escudos: el escudo arriba del nombre, así el nombre conserva todo el ancho */
+.partido-linea--escudos { align-items: start; }
+.partido-linea--escudos .partido-linea__centro { align-self: center; }
+.partido-linea--escudos .partido-linea__equipo {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center;
+}
+.equipo-nombre { min-width: 0; max-width: 100%; }
 .marcador {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-width: 66px; padding: 4px 10px; border-radius: 8px;
@@ -116,6 +136,8 @@ summary.fecha-bloque__cab::-webkit-details-marker { display: none; }
 .resultado__fila + .resultado__fila { border-top: 1px solid var(--linea); }
 .resultado__equipo { min-width: 0; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
 .resultado__fila--perdedor .resultado__equipo { color: var(--tinta-suave); font-weight: 500; }
+/* Resultados con escudos: el escudo antes del nombre */
+.resultado--escudos .resultado__equipo { display: flex; align-items: center; gap: 10px; }
 .resultado__goles {
   flex: none; display: grid; place-items: center; width: 44px; height: 42px; border-radius: 7px;
   background: var(--marcador); color: var(--sobre-marcador);

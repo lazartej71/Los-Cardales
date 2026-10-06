@@ -20,6 +20,7 @@ import {
   validarCambioMovimiento,
   validarCambioPartido,
   validarConfiguracion,
+  validarEscudo,
   validarExpulsionNueva,
   validarMovimientoNuevo,
   validarPartidoNuevo,
@@ -27,6 +28,7 @@ import {
 
 const ERROR_INTERNO = 'Algo falló en el servidor. Probá de nuevo en un rato.';
 const NO_PUEDE_VEEDOR = 'Tu cuenta de veedor no puede hacer esto.';
+const SOLO_SUPERADMIN_ESCUDOS = 'Los escudos los cambia solo el superadmin.';
 
 // Cuerpo JSON del pedido, o null si no vino o está mal formado
 async function leerCuerpo(c) {
@@ -97,6 +99,12 @@ export function crearApp({ crearRepositorio }) {
   // Lo que un veedor no usa nunca (crear o borrar partidos, sanciones, equipos, ajustes)
   const sinVeedores = async (c, next) => {
     if (esVeedor(c)) return c.json({ error: NO_PUEDE_VEEDOR }, 403);
+    await next();
+  };
+
+  // Los escudos los sube, cambia y quita solo el superadmin
+  const soloSuperadmin = async (c, next) => {
+    if (c.get('rol') !== 'superadmin') return c.json({ error: SOLO_SUPERADMIN_ESCUDOS }, 403);
     await next();
   };
 
@@ -222,6 +230,23 @@ export function crearApp({ crearRepositorio }) {
       await repo.guardarDelegado(valor.delegado);
       return { ok: true };
     });
+  });
+
+  // Escudo de un equipo: llega ya achicado del navegador, como data:image/webp;base64,... (o PNG)
+  admin.put('/equipos/:id/escudo', soloSuperadmin, async (c) => {
+    const repo = c.get('repositorio');
+    const id = idDeRuta(c);
+    const resultado = validarEscudo(await repo.leerPublico(), id, await leerCuerpo(c));
+    return aplicar(c, resultado, (valor) => repo.subirEscudo(id, valor));
+  });
+
+  admin.delete('/equipos/:id/escudo', soloSuperadmin, async (c) => {
+    const repo = c.get('repositorio');
+    const id = idDeRuta(c);
+    if (!(await repo.leerPublico()).equipos.some((e) => e.id === id)) {
+      return c.json({ error: 'Ese equipo no existe.' }, 404);
+    }
+    return c.json(await repo.quitarEscudo(id));
   });
 
   admin.patch('/configuracion', sinVeedores, async (c) => {

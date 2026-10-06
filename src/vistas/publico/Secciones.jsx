@@ -2,10 +2,12 @@
  * Secciones de la vista pública: posiciones, fixture y resultados por fecha.
  */
 
+import { Escudo } from '../../componentes/Escudo.jsx';
 import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
 import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
+import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { textoDia, textoLugar } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 
@@ -22,6 +24,9 @@ function NotaFechaInicial({ hayPostergados }) {
 function EtiquetaPendiente({ partido }) {
   return partido.postergado ? <Pill tipo="postergado">Postergado</Pill> : <Pill tipo="pendiente">Pendiente</Pill>;
 }
+
+// Si algún equipo de estos partidos tiene escudo: si no, la lista se ve como siempre
+const conEscudosEn = (partidos, info) => hayEscudos(equiposDePartidos(partidos, info.equipoDe));
 
 export function SeccionPosiciones({ activa, filas, criterios, partidos, conTablaInicial }) {
   const fechasJugadas = partidos.filter(tieneResultado).map((p) => p.fecha);
@@ -53,6 +58,7 @@ function reprogramadosPorJugar(fechas) {
 // postergados que se recuperan en un día especial (no son una fecha más)
 export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial }) {
   const reprogramados = reprogramadosPorJugar(fechas);
+  const escudosReprogramados = conEscudosEn(reprogramados, info);
   return (
     <section className={`seccion seccion--fixture${activa ? ' seccion--activa' : ''}`} aria-labelledby="titulo-fixture">
       <div className="seccion__cab">
@@ -69,7 +75,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
             {reprogramados.map((p) => (
               <li key={p.id}>
                 <p className="partido-origen">{`Postergado de la fecha ${p.fecha}`}</p>
-                <LineaPartido partido={p} info={info} />
+                <LineaPartido partido={p} info={info} conEscudos={escudosReprogramados} />
                 <p className="lugar">
                   <strong>{textoLugar(p)}</strong>
                 </p>
@@ -81,6 +87,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
       {fechas.map(({ fecha, partidos }) => {
         const esFechaInicial = fecha === 1 && conTablaInicial;
         const estado = esFechaInicial ? 'jugada' : estadoFecha(partidos);
+        const conEscudos = conEscudosEn(partidos, info);
         return (
           <details key={fecha} className="fecha-bloque" open={fecha === fechaEnJuego}>
             <summary className="fecha-bloque__cab">
@@ -92,7 +99,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
               <ul className="lista-partidos">
                 {partidos.map((p) => (
                   <li key={p.id}>
-                    <LineaPartido partido={p} info={info} />
+                    <LineaPartido partido={p} info={info} conEscudos={conEscudos} />
                     <EtiquetaLugar partido={p} />
                   </li>
                 ))}
@@ -136,14 +143,28 @@ function NombreEquipo({ id, info }) {
   );
 }
 
+// El nombre del equipo y, si la lista tiene escudos, su escudo. Los estilos lo ponen arriba del nombre
+// en el fixture y al lado en los resultados.
+function EquipoConEscudo({ id, info, conEscudos }) {
+  if (!conEscudos) return <NombreEquipo id={id} info={info} />;
+  return (
+    <>
+      <Escudo equipo={info.equipoDe(id)} />
+      <span className="equipo-nombre">
+        <NombreEquipo id={id} info={info} />
+      </span>
+    </>
+  );
+}
+
 // Una línea del fixture: local, marcador (o "vs") y visitante
-function LineaPartido({ partido, info }) {
+function LineaPartido({ partido, info, conEscudos = false }) {
   const jugado = tieneResultado(partido);
   const diferencia = jugado ? partido.golesLocal - partido.golesVisitante : 0;
   return (
-    <div className="partido-linea">
+    <div className={conEscudos ? 'partido-linea partido-linea--escudos' : 'partido-linea'}>
       <span className={`partido-linea__equipo partido-linea__equipo--local${diferencia < 0 ? ' es-perdedor' : ''}`}>
-        <NombreEquipo id={partido.localId} info={info} />
+        <EquipoConEscudo id={partido.localId} info={info} conEscudos={conEscudos} />
       </span>
       <span className="partido-linea__centro">
         <Marcador partido={partido} />
@@ -151,7 +172,7 @@ function LineaPartido({ partido, info }) {
         {partido.ausente && <Pill tipo="wo">W.O.</Pill>}
       </span>
       <span className={`partido-linea__equipo${diferencia > 0 ? ' es-perdedor' : ''}`}>
-        <NombreEquipo id={partido.visitanteId} info={info} />
+        <EquipoConEscudo id={partido.visitanteId} info={info} conEscudos={conEscudos} />
       </span>
     </div>
   );
@@ -162,6 +183,7 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
   const jugados = actual ? actual.partidos.filter(tieneResultado) : [];
   const goles = jugados.reduce((total, p) => total + p.golesLocal + p.golesVisitante, 0);
   const esFechaInicial = actual && actual.fecha === 1 && conTablaInicial;
+  const conEscudos = actual ? conEscudosEn(actual.partidos, info) : false;
 
   let resumen = 'Esta fecha todavía no se jugó.';
   if (!actual) resumen = 'Todavía no hay partidos programados.';
@@ -194,7 +216,7 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
       {actual && actual.partidos.length > 0 && (
         <div className="resultados-lista">
           {actual.partidos.map((p) => (
-            <TarjetaResultado key={p.id} partido={p} info={info} />
+            <TarjetaResultado key={p.id} partido={p} info={info} conEscudos={conEscudos} />
           ))}
         </div>
       )}
@@ -203,7 +225,7 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
 }
 
 // Resultado con estilo de tablero: un renglón por equipo con sus goles
-function TarjetaResultado({ partido, info }) {
+function TarjetaResultado({ partido, info, conEscudos = false }) {
   const jugado = tieneResultado(partido);
   const diferencia = jugado ? partido.golesLocal - partido.golesVisitante : 0;
   const renglones = [
@@ -218,11 +240,11 @@ function TarjetaResultado({ partido, info }) {
       ? 'Terminó empatado'
       : `Ganó ${ganador}`;
   return (
-    <article className={`resultado${jugado ? '' : ' resultado--pendiente'}`}>
+    <article className={`resultado${jugado ? '' : ' resultado--pendiente'}${conEscudos ? ' resultado--escudos' : ''}`}>
       {renglones.map((r) => (
         <div key={r.lado} className={`resultado__fila${jugado && r.pierde ? ' resultado__fila--perdedor' : ''}`}>
           <span className="resultado__equipo">
-            <NombreEquipo id={r.id} info={info} />
+            <EquipoConEscudo id={r.id} info={info} conEscudos={conEscudos} />
           </span>
           <span className="resultado__goles">{jugado ? r.goles : '–'}</span>
         </div>

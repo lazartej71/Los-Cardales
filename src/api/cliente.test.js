@@ -58,4 +58,18 @@ describe('cliente de la API', () => {
   it('ya no carga amarillas', () => {
     expect(api.crearTarjeta).toBeUndefined();
   });
+
+  it('sube y quita el escudo de un equipo', async () => {
+    const fetchFalso = vi.fn(async () => respuestaJson(200, { ok: true }));
+    vi.stubGlobal('fetch', fetchFalso);
+    await api.subirEscudo('tok', 3, 'data:image/webp;base64,AAAA');
+    await api.quitarEscudo('tok', 3);
+    const [[urlSubir, subir], [urlQuitar, quitar]] = fetchFalso.mock.calls;
+    expect([urlSubir, subir.method, JSON.parse(subir.body)]).toEqual([
+      '/api/admin/equipos/3/escudo',
+      'PUT',
+      { imagen: 'data:image/webp;base64,AAAA' },
+    ]);
+    expect([urlQuitar, quitar.method, quitar.body]).toEqual(['/api/admin/equipos/3/escudo', 'DELETE', undefined]);
+  });
 });

@@ -227,6 +227,31 @@
   background: var(--marca-suave); color: var(--marca-fuerte);
 }
 .equipo-form__titulo { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.equipo-form__escudo--imagen { background: transparent; }
+.equipo-form__escudo--imagen .escudo { width: 36px; height: 36px; }
+
+/* Escudo del equipo (solo el superadmin): elegir la imagen, ver cómo queda y guardarla */
+.bloque-escudo {
+  display: grid; gap: 8px; padding: 12px;
+  background: var(--superficie-2); border: 1px dashed var(--linea-fuerte); border-radius: var(--radio-chico);
+}
+.bloque-escudo__titulo {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tinta-suave);
+}
+.bloque-escudo__ayuda { font-size: 13px; color: var(--tinta-suave); }
+.bloque-escudo__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.bloque-escudo__previa { display: flex; align-items: center; gap: 14px; }
+.bloque-escudo__grande {
+  flex: none; width: 88px; height: 88px; object-fit: contain;
+}
+.bloque-escudo__peso { font-size: 14px; color: var(--tinta-2); }
+.bloque-escudo__peso strong { color: var(--tinta); }
+.bloque-escudo__fila {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-width: 0;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio-chico);
+  font-weight: 600; color: var(--tinta);
+}
+.bloque-escudo__fila .pos { width: 22px; height: 22px; font-size: 14px; }
 
 /* Configuración */
 .fila-form { display: grid; gap: 10px; }
@@ -381,6 +406,13 @@
 .renglon__detalle { font-size: 13.5px; font-weight: 600; color: var(--tinta-suave); }
 .renglon__estado { flex-wrap: wrap; }
 .renglon__lugar { color: var(--marca-fuerte); }
+/* Con escudos: cada escudo arriba de su nombre; el marcador, la flecha y el estado, al medio */
+.renglon__boton--escudos { align-items: start; }
+.renglon__boton--escudos > :not(.renglon__equipo) { align-self: center; }
+.renglon__boton--escudos .renglon__equipo {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center;
+}
+.renglon__nombre { max-width: 100%; }
 .renglon__editor { padding: 0 6px 6px; }
 .renglon__editor .editor { border: 0; background: none; padding: 8px; }
 

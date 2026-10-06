@@ -7,6 +7,7 @@
 
 import { CRITERIOS } from '../src/datos/constantes.js';
 import { pagosDePartido } from '../src/logica/cuentas.js';
+import { PESO_MAXIMO_ESCUDO } from '../src/logica/escudos.js';
 import { nombrePredio, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
@@ -337,6 +338,34 @@ export function validarCambioEquipo(datos, equipoId, cuerpo) {
     return fallo('El WhatsApp tiene que tener entre 10 y 15 números, con código de país. Por ejemplo: 5491123456789.');
   }
   return { valor: { equipo: { nombre }, delegado: { equipo_id: equipoId, nombre: delegado, telefono } } };
+}
+
+const ESCUDO_INVALIDO = 'El escudo tiene que ser una imagen WebP o PNG de hasta 100 KB.';
+const FIRMA_PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+// Qué imagen es según sus primeros bytes (no según lo que dice el texto): 'image/png', 'image/webp' o null
+function tipoDeImagen(bytes) {
+  if (FIRMA_PNG.every((byte, i) => bytes[i] === byte)) return 'image/png';
+  const letras = (desde, hasta) => String.fromCharCode(...bytes.slice(desde, hasta));
+  if (bytes.length >= 12 && letras(0, 4) === 'RIFF' && letras(8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
+// El escudo nuevo de un equipo, ya achicado en el navegador: { imagen: 'data:image/webp;base64,...' } (o PNG)
+export function validarEscudo(datos, equipoId, cuerpo) {
+  if (!datos.equipos.some((e) => e.id === equipoId)) return fallo('Ese equipo no existe.', 404);
+  const imagen = typeof cuerpo?.imagen === 'string' ? cuerpo.imagen : '';
+  const partes = /^data:(image\/(?:webp|png));base64,([A-Za-z0-9+/]+={0,2})$/.exec(imagen);
+  if (!partes) return fallo(ESCUDO_INVALIDO);
+  let bytes;
+  try {
+    bytes = Uint8Array.from(atob(partes[2]), (letra) => letra.charCodeAt(0));
+  } catch {
+    return fallo(ESCUDO_INVALIDO);
+  }
+  const tipo = partes[1];
+  if (bytes.length > PESO_MAXIMO_ESCUDO || tipoDeImagen(bytes) !== tipo) return fallo(ESCUDO_INVALIDO);
+  return { valor: { imagen, bytes, tipo, extension: tipo === 'image/png' ? 'png' : 'webp' } };
 }
 
 export function validarConfiguracion(cuerpo) {

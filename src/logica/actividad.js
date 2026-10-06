@@ -63,7 +63,11 @@ export function describirActividad(entrada, db) {
     const como = fila.metodo ? ` (${fila.metodo})` : '';
     return `${verbo} ${que} de ${formatearPesos(fila.monto)} de ${equipo}${como}`;
   }
-  if (tabla === 'equipos') return `Cambió los datos de ${fila.nombre ?? 'un equipo'}`;
+  if (tabla === 'equipos') {
+    const nombre = fila.nombre ?? 'un equipo';
+    if (tiene(cambios, ['escudo'])) return fila.escudo ? `Cambió el escudo de ${nombre}` : `Quitó el escudo de ${nombre}`;
+    return `Cambió los datos de ${nombre}`;
+  }
   if (tabla === 'delegados') return `Cambió el delegado de ${equipo}`;
   if (tabla === 'configuracion') {
     const que = (cambios || []).map((c) => ETIQUETA_AJUSTE[c]).filter(Boolean);
