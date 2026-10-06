@@ -38,13 +38,12 @@
 }
 .pos--1 { background: var(--oro); color: var(--sobre-oro); }
 .pos--2 { background: var(--naranja); color: var(--sobre-marca); }
-/* Escudos: la imagen en una chapita blanca, o las iniciales si el equipo todavía no tiene */
-.escudo { flex: none; width: 28px; height: 28px; border-radius: 50%; }
-img.escudo {
-  display: block; padding: 3px; object-fit: contain;
-  background: var(--chapita); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
-}
+/* Escudos: la imagen tal cual (los logos con fondo propio ya vienen dentro de un círculo blanco),
+   o las iniciales en un círculo si el equipo todavía no tiene */
+.escudo { flex: none; width: 28px; height: 28px; }
+img.escudo { display: block; object-fit: contain; }
 .escudo--iniciales {
+  border-radius: 50%;
   display: inline-grid; place-items: center;
   font-family: var(--fuente); font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; line-height: 1;
   background: var(--superficie-2); color: var(--tinta-suave); border: 1px solid var(--linea-fuerte);

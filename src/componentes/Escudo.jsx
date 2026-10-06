@@ -1,5 +1,6 @@
 /**
- * Escudo de un equipo en una chapita blanca, o sus iniciales si todavía no tiene.
+ * Escudo de un equipo (los logos con fondo propio ya vienen dentro de un círculo blanco), o sus iniciales
+ * si todavía no tiene.
  * Es decorativo: el nombre del equipo siempre está al lado.
  */
 

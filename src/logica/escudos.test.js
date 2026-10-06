@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { equiposDePartidos, formatearPeso, hayEscudos, iniciales, medidaFinal, recorteDeContenido } from './escudos.js';
+import {
+  enCirculo,
+  equiposDePartidos,
+  formatearPeso,
+  hayEscudos,
+  iniciales,
+  medidaFinal,
+  recorteDeContenido,
+  tieneTransparencia,
+} from './escudos.js';
 
 // Imagen de prueba (como ImageData): ancho × alto píxeles de `fondo`, con un rectángulo de `tinta`
 function imagen(ancho, alto, fondo, tinta, { x, y, w, h }) {
@@ -89,5 +98,22 @@ describe('preparar la imagen', () => {
     expect(formatearPeso(9 * 1024)).toBe('9 KB');
     expect(formatearPeso(300)).toBe('1 KB');
     expect(formatearPeso(2.4 * 1024 * 1024)).toBe('2,4 MB');
+  });
+});
+
+describe('logos con fondo propio', () => {
+  it('un logo sin transparencia trae fondo propio (un JPG o un PNG con fondo blanco)', () => {
+    expect(tieneTransparencia(imagen(6, 4, TRANSPARENTE, ROJO, { x: 1, y: 1, w: 3, h: 2 }))).toBe(true);
+    expect(tieneTransparencia(imagen(6, 4, BLANCO, ROJO, { x: 1, y: 1, w: 3, h: 2 }))).toBe(false);
+  });
+
+  it('entra entero en el círculo: su diagonal mide lo que el círculo, y queda centrado', () => {
+    const alto = enCirculo(300, 400);
+    for (const [clave, valor] of Object.entries({ ancho: 76.8, alto: 102.4, x: 25.6, y: 12.8 })) {
+      expect(alto[clave], clave).toBeCloseTo(valor, 6);
+    }
+    const cuadrado = enCirculo(100, 100);
+    expect(cuadrado.ancho).toBeCloseTo(90.51, 2);
+    expect(cuadrado.x).toBeCloseTo(18.75, 2);
   });
 });

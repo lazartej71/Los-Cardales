@@ -10,7 +10,7 @@ Que la tabla de posiciones, el fixture, los resultados y los partidos del panel 
 
 | Tema | Decisión |
 | --- | --- |
-| Estilo | **Chapita**: el escudo va dentro de un círculo blanco, así se ven parejos aunque el logo tenga fondo blanco o formas distintas. |
+| Estilo | **Suelto**: el escudo tal cual, sin círculo (2026-10-06, al ver los logos reales: 80 de 85 tienen fondo transparente). Los logos con fondo propio (sin transparencia) se preparan dentro de un círculo blanco, así no se ve un cuadrado. Al principio se había elegido "chapita" (todos en un círculo blanco). |
 | Dónde se ve | Vista pública: **Posiciones** (entre la posición y el nombre), **Fixture** (escudo **arriba del nombre**) y **Resultados** (antes del nombre, en cada renglón). Panel y **Veedores**: los **renglones de partidos**, también con el escudo **arriba del nombre**, y las **tablas** del panel. |
 | Quién los carga | **Solo el superadmin**, desde el panel → **Equipos**. Franco ve Equipos como hoy, sin el bloque Escudo. |
 | Cómo se cargan | De a uno, con vista previa antes de guardar. No hay carga de varios juntos. |
@@ -18,11 +18,11 @@ Que la tabla de posiciones, el fixture, los resultados y los partidos del panel 
 
 ## Cómo se ve
 
-- **Posiciones** (vista pública y tablas del panel): chapita de 28 px en la celda del equipo, antes del nombre. El nombre se sigue cortando con "…" si no entra.
-- **Resultados** (vista pública): la misma chapita antes del nombre, en los dos renglones de cada partido.
-- **Fixture** (vista pública, con el bloque Postergados) y **renglones de partidos** (panel → Partidos, con su lista de Postergados, y la pantalla de Veedores): la chapita va **arriba del nombre**, centrada sobre él, y el nombre queda centrado debajo. Así los nombres conservan todo el ancho y se parten en renglones igual que hoy; los escudos de los dos equipos quedan a la misma altura y el marcador, centrado en el alto del partido. En la maqueta, con el escudo al lado, cerca de la mitad de los nombres pasaba a dos o tres renglones.
+- **Posiciones** (vista pública y tablas del panel): escudo de 28 px en la celda del equipo, antes del nombre. El nombre se sigue cortando con "…" si no entra.
+- **Resultados** (vista pública): el mismo escudo antes del nombre, en los dos renglones de cada partido.
+- **Fixture** (vista pública, con el bloque Postergados) y **renglones de partidos** (panel → Partidos, con su lista de Postergados, y la pantalla de Veedores): el escudo va **arriba del nombre**, centrada sobre él, y el nombre queda centrado debajo. Así los nombres conservan todo el ancho y se parten en renglones igual que hoy; los escudos de los dos equipos quedan a la misma altura y el marcador, centrado en el alto del partido. En la maqueta, con el escudo al lado, cerca de la mitad de los nombres pasaba a dos o tres renglones.
 - **Equipo sin escudo:** sus iniciales en un círculo del mismo tamaño, para que no quede despareja. Las iniciales son la primera letra de hasta dos palabras de 3 o más letras (BARRIO POLICIAL → BP, ALEX F.C → A). Si no hay ninguna palabra así, van las dos primeras letras del nombre.
-- **Lista sin escudos:** cada tabla o lista de partidos muestra chapitas (e iniciales para los que no tienen) solo si **algún equipo de esa lista** tiene escudo. Si no, se ve como hoy. Así, mientras se cargan, no aparecen de golpe 98 círculos con iniciales. Es por lista y no por zona porque la lista del veedor mezcla categorías.
+- **Lista sin escudos:** cada tabla o lista de partidos muestra escudos (e iniciales para los que no tienen) solo si **algún equipo de esa lista** tiene escudo. Si no, se ve como hoy. Así, mientras se cargan, no aparecen de golpe 98 círculos con iniciales. Es por lista y no por zona porque la lista del veedor mezcla categorías.
 - La imagen es decorativa (`alt=""`), porque el nombre está al lado. Lleva `width` y `height` para que la tabla no salte al cargar, y `loading="lazy"`.
 
 ## Cómo se carga (panel → Equipos)
@@ -40,8 +40,9 @@ En la tarjeta de cada equipo, debajo del título, el superadmin ve el bloque **E
 1. Acepta PNG, JPG o WebP de hasta 15 MB. Si no la puede abrir: "No pude abrir esa imagen. Probá con un PNG o un JPG."
 2. **Recorta los bordes vacíos:** saca las filas y columnas de los bordes que no tienen nada. Si la imagen tiene transparencia, "nada" es lo transparente (así no se come el aro blanco de un escudo). Si no tiene (un JPG), es lo casi blanco. Si no queda nada, usa la imagen entera.
 3. **La achica** para que el lado más largo mida 128 px, sin deformarla. Si es más chica, no la agranda.
-4. **La convierte** a WebP. Safari no sabe generar WebP y devuelve PNG; en ese caso se manda como PNG (pesa unos 15–30 KB, igual liviano).
-5. Si después de todo eso pesa más de 100 KB (no debería pasar con 128 px), avisa y no la sube.
+4. Si el logo **trae fondo propio** (no tiene transparencia), lo dibuja entero dentro de un círculo blanco de 128 px; las esquinas quedan transparentes.
+5. **La convierte** a WebP. Safari no sabe generar WebP y devuelve PNG; en ese caso se manda como PNG (pesa unos 15–30 KB, igual liviano).
+6. Si después de todo eso pesa más de 100 KB (no debería pasar con 128 px), avisa y no la sube.
 
 ## Dónde se guarda
 
@@ -82,7 +83,7 @@ Un cambio en `equipos` que toca `escudo` se lee "Cambió el escudo de BRANCA", o
 
 - `src/logica/escudos.js` (sin navegador, con pruebas): `iniciales(nombre)`, `hayEscudos(equipos)`, `recorteDeContenido({ data, width, height })` y `medidaFinal(ancho, alto, lado = 128)`.
 - `src/logica/prepararEscudo.js` (solo navegador): abre el archivo, recorta, achica y convierte. Se prueba en la simulación con Chrome.
-- `src/componentes/Escudo.jsx`: la chapita o las iniciales.
+- `src/componentes/Escudo.jsx`: el escudo o las iniciales.
 - `TablaPosiciones` decide sola con `hayEscudos` de sus filas, así vale para la vista pública y para las tablas del panel (Partidos y la vista previa de Ajustes).
 - Fixture y Resultados: `info` suma el equipo de cada id. Cada fecha del fixture (y el bloque Postergados) y la fecha elegida en Resultados calculan si tienen escudos con los equipos de sus partidos.
 - `RenglonPartido` recibe `conEscudos`, que calcula cada lista (panel → Partidos, Postergados y Veedores) con los equipos que muestra.
@@ -102,4 +103,4 @@ Un cambio en `equipos` que toca `escudo` se lee "Cambió el escudo de BRANCA", o
 
 - Escudos dentro del editor del partido.
 - Carga de varios escudos juntos.
-- Quitar el fondo blanco de los logos (la chapita lo disimula).
+- Quitar el fondo blanco de los logos (los que lo traen van dentro de un círculo blanco).

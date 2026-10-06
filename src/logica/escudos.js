@@ -5,6 +5,8 @@
 
 // Lo máximo que pesa un escudo ya preparado (lo controlan el navegador, la API y el bucket)
 export const PESO_MAXIMO_ESCUDO = 100 * 1024;
+// El lado más largo de la imagen final (con un poco de sobra para pantallas de alta densidad)
+export const LADO_ESCUDO = 128;
 
 const soloLetras = (texto) => texto.replace(/[^\p{L}\p{N}]/gu, '');
 
@@ -24,18 +26,20 @@ export const hayEscudos = (equipos) => equipos.some((e) => Boolean(e?.escudo));
 export const equiposDePartidos = (partidos, equipoDe) =>
   partidos.flatMap((p) => [equipoDe(p.localId), equipoDe(p.visitanteId)]);
 
+// Si la imagen tiene algún píxel transparente. Si no tiene, el logo trae fondo propio (un JPG, o un PNG
+// con fondo blanco). Recibe un ImageData (RGBA).
+export function tieneTransparencia({ data }) {
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 16) return true;
+  }
+  return false;
+}
+
 // El rectángulo con contenido, sin las filas y columnas de los bordes que no tienen nada. Si la imagen
 // tiene transparencia, "nada" es lo transparente (así no se come el aro blanco de un escudo); si no
 // (un JPG), es lo casi blanco. Si no queda nada, la imagen entera. Recibe un ImageData (RGBA).
 export function recorteDeContenido({ data, width, height }) {
-  let conTransparencia = false;
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < 16) {
-      conTransparencia = true;
-      break;
-    }
-  }
-  const vacio = conTransparencia
+  const vacio = tieneTransparencia({ data })
     ? (i) => data[i + 3] < 16
     : (i) => data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240;
   let [arriba, abajo, izquierda, derecha] = [height, -1, width, -1];
@@ -53,9 +57,17 @@ export function recorteDeContenido({ data, width, height }) {
 }
 
 // Medida de la imagen final: el lado más largo mide `lado` px, sin deformar. Si es más chica, no se agranda.
-export function medidaFinal(ancho, alto, lado = 128) {
+export function medidaFinal(ancho, alto, lado = LADO_ESCUDO) {
   const escala = Math.min(1, lado / Math.max(ancho, alto));
   return { ancho: Math.max(1, Math.round(ancho * escala)), alto: Math.max(1, Math.round(alto * escala)) };
+}
+
+// Un logo con fondo propio va dentro de un círculo blanco del tamaño del escudo, así no queda un cuadrado.
+// Dónde dibujarlo en el cuadrado de `lado` px para que entre entero: su diagonal mide lo que el círculo.
+export function enCirculo(ancho, alto, lado = LADO_ESCUDO) {
+  const escala = lado / Math.hypot(ancho, alto);
+  const [w, h] = [ancho * escala, alto * escala];
+  return { ancho: w, alto: h, x: (lado - w) / 2, y: (lado - h) / 2 };
 }
 
 // "9 KB", "2,4 MB"

@@ -207,7 +207,7 @@ describe('VistaPublica', () => {
 });
 
 describe('escudos en la vista pública', () => {
-  it('la tabla muestra la chapita de cada equipo y las iniciales de los que no tienen', () => {
+  it('la tabla muestra el escudo de cada equipo y las iniciales de los que no tienen', () => {
     const db = conEscudos('Libre A1');
     const id = db.equipos.find((e) => e.nombre === 'Libre A1').id;
     const html = dibujar(db);

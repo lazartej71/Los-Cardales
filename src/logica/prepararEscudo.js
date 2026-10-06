@@ -4,7 +4,14 @@
  * Usa canvas: se prueba en la simulación con Chrome, no en las pruebas automáticas.
  */
 
-import { PESO_MAXIMO_ESCUDO, medidaFinal, recorteDeContenido } from './escudos.js';
+import {
+  LADO_ESCUDO,
+  PESO_MAXIMO_ESCUDO,
+  enCirculo,
+  medidaFinal,
+  recorteDeContenido,
+  tieneTransparencia,
+} from './escudos.js';
 
 const TIPOS = ['image/png', 'image/jpeg', 'image/webp'];
 const PESO_MAXIMO_ORIGINAL = 15 * 1024 * 1024;
@@ -47,15 +54,33 @@ export async function prepararEscudo(archivo) {
   const copia = lienzo(Math.max(1, Math.round(original.width * escala)), Math.max(1, Math.round(original.height * escala)));
   const contextoCopia = copia.getContext('2d', { willReadFrequently: true });
   contextoCopia.drawImage(original, 0, 0, copia.width, copia.height);
-  const recorte = recorteDeContenido(contextoCopia.getImageData(0, 0, copia.width, copia.height));
+  const pixeles = contextoCopia.getImageData(0, 0, copia.width, copia.height);
+  const recorte = recorteDeContenido(pixeles);
 
-  // 2. Ese recorte, desde la imagen original (mejor calidad), con el lado más largo de 128 px
+  // 2. Ese recorte, desde la imagen original (mejor calidad), con el lado más largo de 128 px. Si el logo
+  // trae fondo propio (no tiene transparencia), va entero dentro de un círculo blanco: así no se ve un
+  // cuadrado sobre el fondo oscuro de la página.
   const desde = { x: recorte.x / escala, y: recorte.y / escala, ancho: recorte.ancho / escala, alto: recorte.alto / escala };
-  const medida = medidaFinal(desde.ancho, desde.alto);
-  const final = lienzo(medida.ancho, medida.alto);
-  const contexto = final.getContext('2d');
-  contexto.imageSmoothingQuality = 'high';
-  contexto.drawImage(original, desde.x, desde.y, desde.ancho, desde.alto, 0, 0, medida.ancho, medida.alto);
+  let final;
+  if (tieneTransparencia(pixeles)) {
+    const medida = medidaFinal(desde.ancho, desde.alto);
+    final = lienzo(medida.ancho, medida.alto);
+    const contexto = final.getContext('2d');
+    contexto.imageSmoothingQuality = 'high';
+    contexto.drawImage(original, desde.x, desde.y, desde.ancho, desde.alto, 0, 0, medida.ancho, medida.alto);
+  } else {
+    const lado = LADO_ESCUDO;
+    const lugar = enCirculo(desde.ancho, desde.alto);
+    final = lienzo(lado, lado);
+    const contexto = final.getContext('2d');
+    contexto.beginPath();
+    contexto.arc(lado / 2, lado / 2, lado / 2, 0, Math.PI * 2);
+    contexto.fillStyle = '#ffffff';
+    contexto.fill();
+    contexto.clip();
+    contexto.imageSmoothingQuality = 'high';
+    contexto.drawImage(original, desde.x, desde.y, desde.ancho, desde.alto, lugar.x, lugar.y, lugar.ancho, lugar.alto);
+  }
   original.close?.();
 
   // 3. WebP; si el navegador no lo sabe generar (Safari), devuelve otra cosa y se usa PNG

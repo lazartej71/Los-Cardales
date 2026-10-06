@@ -242,8 +242,7 @@
 .bloque-escudo__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .bloque-escudo__previa { display: flex; align-items: center; gap: 14px; }
 .bloque-escudo__grande {
-  flex: none; width: 88px; height: 88px; padding: 8px; object-fit: contain;
-  background: var(--chapita); border-radius: 50%;
+  flex: none; width: 88px; height: 88px; object-fit: contain;
 }
 .bloque-escudo__peso { font-size: 14px; color: var(--tinta-2); }
 .bloque-escudo__peso strong { color: var(--tinta); }
