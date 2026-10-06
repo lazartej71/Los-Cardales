@@ -239,4 +239,20 @@ describe('base en memoria de la simulación', () => {
     expect(visitas[0]).toMatchObject({ personas: 2 });
     expect(visitas[0].dia).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it('sube, cambia y quita el escudo de un equipo, y queda anotado', async () => {
+    const { inicial, repo } = armar();
+    const id = inicial.equipos[0].id;
+    await repo.subirEscudo(id, { imagen: 'data:image/webp;base64,UklGRg==' });
+    expect((await repo.leerPublico()).equipos[0].escudo).toBe('data:image/webp;base64,UklGRg==');
+    await repo.subirEscudo(id, { imagen: 'data:image/png;base64,iVBORw==' });
+    await repo.quitarEscudo(id);
+    expect((await repo.leerPublico()).equipos[0].escudo).toBeNull();
+    const actividad = await repo.leerActividad({ desde: '2000-01-01T00:00:00Z', hasta: '2100-01-01T00:00:00Z' });
+    expect(actividad.map((e) => [e.tabla, e.cambios])).toEqual([
+      ['equipos', ['escudo']],
+      ['equipos', ['escudo']],
+      ['equipos', ['escudo']],
+    ]);
+  });
 });

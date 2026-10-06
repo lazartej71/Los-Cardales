@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizarExpulsion, normalizarPartido } from './repositorio.js';
+import { normalizarEquipo, normalizarExpulsion, normalizarPartido } from './repositorio.js';
 
 describe('partidos leídos de Supabase', () => {
   it('sin las columnas de las migraciones 3 y 7, llegan sin lugar, hora ni día', () => {
@@ -46,5 +46,21 @@ describe('partidos leídos de Supabase', () => {
       hora: '13:40',
       dia: '2026-10-12',
     });
+  });
+});
+
+describe('equipos leídos de Supabase', () => {
+  const direccion = (archivo) => `https://base.supabase.co/storage/v1/object/public/escudos/${archivo}`;
+  const fila = { id: 1, zona_id: 2, nombre: 'BRANCA' };
+
+  it('llegan con la dirección de su escudo, o null si no tienen o si la migración 8 no se corrió', () => {
+    expect(normalizarEquipo({ ...fila, escudo: 'equipo-1-5.webp' }, direccion)).toEqual({
+      id: 1,
+      zonaId: 2,
+      nombre: 'BRANCA',
+      escudo: 'https://base.supabase.co/storage/v1/object/public/escudos/equipo-1-5.webp',
+    });
+    expect(normalizarEquipo({ ...fila, escudo: null }, direccion).escudo).toBeNull();
+    expect(normalizarEquipo(fila, direccion)).toEqual({ id: 1, zonaId: 2, nombre: 'BRANCA', escudo: null });
   });
 });

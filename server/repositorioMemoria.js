@@ -88,6 +88,18 @@ export function crearRepositorioMemoria(cargarDatosReales) {
     const veedor = rol === 'veedor';
     const quien = rol === 'superadmin' ? 'Simulación' : `Simulación (${rol})`;
 
+    async function actualizar(tabla, id, cambios) {
+      const db = await base();
+      const fila = tabla === 'configuracion' ? db.configuracion : db[tabla].find((f) => f.id === id);
+      if (!fila) throw new Error(`Simulación: no existe ${tabla} ${id}`);
+      const distintas = Object.keys(cambios)
+        .filter((columna) => JSON.stringify(fila[aClave(columna)]) !== JSON.stringify(cambios[columna]))
+        .sort();
+      Object.assign(fila, aCamel(cambios));
+      if (distintas.length) anotar(db, quien, 'cambio', tabla, fila, distintas);
+      return copia(fila);
+    }
+
     return {
       leerPublico,
 
@@ -147,17 +159,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         return copia(nueva);
       },
 
-      async actualizar(tabla, id, cambios) {
-        const db = await base();
-        const fila = tabla === 'configuracion' ? db.configuracion : db[tabla].find((f) => f.id === id);
-        if (!fila) throw new Error(`Simulación: no existe ${tabla} ${id}`);
-        const distintas = Object.keys(cambios)
-          .filter((columna) => JSON.stringify(fila[aClave(columna)]) !== JSON.stringify(cambios[columna]))
-          .sort();
-        Object.assign(fila, aCamel(cambios));
-        if (distintas.length) anotar(db, quien, 'cambio', tabla, fila, distintas);
-        return copia(fila);
-      },
+      actualizar,
 
       async borrar(tabla, id) {
         const db = await base();
@@ -171,6 +173,17 @@ export function crearRepositorioMemoria(cargarDatosReales) {
         const delegado = aCamel(fila);
         db.delegados = [...db.delegados.filter((d) => d.equipoId !== delegado.equipoId), delegado];
         anotar(db, quien, 'cambio', 'delegados', delegado, Object.keys(fila).filter((c) => c !== 'equipo_id').sort());
+      },
+
+      // Como en la base real, pero la imagen queda en memoria tal cual llegó (data:image/...;base64,...)
+      async subirEscudo(equipoId, { imagen }) {
+        await actualizar('equipos', equipoId, { escudo: imagen });
+        return { ok: true };
+      },
+
+      async quitarEscudo(equipoId) {
+        await actualizar('equipos', equipoId, { escudo: null });
+        return { ok: true };
       },
     };
   };
