@@ -237,6 +237,25 @@ describe('panel de administración', () => {
     expect(html).not.toContain('renglon__boton--escudos');
     expect(html).not.toContain('renglon__nombre');
   });
+
+  it('en Equipos, el superadmin ve el bloque Escudo y el admin no', () => {
+    const db = crearDatosEjemplo();
+    const superadmin = dibujar('equipos', { db: { ...db, rol: 'superadmin' } });
+    expect(superadmin).toContain('Subir escudo');
+    expect(superadmin).toContain('accept="image/png,image/jpeg,image/webp"');
+    expect(dibujar('equipos', { db: { ...db, rol: 'admin' } })).not.toContain('bloque-escudo');
+  });
+
+  it('un equipo con escudo lo muestra en su tarjeta, y el superadmin lo puede cambiar o quitar', () => {
+    const db = { ...crearDatosEjemplo(), rol: 'superadmin' };
+    db.equipos = db.equipos.map((e, i) => (i === 0 ? { ...e, escudo: 'https://x/e.webp' } : e));
+    const html = dibujar('equipos', { db });
+    expect(html).toContain(
+      '<span class="equipo-form__escudo equipo-form__escudo--imagen"><img class="escudo" src="https://x/e.webp"'
+    );
+    expect(html).toContain('Cambiar escudo');
+    expect(html).toContain('>Quitar</button>');
+  });
 });
 
 describe('pestaña Control', () => {
