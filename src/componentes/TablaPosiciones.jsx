@@ -3,6 +3,8 @@
  */
 
 import { CRITERIOS } from '../datos/constantes.js';
+import { hayEscudos } from '../logica/escudos.js';
+import { Escudo } from './Escudo.jsx';
 import { Icono } from './Icono.jsx';
 
 // Diferencia de gol con signo: +3, 0, −2
@@ -20,9 +22,11 @@ export function TablaPosiciones({ filas, resaltar, etiqueta = 'Tabla de posicion
     ['gc', 'GC', 'Goles en contra'],
     ['dg', 'DG', 'Diferencia de gol'],
   ];
+  // Escudos solo si algún equipo de la tabla tiene: si no, se ve como siempre
+  const conEscudos = hayEscudos(filas.map((f) => f.equipo));
   return (
     <div className="tabla-scroll" role="region" aria-label={etiqueta} tabIndex={0}>
-      <table className="tabla">
+      <table className={conEscudos ? 'tabla tabla--escudos' : 'tabla'}>
         <thead>
           <tr>
             <th scope="col" className="col-pos"><abbr title="Posición">Pos</abbr></th>
@@ -42,7 +46,16 @@ export function TablaPosiciones({ filas, resaltar, etiqueta = 'Tabla de posicion
                 <td className="col-pos">
                   <span className={`pos pos--${f.pos}`}>{f.pos}</span>
                 </td>
-                <th scope="row" className="col-equipo" title={f.equipo.nombre}>{f.equipo.nombre}</th>
+                <th scope="row" className="col-equipo" title={f.equipo.nombre}>
+                  {conEscudos ? (
+                    <span className="equipo-celda">
+                      <Escudo equipo={f.equipo} />
+                      <span className="equipo-celda__nombre">{f.equipo.nombre}</span>
+                    </span>
+                  ) : (
+                    f.equipo.nombre
+                  )}
+                </th>
                 {columnas.map(([clave]) => (
                   <td key={clave}>{clave === 'dg' ? formatoDG(f.dg) : f[clave]}</td>
                 ))}

@@ -13,6 +13,13 @@ const ui = (cambios = {}) => ({
 });
 const dibujar = (db, cambios) => renderToString(<VistaPublica db={db} ui={ui(cambios)} setUi={() => {}} />);
 
+// Los datos de ejemplo con escudo para los equipos nombrados
+function conEscudos(...nombres) {
+  const db = crearDatosEjemplo();
+  db.equipos = db.equipos.map((e) => (nombres.includes(e.nombre) ? { ...e, escudo: `https://x.supabase.co/e/${e.id}.webp` } : e));
+  return db;
+}
+
 // Categoría de zona única como +45 real: fecha 1 cargada como tabla y un partido postergado
 const zonaUnica = {
   categorias: [{ id: 5, nombre: '+45', orden: 5 }],
@@ -196,5 +203,24 @@ describe('VistaPublica', () => {
       const jugado = { ...reprogramado, postergado: false, golesLocal: 2, golesVisitante: 2 };
       expect(dibujar(conPartido(jugado), { seccion: 'fixture' })).not.toMatch(BLOQUE);
     });
+  });
+});
+
+describe('escudos en la vista pública', () => {
+  it('la tabla muestra la chapita de cada equipo y las iniciales de los que no tienen', () => {
+    const db = conEscudos('Libre A1');
+    const id = db.equipos.find((e) => e.nombre === 'Libre A1').id;
+    const html = dibujar(db);
+    expect(html).toContain('class="tabla tabla--escudos"');
+    expect(html).toContain(`<span class="equipo-celda"><img class="escudo" src="https://x.supabase.co/e/${id}.webp" alt=""`);
+    expect(html).toMatch(
+      /<span class="escudo escudo--iniciales" aria-hidden="true">L<\/span><span class="equipo-celda__nombre">Libre A2<\/span>/
+    );
+  });
+
+  it('si ningún equipo de la zona tiene escudo, la tabla se ve como siempre', () => {
+    const html = dibujar(conEscudos('Libre B1'));
+    expect(html).toContain('class="tabla"');
+    expect(html).not.toContain('equipo-celda');
   });
 });

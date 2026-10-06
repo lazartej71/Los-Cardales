@@ -215,6 +215,14 @@ describe('panel de administración', () => {
     const db = { ...crearDatosEjemplo(), categorias: [], zonas: [], equipos: [], partidos: [], expulsiones: [] };
     expect(dibujar('resultados', { db })).toContain('Todavía no hay categorías cargadas');
   });
+
+  it('la tabla del panel muestra los escudos si algún equipo de la zona tiene', () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A1' ? { ...e, escudo: 'https://x/e.webp' } : e));
+    expect(dibujar('resultados', { db })).toContain(
+      'title="Libre A1"><span class="equipo-celda"><img class="escudo" src="https://x/e.webp"'
+    );
+  });
 });
 
 describe('pestaña Control', () => {
