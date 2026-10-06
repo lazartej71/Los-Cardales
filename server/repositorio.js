@@ -70,9 +70,10 @@ export function armarDatosAdmin(publico, { delegados, expulsiones, tarjetas, mov
   };
 }
 
-export function crearRepositorioSupabase({ url, clave }) {
+// crearCliente: el de supabase-js; las pruebas pasan uno falso para revisar los pedidos sin red
+export function crearRepositorioSupabase({ url, clave, crearCliente = createClient }) {
   return function crearRepositorio(token) {
-    const cliente = createClient(url, clave, {
+    const cliente = crearCliente(url, clave, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       global: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
     });
@@ -212,7 +213,8 @@ export function crearRepositorioSupabase({ url, clave }) {
         const escudos = cliente.storage.from(BUCKET_ESCUDOS);
         await ejecutar(escudos.upload(archivo, bytes, { contentType: tipo, cacheControl: UN_ANIO, upsert: false }));
         try {
-          await ejecutar(cliente.from('equipos').update({ escudo: archivo }).eq('id', equipoId));
+          // Con .single(), si no se actualiza ninguna fila es un error (y no un "guardado" falso)
+          await ejecutar(cliente.from('equipos').update({ escudo: archivo }).eq('id', equipoId).select('id').single());
         } catch (error) {
           await escudos.remove([archivo]);
           throw error;
@@ -223,7 +225,7 @@ export function crearRepositorioSupabase({ url, clave }) {
 
       async quitarEscudo(equipoId) {
         const anterior = await escudoGuardado(equipoId);
-        await ejecutar(cliente.from('equipos').update({ escudo: null }).eq('id', equipoId));
+        await ejecutar(cliente.from('equipos').update({ escudo: null }).eq('id', equipoId).select('id').single());
         if (anterior) await cliente.storage.from(BUCKET_ESCUDOS).remove([anterior]);
         return { ok: true };
       },
