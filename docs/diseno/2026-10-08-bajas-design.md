@@ -26,7 +26,7 @@ GOB GUTIERREZ y LA MALABIA no se presentaron nunca (0 a 3 en la fecha 1 y W.O. e
 | Quién lo hace | Admins y superadmin (vos y Franco), desde **Equipos**. Los veedores no. |
 | Deshacer | Un equipo dado de baja se puede volver a dar de alta. |
 | Partidos pendientes | No se puede dar de baja un equipo con partidos sin resultado (incluye postergados): primero se les carga el resultado o se borran. |
-| Nombres repetidos | Al agregar, no se acepta un nombre que ya tenga otro equipo de la misma categoría, esté o no dado de baja (sin distinguir mayúsculas ni espacios). |
+| Nombres repetidos | Al agregar, no se acepta un nombre que ya tenga otro equipo de la misma categoría, esté o no dado de baja (sin distinguir mayúsculas, acentos ni espacios de más). |
 
 ## Qué se ve
 
@@ -53,7 +53,10 @@ GOB GUTIERREZ y LA MALABIA no se presentaron nunca (0 a 3 en la fecha 1 y W.O. e
 ## Lógica
 
 - `calcularTabla` deja afuera a los equipos con `baja`. Los partidos contra ellos siguen sumando a los rivales.
-- `partidosPendientes(partidos, equipoId)` (en `consultas.js`): los partidos de ese equipo sin resultado. La usan la pantalla y la API.
+- `src/logica/bajas.js` (nuevo), compartido por la pantalla y la API:
+  - `partidosPendientes(partidos, equipoId)`: los partidos de ese equipo sin resultado (pendientes y postergados; un W.O. ya tiene resultado).
+  - `textoPendientes(nombre, cantidad)`: el aviso de por qué no se puede dar de baja todavía.
+  - `mismoNombre(a, b)`: compara nombres sin mayúsculas, acentos ni espacios de más.
 - `describirActividad`: textos de alta de equipo y de cambio de `baja`.
 
 ## API
