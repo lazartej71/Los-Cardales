@@ -122,4 +122,24 @@ describe('calcularTabla', () => {
     expect(nombres(filas)).toEqual(['A', 'B']);
     expect(filas[0].desempate).toBe('alfabetico');
   });
+
+  it('un equipo dado de baja no tiene fila y los demás conservan lo que sumaron contra él', () => {
+    const antes = tablaDe('Libre', 'A');
+    const datos = crearDatosEjemplo();
+    datos.equipos = datos.equipos.map((e) => (e.nombre === 'Libre A2' ? { ...e, baja: true } : e));
+    const despues = tablaDe('Libre', 'A', CRITERIOS_POR_DEFECTO, datos);
+    expect(nombres(despues)).not.toContain('Libre A2');
+    expect(despues).toHaveLength(3);
+    for (const fila of despues) {
+      const { pj, pts, gf, gc } = antes.find((f) => f.equipo.id === fila.equipo.id);
+      expect({ pj: fila.pj, pts: fila.pts, gf: fila.gf, gc: fila.gc }).toEqual({ pj, pts, gf, gc });
+    }
+  });
+
+  it('un equipo nuevo, sin tabla inicial, arranca con 0 partidos aunque los demás traigan la fecha 1', () => {
+    const equipos = [{ id: 1, nombre: 'VIEJO' }, { id: 2, nombre: 'CHIVERO F.C' }];
+    const inicial = [{ equipoId: 1, pj: 1, pg: 1, pe: 0, pp: 0, gf: 3, gc: 0 }];
+    const filas = calcularTabla(equipos, [], CRITERIOS_POR_DEFECTO, inicial);
+    expect(filas.find((f) => f.equipo.id === 2)).toMatchObject({ pj: 0, pts: 0, gf: 0, gc: 0 });
+  });
 });

@@ -88,6 +88,14 @@ describe('texto del registro de actividad', () => {
       'Cambió los ajustes (nombre del campeonato, desempate)'
     );
   });
+
+  it('equipos que entran y que se dan de baja', () => {
+    expect(texto('alta', 'equipos', { id: 3, nombre: 'CHIVERO F.C', baja: false })).toBe('Agregó el equipo CHIVERO F.C');
+    expect(texto('cambio', 'equipos', { id: 1, nombre: 'BRANCA', baja: true }, ['baja'])).toBe('Dio de baja a BRANCA');
+    expect(texto('cambio', 'equipos', { id: 1, nombre: 'BRANCA', baja: false }, ['baja'])).toBe(
+      'Volvió a dar de alta a BRANCA'
+    );
+  });
 });
 
 describe('resumen por persona', () => {

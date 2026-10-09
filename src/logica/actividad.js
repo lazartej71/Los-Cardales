@@ -65,6 +65,8 @@ export function describirActividad(entrada, db) {
   }
   if (tabla === 'equipos') {
     const nombre = fila.nombre ?? 'un equipo';
+    if (accion === 'alta') return `Agregó el equipo ${nombre}`;
+    if (tiene(cambios, ['baja'])) return fila.baja ? `Dio de baja a ${nombre}` : `Volvió a dar de alta a ${nombre}`;
     if (tiene(cambios, ['escudo'])) return fila.escudo ? `Cambió el escudo de ${nombre}` : `Quitó el escudo de ${nombre}`;
     return `Cambió los datos de ${nombre}`;
   }

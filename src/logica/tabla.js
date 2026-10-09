@@ -124,7 +124,7 @@ function ordenarGrupo(grupo, indice, criterios, partidos) {
 
 /**
  * Calcula la tabla de posiciones de una zona.
- * @param {Array} equipos       Equipos de la zona.
+ * @param {Array} equipos       Equipos de la zona (los dados de baja no tienen fila).
  * @param {Array} partidos      Partidos de esos equipos (cuentan los que tienen resultado).
  * @param {Array} criterios     Orden de desempate, ej: ['puntos', 'dg', 'gf', 'enfrentamiento'].
  * @param {Array} tablaInicial  Lo que cada equipo trae de la fecha 1: { equipoId, pj, pg, pe, pp, gf, gc }.
@@ -132,9 +132,11 @@ function ordenarGrupo(grupo, indice, criterios, partidos) {
  *   `desempate` es el criterio que dejó a ese equipo por encima del siguiente.
  */
 export function calcularTabla(equipos, partidos, criterios, tablaInicial = []) {
+  // Los dados de baja no tienen fila; sus partidos les siguen sumando a los rivales
+  const enTabla = equipos.filter((e) => !e.baja);
   const jugados = partidos.filter(tieneResultado);
   const inicialPorEquipo = new Map(tablaInicial.map((t) => [t.equipoId, t]));
-  const filas = [...acumularEstadisticas(equipos, jugados, inicialPorEquipo).values()];
+  const filas = [...acumularEstadisticas(enTabla, jugados, inicialPorEquipo).values()];
   const { orden, motivos } = ordenarGrupo(filas, 0, criterios, jugados);
   return orden.map((fila, i) => ({ ...fila, pos: i + 1, desempate: motivos[i] || null }));
 }
