@@ -83,6 +83,7 @@ export function AdminCuentas({ db, acciones, filtro, equipoId, onEquipo, busqued
               <li key={e.id}>
                 <button type="button" className="cuentas-lista__item" onClick={() => onEquipo(e.id)}>
                   <span className="cuentas-lista__nombre">{e.nombre}</span>
+                  {e.baja && <span className="etiqueta-baja">De baja</span>}
                   <span className={`saldo saldo--${estado.tipo}`}>{estado.texto}</span>
                   <span className="cuentas-lista__flecha" aria-hidden="true">›</span>
                 </button>

@@ -204,6 +204,15 @@ describe('VistaPublica', () => {
       expect(dibujar(conPartido(jugado), { seccion: 'fixture' })).not.toMatch(BLOQUE);
     });
   });
+
+  it('Posiciones no muestra a un equipo dado de baja, pero sus partidos siguen en Resultados', () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A2' ? { ...e, baja: true } : e));
+    const html = dibujar(db);
+    expect(html).not.toContain('title="Libre A2"');
+    expect(html).toContain('title="Libre A1"');
+    expect(dibujar(db, { seccion: 'resultados', fecha: 1 })).toContain('Libre A2');
+  });
 });
 
 describe('escudos en la vista pública', () => {

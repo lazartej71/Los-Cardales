@@ -256,6 +256,28 @@ describe('panel de administración', () => {
     expect(html).toContain('Cambiar escudo');
     expect(html).toContain('>Quitar</button>');
   });
+
+  const conLibreA2DeBaja = () => {
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.nombre === 'Libre A2' ? { ...e, baja: true } : e));
+    return db;
+  };
+
+  it('al agregar un partido no ofrece equipos dados de baja', () => {
+    const html = dibujar('resultados', { db: conLibreA2DeBaja(), fecha: 4 });
+    expect(html).toContain('>Libre A1</option>');
+    expect(html).not.toContain('>Libre A2</option>');
+  });
+
+  it('la tabla del panel no muestra a los dados de baja', () => {
+    expect(dibujar('resultados', { db: conLibreA2DeBaja() })).not.toContain('title="Libre A2"');
+  });
+
+  it('en Cuentas, un dado de baja sigue apareciendo con la marca De baja', () => {
+    const html = dibujar('cuentas', { db: conLibreA2DeBaja() });
+    expect(html).toContain('Libre A2</span><span class="etiqueta-baja">De baja</span>');
+    expect(html.match(/etiqueta-baja/g)).toHaveLength(1);
+  });
 });
 
 describe('pestaña Control', () => {

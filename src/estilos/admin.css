@@ -365,6 +365,10 @@
 }
 .cuentas-lista__item:hover { background: var(--superficie-2); }
 .cuentas-lista__nombre { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.etiqueta-baja {
+  flex: none; padding: 2px 8px; border-radius: 999px; background: var(--superficie-2);
+  color: var(--tinta-suave); font-size: 12px; font-weight: 700;
+}
 .cuentas-lista__flecha { color: var(--tinta-suave); font-size: 20px; line-height: 1; }
 .volver { justify-self: start; }
 .cuenta-lista { display: grid; margin: 0; padding: 0; list-style: none; }

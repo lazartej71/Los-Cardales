@@ -14,9 +14,9 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
-  // Solo se ofrecen los equipos que todavía no juegan en esta fecha
+  // Solo se ofrecen los equipos en juego que todavía no juegan en esta fecha
   const ocupados = new Set(partidos.filter((p) => p.fecha === fecha).flatMap((p) => [p.localId, p.visitanteId]));
-  const libres = equipos.filter((e) => !ocupados.has(e.id));
+  const libres = equipos.filter((e) => !e.baja && !ocupados.has(e.id));
   const nombreDe = (id) => equipos.find((e) => String(e.id) === id)?.nombre;
 
   const agregar = async (e) => {
