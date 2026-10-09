@@ -78,14 +78,16 @@ beforeAll(async () => {
   await db.exec(leer('./migracion-6-visitas.sql'));
   await db.exec(leer('./migracion-7-veedores.sql'));
   await db.exec(leer('./migracion-8-escudos.sql'));
+  await db.exec(leer('./migracion-9-bajas.sql'));
 }, 60000);
 
 describe('carga inicial', () => {
-  it('deja las 5 categorías, los 98 equipos y los 5 postergados', async () => {
+  // La migración 9 da de baja a 3 equipos y suma 3: siguen 98 en juego
+  it('deja las 5 categorías, los 98 equipos en juego y los 5 postergados', async () => {
     expect(
       await uno(`select
         (select count(*) from public.categorias)::int as categorias,
-        (select count(*) from public.equipos)::int as equipos,
+        (select count(*) from public.equipos where not baja)::int as equipos,
         (select count(*) from public.partidos where postergado)::int as postergados`)
     ).toEqual({ categorias: 5, equipos: 98, postergados: 5 });
   });
@@ -581,5 +583,64 @@ describe('migración 8: escudos', () => {
       const cambio = await comoSuper(`update public.equipos set escudo = '${malo}' where id = 1`);
       expect(cambio.error, malo).toMatch(/equipos_escudo_check/);
     }
+  });
+});
+
+describe('migración 9: equipos dados de baja', () => {
+  const NO = 'No se puede armar un partido con un equipo dado de baja';
+
+  it('da de baja a los tres que se van y crea los tres nuevos sin tabla inicial', async () => {
+    expect((await db.query(`select id, nombre from public.equipos where baja order by id`)).rows).toEqual([
+      { id: 20, nombre: 'BARRIO BELGRANO' },
+      { id: 69, nombre: 'LA MALABIA' },
+      { id: 88, nombre: 'GOB GUTIERREZ' },
+    ]);
+    const nuevos = (
+      await db.query(`select e.zona_id, e.nombre, e.baja, t.equipo_id is not null as con_tabla
+        from public.equipos e left join public.tabla_inicial t on t.equipo_id = e.id
+        where e.id > 98 order by e.zona_id`)
+    ).rows;
+    expect(nuevos).toEqual([
+      { zona_id: 2, nombre: 'CLUB PASAJE UNIDOS', baja: false, con_tabla: false },
+      { zona_id: 7, nombre: 'LA AGUADITA', baja: false, con_tabla: false },
+      { zona_id: 9, nombre: 'CHIVERO F.C', baja: false, con_tabla: false },
+    ]);
+  });
+
+  it('no deja armar un partido nuevo con un equipo dado de baja', async () => {
+    const crear = (local, visitante) =>
+      comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+        values (4, 58, ${local}, ${visitante}) returning id`);
+    expect((await crear(87, 88)).error).toBe(NO);
+    const bien = await crear(87, 86);
+    expect(bien.error).toBeUndefined();
+    await comoAdmin(`delete from public.partidos where id = ${bien.filas[0].id}`);
+  });
+
+  it('un partido viejo de un equipo dado de baja se sigue pudiendo corregir, pero no cambiarle un equipo por otro dado de baja', async () => {
+    // Como el W.O. real de la fecha 2: PROYECTO 3 - 0 GOB GUTIERREZ, cargado antes de la baja
+    await db.exec(`update public.equipos set baja = false where id = 88`);
+    const { id } = await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id, goles_local, goles_visitante)
+      values (4, 59, 87, 88, 3, 0) returning id`);
+    await db.exec(`update public.equipos set baja = true where id = 88`);
+    expect((await comoAdmin(`update public.partidos set goles_local = 2 where id = ${id}`)).error).toBeUndefined();
+    expect((await comoAdmin(`update public.partidos set local_id = 69 where id = ${id}`)).error).toBe(NO);
+    await db.exec(`delete from public.partidos where id = ${id}`);
+  });
+
+  it('admins agregan equipos y los dan de baja; el veedor no', async () => {
+    const creado = await comoAdmin(`insert into public.equipos (zona_id, nombre) values (1, 'PRUEBA BAJA') returning id, baja`);
+    expect(creado.filas).toEqual([{ id: expect.any(Number), baja: false }]);
+    const id = creado.filas[0].id;
+    const veedor = await como('authenticated', VEEDOR, `update public.equipos set baja = true where id = ${id} returning id`);
+    expect(veedor.filas ?? []).toEqual([]);
+    expect((await comoAdmin(`update public.equipos set baja = true where id = ${id} returning baja`)).filas).toEqual([
+      { baja: true },
+    ]);
+    await db.exec(`delete from public.equipos where id = ${id}`);
+  });
+
+  it('falla si se corre dos veces', async () => {
+    await expect(db.exec(leer('./migracion-9-bajas.sql'))).rejects.toThrow(/already exists/);
   });
 });
