@@ -10,12 +10,17 @@ const acciones = new Proxy({}, { get: () => async () => true });
 
 function dibujar(
   seccion,
-  { db = crearDatosEjemplo(), equipoCuentaId = null, busquedaCuentas = '', fecha = null, partidoAbiertoId = null } = {}
+  {
+    db = crearDatosEjemplo(),
+    equipoCuentaId = null,
+    busquedaCuentas = '',
+    fecha = null,
+    partidoAbiertoId = null,
+    usuario = 'franco1',
+  } = {}
 ) {
   const ui = { seccion, categoriaId: null, zonaId: null, fecha, equipoCuentaId, busquedaCuentas, partidoAbiertoId };
-  return renderToString(
-    <PanelAdmin db={db} acciones={acciones} ui={ui} setUi={nada} onVerSitio={nada} onSalir={nada} />
-  );
+  return renderToString(<PanelAdmin db={db} acciones={acciones} ui={ui} setUi={nada} usuario={usuario} onSalir={nada} />);
 }
 
 // Libre A1 (equipo 1) jugó las fechas 1 y 2 y tiene pendiente la 3
@@ -301,6 +306,26 @@ describe('pestaña Cargar', () => {
     const html = dibujar('configuracion');
     expect(html).toMatch(/<button[^>]*aria-label="Ajustes"[^>]*aria-current="page"/);
     expect(html).toContain('>Configuración</h2>');
+  });
+});
+
+describe('cuenta en la cabecera', () => {
+  const recuadro = (usuario, rol) =>
+    `<span class="cuenta-actual__usuario">${usuario}</span><span class="cuenta-actual__rol">${rol}</span>`;
+
+  it('muestra el usuario y su rol en lugar de Ver sitio', () => {
+    const html = dibujar('resultados', { db: { ...crearDatosEjemplo(), rol: 'admin' } });
+    expect(html).toContain(recuadro('franco1', 'Admin'));
+    expect(html).not.toContain('Ver sitio');
+  });
+
+  it('el superadmin se ve como tal', () => {
+    const html = dibujar('resultados', { db: { ...crearDatosEjemplo(), rol: 'superadmin' }, usuario: 'ljdev' });
+    expect(html).toContain(recuadro('ljdev', 'Superadmin'));
+  });
+
+  it('sin usuario no muestra el recuadro', () => {
+    expect(dibujar('resultados', { usuario: null })).not.toContain('cuenta-actual');
   });
 });
 

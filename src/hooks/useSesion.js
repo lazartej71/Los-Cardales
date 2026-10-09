@@ -19,6 +19,14 @@ export function emailDeUsuario(usuario) {
   return limpio.includes('@') ? limpio : `${limpio}@${DOMINIO_USUARIOS}`;
 }
 
+// Al revés, para mostrar quién entró: franco1@loscardalesfutbol.com → "franco1". Otro email, completo.
+export function usuarioDeEmail(email) {
+  if (!email) return null;
+  const limpio = email.trim().toLowerCase();
+  const sufijo = `@${DOMINIO_USUARIOS}`;
+  return limpio.endsWith(sufijo) ? limpio.slice(0, -sufijo.length) : limpio;
+}
+
 // Errores de Supabase Auth → mensajes para la persona
 function mensajeDeLogin(error) {
   const texto = error?.message || '';

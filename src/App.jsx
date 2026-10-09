@@ -15,7 +15,7 @@ import { ROLES_SIMULACION, rolSimulado } from './datos/constantes.js';
 import { useAcciones } from './hooks/useAcciones.js';
 import { useDatos } from './hooks/useDatos.js';
 import { useRutaAdmin } from './hooks/useRutaAdmin.js';
-import { useSesion } from './hooks/useSesion.js';
+import { usuarioDeEmail, useSesion } from './hooks/useSesion.js';
 import { useToast } from './hooks/useToast.js';
 import { hoyEnArgentina } from './logica/cuentas.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
@@ -37,6 +37,8 @@ export function App({ simulacion = SIMULACION }) {
   const { enAdmin, salirDelPanel } = useRutaAdmin();
   const { sesion, cargando: cargandoSesion, ingresar, salir, verComo } = useSesion({ simulacion });
   const token = sesion ? sesion.access_token : null;
+  // Quién entró, para la cabecera del panel (en la simulación no hay login)
+  const usuario = simulacion ? 'Simulación' : usuarioDeEmail(sesion?.user?.email);
   const modo = enAdmin && token ? 'admin' : 'publico';
   const { db, error, recargar } = useDatos({ modo, token });
 
@@ -117,7 +119,7 @@ export function App({ simulacion = SIMULACION }) {
     contenido = <EstadoDeCarga error={error} onReintentar={recargar} />;
   } else if (enAdmin && db.rol === 'veedor') {
     contenido = (
-      <PanelVeedor db={db} acciones={acciones} almacen={almacenLocal()} onVerSitio={salirDelPanel} onSalir={cerrarSesion} />
+      <PanelVeedor db={db} acciones={acciones} almacen={almacenLocal()} usuario={usuario} onSalir={cerrarSesion} />
     );
   } else if (enAdmin) {
     contenido = (
@@ -127,7 +129,7 @@ export function App({ simulacion = SIMULACION }) {
         ui={uiAdmin}
         setUi={setUiAdmin}
         almacen={almacenLocal()}
-        onVerSitio={salirDelPanel}
+        usuario={usuario}
         onSalir={cerrarSesion}
       />
     );

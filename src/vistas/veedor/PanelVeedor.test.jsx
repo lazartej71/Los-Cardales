@@ -38,7 +38,7 @@ function armarDbConPostergados() {
 
 const dibujar = (inicial = {}, db = armarDb()) =>
   renderToString(
-    <PanelVeedor db={db} acciones={acciones} inicial={inicial} almacen={null} onVerSitio={() => {}} onSalir={() => {}} />
+    <PanelVeedor db={db} acciones={acciones} inicial={inicial} almacen={null} usuario="veedor1" onSalir={() => {}} />
   );
 
 describe('pantalla del veedor', () => {
@@ -48,6 +48,9 @@ describe('pantalla del veedor', () => {
     expect(html).toContain('Elegí el predio');
     expect(html).toMatch(/Los Cardales<\/span><span[^>]*>3 partidos · 2 por cargar/);
     expect(html).toMatch(/Cura Borges<\/span><span[^>]*>1 partido · 1 por cargar/);
+    // Su cuenta en la cabecera, sin Ver sitio
+    expect(html).toContain('<span class="cuenta-actual__usuario">veedor1</span><span class="cuenta-actual__rol">Veedor</span>');
+    expect(html).not.toContain('Ver sitio');
     // No es el panel del organizador
     expect(html).not.toContain('Secciones del panel');
     expect(html).not.toContain('Cuentas');

@@ -3,6 +3,7 @@
  */
 
 import { useEffect } from 'react';
+import { CuentaActual } from '../../componentes/CuentaActual.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
 import { zonaElegida } from '../../logica/consultas.js';
@@ -28,7 +29,7 @@ const SECCION_AJUSTES = { id: 'configuracion', etiqueta: 'Ajustes', titulo: 'Con
 // Solo la ve el superadmin
 const SECCION_CONTROL = { id: 'control', etiqueta: 'Control', titulo: 'Control del sitio', icono: 'control' };
 
-export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, onVerSitio, onSalir }) {
+export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = null, onSalir }) {
   const cambiar = (cambios) => setUi((u) => ({ ...u, ...cambios }));
   const secciones = db.rol === 'superadmin' ? [...SECCIONES_ADMIN, SECCION_CONTROL] : SECCIONES_ADMIN;
   const actual = [...secciones, SECCION_AJUSTES].find((s) => s.id === ui.seccion) || secciones[0];
@@ -99,10 +100,7 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, onVerSitio
             </div>
           </div>
           <div className="admin-cabecera__acciones">
-            <button type="button" className="btn-cabecera" onClick={onVerSitio}>
-              <Icono nombre="ojo" tamano={18} />
-              <span>Ver sitio</span>
-            </button>
+            <CuentaActual usuario={usuario} rol={db.rol} />
             <button
               type="button"
               className="btn-cabecera"

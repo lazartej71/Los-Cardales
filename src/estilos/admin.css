@@ -39,13 +39,23 @@
 .admin-cabecera__marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .admin-cabecera__logo { flex: none; width: 58px; height: auto; }
 .admin-cabecera__titulo { font-family: var(--fuente-titulo); font-weight: 400; font-size: 18px; line-height: 1.15; letter-spacing: 0.03em; text-transform: uppercase; }
-.admin-cabecera__acciones { display: flex; gap: 8px; }
+.admin-cabecera__acciones { display: flex; gap: 8px; min-width: 0; }
 .btn-cabecera {
   display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
   border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.38); background: transparent;
   color: #ffffff; font-size: 14.5px; font-weight: 600;
 }
 .btn-cabecera:hover { background: rgba(255, 255, 255, 0.1); }
+/* Los botones no se parten en dos renglones: si falta lugar, se achica el recuadro de la cuenta */
+.btn-cabecera { flex: none; white-space: nowrap; }
+/* La cuenta que entró: usuario y rol (no es un botón) */
+.cuenta-actual {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; min-width: 0;
+  border-radius: 10px; background: rgba(255, 255, 255, 0.1); color: #ffffff;
+}
+.cuenta-actual__textos { display: grid; line-height: 1.1; min-width: 0; }
+.cuenta-actual__usuario { font-size: 14.5px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cuenta-actual__rol { font-size: 12px; color: rgba(255, 255, 255, 0.78); }
 .btn-cabecera[aria-current="page"] { background: rgba(255, 255, 255, 0.18); border-color: #ffffff; }
 /* En celulares angostos, Ajustes queda solo con el engranaje para que entren los tres botones */
 @media (max-width: 479px) { .btn-cabecera__texto { display: none; } }

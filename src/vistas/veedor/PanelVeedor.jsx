@@ -5,11 +5,12 @@
  * inicial: { modo, predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
  */
 
+import { CuentaActual } from '../../componentes/CuentaActual.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
 import { CargaPorCancha } from './CargaPorCancha.jsx';
 
-export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerSitio, onSalir }) {
+export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, usuario = null, onSalir }) {
   return (
     <div className="admin veedor">
       <header className="admin-cabecera">
@@ -22,10 +23,7 @@ export function PanelVeedor({ db, acciones, inicial = {}, almacen = null, onVerS
             </div>
           </div>
           <div className="admin-cabecera__acciones">
-            <button type="button" className="btn-cabecera" onClick={onVerSitio}>
-              <Icono nombre="ojo" tamano={18} />
-              <span>Ver sitio</span>
-            </button>
+            <CuentaActual usuario={usuario} rol="veedor" />
             <button type="button" className="btn-cabecera" onClick={onSalir}>
               <Icono nombre="salir" tamano={18} />
               <span>Cerrar sesión</span>

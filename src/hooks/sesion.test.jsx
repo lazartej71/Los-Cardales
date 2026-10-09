@@ -1,7 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { rolSimulado, tokenSimulado } from '../datos/constantes.js';
-import { emailDeUsuario, useSesion } from './useSesion.js';
+import { emailDeUsuario, usuarioDeEmail, useSesion } from './useSesion.js';
 
 function Mostrar({ simulacion }) {
   const { sesion, cargando } = useSesion({ simulacion });
@@ -43,5 +43,21 @@ describe('usuario para ingresar', () => {
 
   it('si escriben un email completo lo usa tal cual', () => {
     expect(emailDeUsuario(' Alguien@Gmail.com ')).toBe('alguien@gmail.com');
+  });
+});
+
+describe('usuario que se muestra en el panel', () => {
+  it('saca el usuario del email del campeonato', () => {
+    expect(usuarioDeEmail('franco1@loscardalesfutbol.com')).toBe('franco1');
+    expect(usuarioDeEmail('LJDEV@LosCardalesFutbol.com')).toBe('ljdev');
+  });
+
+  it('un email de otro dominio se muestra completo', () => {
+    expect(usuarioDeEmail('alguien@gmail.com')).toBe('alguien@gmail.com');
+  });
+
+  it('sin email no hay usuario', () => {
+    expect(usuarioDeEmail(undefined)).toBeNull();
+    expect(usuarioDeEmail('')).toBeNull();
   });
 });
