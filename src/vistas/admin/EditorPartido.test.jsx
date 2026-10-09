@@ -46,6 +46,24 @@ describe('editor del partido para un veedor', () => {
   });
 });
 
+describe('editor del partido solo para el resultado (pestaña Cargar)', () => {
+  it('carga el resultado o el W.O. y nada más', () => {
+    const html = dibujar({ golesLocal: null, golesVisitante: null }, {}, { soloResultado: true, titulo: 'Libre · fecha 1' });
+    expect(html).toContain('Libre · fecha 1');
+    expect(html).toContain('¿No se presentó alguien?');
+    expect(html).toContain('>Guardar<');
+    for (const texto of ['+ Roja', 'Total del día', 'Postergar', '> Borrar<', 'Lugar y hora', 'Reprogramar']) {
+      expect(html).not.toContain(texto);
+    }
+  });
+
+  it('con el resultado cargado lo puede corregir o quitar', () => {
+    const html = dibujar({}, {}, { soloResultado: true });
+    expect(html).toContain('Quitar resultado');
+    expect(html).not.toContain('+ Roja');
+  });
+});
+
 describe('editor del partido', () => {
   it('ofrece marcar que un equipo no se presentó', () => {
     const html = dibujar();

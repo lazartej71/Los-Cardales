@@ -11,6 +11,13 @@ const ICONOS = {
       <path d="M8 2.5v4M16 2.5v4M3 10h18" />
     </>
   ),
+  // Pelota: la pestaña Cargar del panel
+  pelota: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8l3.8 2.8-1.5 4.4H9.7l-1.5-4.4zM12 3v5M15.8 10.8l4.6-1.5M14.3 15.2l2.8 3.9M9.7 15.2l-2.8 3.9M8.2 10.8L3.6 9.3" />
+    </>
+  ),
   marcador: (
     <>
       <rect x="2.5" y="6.5" width="19" height="13" rx="2" />

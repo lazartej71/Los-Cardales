@@ -280,6 +280,30 @@ describe('panel de administración', () => {
   });
 });
 
+describe('pestaña Cargar', () => {
+  it('es la primera de la barra y Ajustes pasa a la cabecera', () => {
+    const html = dibujar('resultados');
+    const barra = html.slice(html.indexOf('aria-label="Secciones del panel"'));
+    expect(barra.indexOf('<span>Cargar</span>')).toBeGreaterThan(-1);
+    expect(barra.indexOf('<span>Cargar</span>')).toBeLessThan(barra.indexOf('<span>Partidos</span>'));
+    expect(html).not.toContain('<span>Ajustes</span>');
+    expect(html).toContain('aria-label="Ajustes"');
+  });
+
+  it('el panel abre en Cargar, eligiendo el predio en la fecha en juego', () => {
+    const html = dibujar(null);
+    expect(html).toContain('Cargar resultados · Fecha 3');
+    expect(html).toContain('Elegí el predio');
+    expect(html).not.toContain('Partidos y resultados');
+  });
+
+  it('el botón Ajustes de la cabecera abre la configuración', () => {
+    const html = dibujar('configuracion');
+    expect(html).toMatch(/<button[^>]*aria-label="Ajustes"[^>]*aria-current="page"/);
+    expect(html).toContain('>Configuración</h2>');
+  });
+});
+
 describe('pestaña Control', () => {
   it('Franco (admin) no la ve', () => {
     expect(dibujar('resultados', { db: { ...crearDatosEjemplo(), rol: 'admin' } })).not.toContain('<span>Control</span>');
@@ -291,10 +315,10 @@ describe('pestaña Control', () => {
     expect(html).toContain('Personas que entraron a la página');
   });
 
-  it('un admin que entra a la sección control por la dirección ve Partidos', () => {
+  it('un admin que entra a la sección control por la dirección ve Cargar', () => {
     const html = dibujar('control', { db: { ...crearDatosEjemplo(), rol: 'admin' } });
     expect(html).not.toContain('Personas que entraron a la página');
-    expect(html).toContain('Partidos y resultados');
+    expect(html).toContain('Cargar resultados · Fecha 3');
   });
 });
 

@@ -58,7 +58,7 @@ export function App({ simulacion = SIMULACION }) {
     fecha: null,
   });
   const [uiAdmin, setUiAdmin] = useState({
-    seccion: 'resultados',
+    seccion: null, // la primera del panel: Cargar
     categoriaId: null,
     zonaId: null,
     fecha: null,
@@ -88,10 +88,10 @@ export function App({ simulacion = SIMULACION }) {
     avisarVisita({ almacen, hoy: hoyEnArgentina(), enviar: api.visita });
   }, [enAdmin, simulacion]);
 
-  // Simulación: antes de cambiar de cuenta vuelve a Partidos; si quedara abierta Control (solo superadmin),
+  // Simulación: antes de cambiar de cuenta vuelve a la primera sección; si quedara abierta Control (solo superadmin),
   // pediría la actividad con la cuenta nueva, recibiría "sin permiso" y cerraría la sesión
   const probarComo = (rol) => {
-    setUiAdmin((u) => ({ ...u, seccion: 'resultados', partidoAbiertoId: null }));
+    setUiAdmin((u) => ({ ...u, seccion: null, partidoAbiertoId: null }));
     verComo(rol);
   };
 
@@ -126,6 +126,7 @@ export function App({ simulacion = SIMULACION }) {
         acciones={acciones}
         ui={uiAdmin}
         setUi={setUiAdmin}
+        almacen={almacenLocal()}
         onVerSitio={salirDelPanel}
         onSalir={cerrarSesion}
       />

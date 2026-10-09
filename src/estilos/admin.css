@@ -46,6 +46,9 @@
   color: #ffffff; font-size: 14.5px; font-weight: 600;
 }
 .btn-cabecera:hover { background: rgba(255, 255, 255, 0.1); }
+.btn-cabecera[aria-current="page"] { background: rgba(255, 255, 255, 0.18); border-color: #ffffff; }
+/* En celulares angostos, Ajustes queda solo con el engranaje para que entren los tres botones */
+@media (max-width: 479px) { .btn-cabecera__texto { display: none; } }
 .btn-cabecera:focus-visible { outline-color: #ffffff; }
 
 .admin-main {
