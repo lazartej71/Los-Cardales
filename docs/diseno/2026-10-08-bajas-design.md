@@ -1,6 +1,6 @@
 # Diseño: equipos que se dan de baja y equipos nuevos
 
-Fecha: 2026-10-08. Estado: aprobado por el usuario en el chat; se prueba en la simulación antes de subirlo.
+Fecha: 2026-10-08. Estado: aprobado por el usuario en el chat; hecho y probado en la simulación el 2026-10-08.
 
 ## Objetivo
 
