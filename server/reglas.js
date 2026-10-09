@@ -6,6 +6,7 @@
  */
 
 import { CRITERIOS } from '../src/datos/constantes.js';
+import { mismoNombre, partidosPendientes, textoPendientes } from '../src/logica/bajas.js';
 import { pagosDePartido } from '../src/logica/cuentas.js';
 import { PESO_MAXIMO_ESCUDO } from '../src/logica/escudos.js';
 import { nombrePredio, textoDia, validarLugar } from '../src/logica/lugar.js';
@@ -85,6 +86,8 @@ export function validarPartidoNuevo(datos, cuerpo) {
   if (categoriaDeEquipo(datos, localId) !== categoriaId || categoriaDeEquipo(datos, visitanteId) !== categoriaId) {
     return fallo('Los dos equipos tienen que ser de la categoría elegida.');
   }
+  const dadoDeBaja = [localId, visitanteId].map((id) => datos.equipos.find((e) => e.id === id)).find((e) => e?.baja);
+  if (dadoDeBaja) return fallo(`${dadoDeBaja.nombre} está dado de baja.`);
   // Evita cargar dos veces el mismo partido o un equipo en dos partidos de la misma fecha
   for (const equipoId of [localId, visitanteId]) {
     const ocupado = datos.partidos.some(
@@ -338,6 +341,36 @@ export function validarCambioEquipo(datos, equipoId, cuerpo) {
     return fallo('El WhatsApp tiene que tener entre 10 y 15 números, con código de país. Por ejemplo: 5491123456789.');
   }
   return { valor: { equipo: { nombre }, delegado: { equipo_id: equipoId, nombre: delegado, telefono } } };
+}
+
+// Un equipo nuevo en una zona: { zonaId, nombre }. El nombre no puede repetirse en la categoría
+// (tampoco el de uno dado de baja), sin distinguir mayúsculas, acentos ni espacios de más.
+export function validarEquipoNuevo(datos, cuerpo) {
+  const zona = datos.zonas.find((z) => z.id === cuerpo?.zonaId);
+  if (!zona) return fallo('Elegí una zona válida.');
+  const nombre = texto(cuerpo?.nombre);
+  if (!nombre || nombre.length > 60) return fallo('Escribí el nombre del equipo (hasta 60 letras).');
+  const repetido = datos.equipos.find(
+    (e) => categoriaDeEquipo(datos, e.id) === zona.categoriaId && mismoNombre(e.nombre, nombre)
+  );
+  if (repetido) {
+    const categoria = datos.categorias.find((c) => c.id === zona.categoriaId).nombre;
+    return fallo(`Ya hay un equipo ${repetido.nombre} en ${categoria}.`, 409);
+  }
+  return { valor: { zona_id: zona.id, nombre } };
+}
+
+// Dar de baja (deja la tabla, lo jugado queda) o volver a dar de alta: { baja: true | false }.
+// No se da de baja un equipo con partidos sin resultado: primero se les carga o se borran.
+export function validarBaja(datos, equipoId, cuerpo) {
+  const equipo = datos.equipos.find((e) => e.id === equipoId);
+  if (!equipo) return fallo('Ese equipo no existe.', 404);
+  if (typeof cuerpo?.baja !== 'boolean') return fallo('Indicá si el equipo se da de baja o vuelve.');
+  if (cuerpo.baja) {
+    const pendientes = partidosPendientes(datos.partidos, equipoId).length;
+    if (pendientes) return fallo(textoPendientes(equipo.nombre, pendientes), 409);
+  }
+  return { valor: { baja: cuerpo.baja } };
 }
 
 const ESCUDO_INVALIDO = 'El escudo tiene que ser una imagen WebP o PNG de hasta 100 KB.';

@@ -6,6 +6,7 @@ import {
   permisoVeedorPagoNuevo,
   permisoVeedorPartido,
   permisoVeedorRojaNueva,
+  validarBaja,
   validarBorradoMovimiento,
   validarBorradoPartido,
   validarBorradoTarjeta,
@@ -14,6 +15,7 @@ import {
   validarCambioMovimiento,
   validarCambioPartido,
   validarConfiguracion,
+  validarEquipoNuevo,
   validarEscudo,
   validarExpulsionNueva,
   validarMovimientoNuevo,
@@ -43,7 +45,17 @@ const conOcupada = (cambios = {}) => ({
   ],
 });
 
+// Los datos de ejemplo con un equipo dado de baja
+const conBaja = (nombre, base = datos) => ({
+  ...base,
+  equipos: base.equipos.map((e) => (e.nombre === nombre ? { ...e, baja: true } : e)),
+});
+
 describe('validarPartidoNuevo', () => {
+  it('rechaza un equipo dado de baja', () => {
+    expect(validarPartidoNuevo(conBaja('Libre B1'), nuevo())).toEqual({ error: 'Libre B1 está dado de baja.', estado: 400 });
+  });
+
   it('acepta un partido entre zonas de la misma categoría', () => {
     expect(validarPartidoNuevo(datos, nuevo())).toEqual({
       valor: { categoria_id: 1, fecha: 4, local_id: equipo('Libre A1'), visitante_id: equipo('Libre B1'), ...LUGAR },
@@ -90,6 +102,11 @@ describe('validarPartidoNuevo', () => {
 describe('validarCambioPartido', () => {
   const pendiente = datos.partidos.find((p) => p.golesLocal === null);
   const jugado = datos.partidos.find((p) => p.golesLocal !== null);
+
+  it('deja corregir el resultado de un partido viejo de un equipo dado de baja', () => {
+    const local = datos.equipos.find((e) => e.id === jugado.localId).nombre;
+    expect(validarCambioPartido(conBaja(local), jugado.id, { golesLocal: 0, golesVisitante: 0 }).valor).toBeTruthy();
+  });
 
   it('carga un resultado y saca el postergado', () => {
     expect(validarCambioPartido(datos, pendiente.id, { golesLocal: 2, golesVisitante: 0 })).toEqual({
@@ -264,6 +281,61 @@ describe('validarCambioEquipo', () => {
   it('rechaza un teléfono corto y un nombre vacío', () => {
     expect(validarCambioEquipo(datos, id, { nombre: 'X', telefonoDelegado: '1234' }).error).toMatch(/WhatsApp/);
     expect(validarCambioEquipo(datos, id, { nombre: '  ' }).error).toMatch(/nombre del equipo/);
+  });
+});
+
+describe('agregar un equipo', () => {
+  it('lo crea en la zona elegida con el nombre limpio', () => {
+    expect(validarEquipoNuevo(datos, { zonaId: 1, nombre: '  CHIVERO F.C ' })).toEqual({
+      valor: { zona_id: 1, nombre: 'CHIVERO F.C' },
+    });
+  });
+
+  it('pide una zona válida y un nombre de hasta 60 letras', () => {
+    expect(validarEquipoNuevo(datos, { zonaId: 999, nombre: 'X' }).error).toBe('Elegí una zona válida.');
+    expect(validarEquipoNuevo(datos, { nombre: 'X' }).error).toBe('Elegí una zona válida.');
+    expect(validarEquipoNuevo(datos, { zonaId: 1, nombre: '  ' }).error).toBe('Escribí el nombre del equipo (hasta 60 letras).');
+    expect(validarEquipoNuevo(datos, { zonaId: 1, nombre: 'X'.repeat(61) }).error).toMatch(/hasta 60/);
+    expect(validarEquipoNuevo(datos, null).error).toBe('Elegí una zona válida.');
+  });
+
+  it('no repite un nombre de la categoría, aunque cambien mayúsculas o espacios, ni aunque esté dado de baja', () => {
+    // Libre A1 es de la zona 1; la zona 2 (Libre B) es de la misma categoría
+    expect(validarEquipoNuevo(datos, { zonaId: 2, nombre: 'libre  a1' })).toEqual({
+      error: 'Ya hay un equipo Libre A1 en Libre.',
+      estado: 409,
+    });
+    expect(validarEquipoNuevo(conBaja('Libre A1'), { zonaId: 1, nombre: 'Libre A1' }).estado).toBe(409);
+  });
+
+  it('acepta un nombre que ya existe en otra categoría', () => {
+    // La zona 3 es +35 Zona A
+    expect(validarEquipoNuevo(datos, { zonaId: 3, nombre: 'Libre A1' }).valor).toEqual({ zona_id: 3, nombre: 'Libre A1' });
+  });
+});
+
+describe('dar de baja un equipo', () => {
+  // Sin la fecha 3 (que está sin jugar), nadie tiene partidos pendientes
+  const sinPendientes = { ...datos, partidos: datos.partidos.filter((p) => p.fecha < 3) };
+  const id = equipo('Libre A1');
+
+  it('lo da de baja si no tiene partidos sin resultado, y lo vuelve a dar de alta', () => {
+    expect(validarBaja(sinPendientes, id, { baja: true })).toEqual({ valor: { baja: true } });
+    expect(validarBaja(conBaja('Libre A1', sinPendientes), id, { baja: false })).toEqual({ valor: { baja: false } });
+  });
+
+  it('no lo da de baja con partidos sin resultado, pero sí lo vuelve a dar de alta', () => {
+    expect(validarBaja(datos, id, { baja: true })).toEqual({
+      error: 'Libre A1 tiene 1 partido sin resultado. Cargale el resultado o borralo antes de darlo de baja.',
+      estado: 409,
+    });
+    expect(validarBaja(conBaja('Libre A1'), id, { baja: false }).valor).toEqual({ baja: false });
+  });
+
+  it('rechaza un equipo que no existe o un pedido sin sí o no', () => {
+    expect(validarBaja(datos, 999, { baja: true })).toEqual({ error: 'Ese equipo no existe.', estado: 404 });
+    expect(validarBaja(sinPendientes, id, { baja: 'si' }).error).toBe('Indicá si el equipo se da de baja o vuelve.');
+    expect(validarBaja(sinPendientes, id, null).error).toBe('Indicá si el equipo se da de baja o vuelve.');
   });
 });
 
