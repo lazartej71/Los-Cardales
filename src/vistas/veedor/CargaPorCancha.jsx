@@ -2,7 +2,8 @@
  * Cargar partidos por cancha: se elige el predio, después la cancha, y se cargan los partidos de esa
  * cancha en la fecha en juego. Una barra fija arriba vuelve a elegir otra cancha. Aparte, el botón
  * Postergados lleva a los postergados reprogramados para un día especial, con los mismos pasos.
- * La usan los veedores (con rojas y arancel) y el panel en la pestaña Cargar (soloResultado: goles y W.O.).
+ * En cada partido: resultado, W.O., rojas y arancel (postergar, borrar y el lugar se hacen en Partidos).
+ * La usan los veedores y el panel en la pestaña Cargar (admin: además avisa las rojas por WhatsApp).
  * encabezado: "Veedores" o "Cargar resultados" (el título suma la fecha o "Postergados").
  * inicial: { modo, predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
  */
@@ -30,7 +31,7 @@ function textoResumen({ total, porCargar }) {
   return `${total} ${total === 1 ? 'partido' : 'partidos'} · ${porCargar ? `${porCargar} por cargar` : 'todos cargados'}`;
 }
 
-export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen = null, soloResultado = false }) {
+export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen = null, admin = false }) {
   const [eleccion, setEleccion] = useState(() => ({
     modo: 'fecha',
     predio: null,
@@ -124,7 +125,7 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
           abierto={abierto}
           onAbrir={(id) => setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }))}
           acciones={acciones}
-          soloResultado={soloResultado}
+          admin={admin}
         />
       </>
     );
@@ -165,7 +166,7 @@ function Barra({ texto, lugar, onVolver }) {
   );
 }
 
-function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, acciones, soloResultado }) {
+function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, acciones, admin }) {
   if (!partidos.length) {
     const vacio = postergados ? 'No hay postergados en esta cancha.' : `No hay partidos en esta cancha en la fecha ${fecha}.`;
     return <p className="vacio-texto">{vacio}</p>;
@@ -201,8 +202,8 @@ function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, 
         zonaVisitante={null}
         acciones={acciones}
         onCambio={() => {}}
-        veedor={!soloResultado}
-        soloResultado={soloResultado}
+        veedor={!admin}
+        soloCarga
         titulo={`${categoria(p)} · ${postergados ? 'postergado de la ' : ''}fecha ${p.fecha}`}
       />
     </RenglonPartido>

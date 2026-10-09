@@ -46,21 +46,25 @@ describe('editor del partido para un veedor', () => {
   });
 });
 
-describe('editor del partido solo para el resultado (pestaña Cargar)', () => {
-  it('carga el resultado o el W.O. y nada más', () => {
-    const html = dibujar({ golesLocal: null, golesVisitante: null }, {}, { soloResultado: true, titulo: 'Libre · fecha 1' });
+describe('editor del partido en la pestaña Cargar (soloCarga)', () => {
+  it('carga resultado, W.O., rojas y arancel como en Partidos, pero no posterga, borra ni cambia el lugar', () => {
+    const html = dibujar({ golesLocal: null, golesVisitante: null }, {}, { soloCarga: true, titulo: 'Libre · fecha 1' });
     expect(html).toContain('Libre · fecha 1');
     expect(html).toContain('¿No se presentó alguien?');
     expect(html).toContain('>Guardar<');
-    for (const texto of ['+ Roja', 'Total del día', 'Postergar', '> Borrar<', 'Lugar y hora', 'Reprogramar']) {
-      expect(html).not.toContain(texto);
-    }
+    expect(html).toContain('+ Roja');
+    expect(html).toContain('Total del día');
+    for (const texto of ['Postergar', '> Borrar<', 'Lugar y hora', 'Reprogramar']) expect(html).not.toContain(texto);
+  });
+
+  it('a diferencia del veedor, puede avisar la roja por WhatsApp', () => {
+    // El partido de ejemplo tiene una roja de Libre A2
+    expect(dibujar({}, {}, { soloCarga: true })).toContain('>Avisar</button>');
+    expect(dibujar({}, {}, { veedor: true })).not.toContain('>Avisar</button>');
   });
 
   it('con el resultado cargado lo puede corregir o quitar', () => {
-    const html = dibujar({}, {}, { soloResultado: true });
-    expect(html).toContain('Quitar resultado');
-    expect(html).not.toContain('+ Roja');
+    expect(dibujar({}, {}, { soloCarga: true })).toContain('Quitar resultado');
   });
 });
 

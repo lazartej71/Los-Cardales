@@ -1,7 +1,7 @@
 /**
  * Un partido en el panel: resultado (o W.O.), postergar o borrar, lugar y hora, tarjetas y arancel.
  * veedor: solo resultado, W.O., rojas (sin aviso por WhatsApp) y arancel.
- * soloResultado (pestaña Cargar): solo resultado y W.O.; lo demás se hace en Partidos.
+ * soloCarga (pestaña Cargar): resultado, W.O., rojas (con aviso) y arancel; postergar, borrar y el lugar, en Partidos.
  */
 
 import { useState } from 'react';
@@ -26,7 +26,7 @@ export function EditorPartido({
   acciones,
   onCambio,
   veedor = false,
-  soloResultado = false,
+  soloCarga = false,
   titulo = `Fecha ${partido.fecha}, partido ${numero}`,
 }) {
   const inicial = (v) => (v === null ? '' : String(v));
@@ -88,7 +88,7 @@ export function EditorPartido({
   ];
   const [tipoEstado, textoEstado] = estadoPartido(partido);
   // Sin postergar, borrar ni cambiar el lugar
-  const recortado = veedor || soloResultado;
+  const recortado = veedor || soloCarga;
 
   return (
     <article className="editor" aria-labelledby={`${idBase}-titulo`}>
@@ -199,12 +199,8 @@ export function EditorPartido({
 
       {/* Un reprogramado ya jugado no se mueve: se jugó en su día especial */}
       {!recortado && !(partido.dia && !partido.postergado) && <BloqueLugar partido={partido} acciones={acciones} />}
-      {!soloResultado && (
-        <>
-          <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} conAviso={!veedor} />
-          <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
-        </>
-      )}
+      <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} conAviso={!veedor} />
+      <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
     </article>
   );
 }

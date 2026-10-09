@@ -55,8 +55,8 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, onVerSitio
   if (actual.id === 'control') {
     contenido = <AdminControl db={db} acciones={acciones} />;
   } else if (actual.id === 'cargar') {
-    // Solo el resultado (y el W.O.): rojas, arancel, postergar y lugar se hacen en Partidos
-    contenido = <CargaPorCancha db={db} acciones={acciones} encabezado={actual.titulo} almacen={almacen} soloResultado />;
+    // Resultado, W.O., rojas y arancel por cancha; postergar, borrar y el lugar se hacen en Partidos
+    contenido = <CargaPorCancha db={db} acciones={acciones} encabezado={actual.titulo} almacen={almacen} admin />;
   } else if (!categoria || !zona) {
     contenido = <p className="vacio-texto">Todavía no hay categorías cargadas en la base.</p>;
   } else if (actual.id === 'resultados') {

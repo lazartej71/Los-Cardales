@@ -26,19 +26,23 @@ describe('carga por predio y cancha', () => {
     expect(html).toContain('Elegí el predio');
   });
 
-  it('con soloResultado, al abrir un partido muestra solo el resultado y el W.O.', () => {
-    const db = armarDb();
-    const html = dibujar({ soloResultado: true, inicial: { predio: 'los_cardales', cancha: 2, abierto: partidoDeCancha(db).id } }, db);
-    expect(html).toContain('Los Cardales · Cancha 2');
-    expect(html).toContain('¿No se presentó alguien?');
-    expect(html).not.toContain('+ Roja');
-    expect(html).not.toContain('Total del día');
-  });
-
-  it('sin soloResultado, el editor es el del veedor (con rojas y arancel)', () => {
+  it('al abrir un partido muestra resultado, W.O., rojas y arancel, sin postergar ni cambiar el lugar', () => {
     const db = armarDb();
     const html = dibujar({ inicial: { predio: 'los_cardales', cancha: 2, abierto: partidoDeCancha(db).id } }, db);
+    expect(html).toContain('Los Cardales · Cancha 2');
+    expect(html).toContain('¿No se presentó alguien?');
     expect(html).toContain('+ Roja');
     expect(html).toContain('Total del día');
+    expect(html).not.toContain('Postergar');
+    expect(html).not.toContain('Lugar y hora');
+  });
+
+  it('en el panel (admin) la roja se puede avisar por WhatsApp; el veedor no', () => {
+    const db = armarDb();
+    const jugado = db.partidos.find((p) => p.fecha === 1);
+    db.partidos = db.partidos.map((p) => (p.id === jugado.id ? { ...p, fecha: 3, predio: 'los_cardales', cancha: 2, hora: '15:10' } : p));
+    const inicial = { predio: 'los_cardales', cancha: 2, abierto: jugado.id };
+    expect(dibujar({ admin: true, inicial }, db)).toContain('>Avisar</button>');
+    expect(dibujar({ inicial }, db)).not.toContain('>Avisar</button>');
   });
 });
