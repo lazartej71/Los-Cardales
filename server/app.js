@@ -11,6 +11,7 @@ import {
   permisoVeedorPagoNuevo,
   permisoVeedorPartido,
   permisoVeedorRojaNueva,
+  validarBaja,
   validarBorradoExpulsion,
   validarBorradoMovimiento,
   validarBorradoPartido,
@@ -20,6 +21,7 @@ import {
   validarCambioMovimiento,
   validarCambioPartido,
   validarConfiguracion,
+  validarEquipoNuevo,
   validarEscudo,
   validarExpulsionNueva,
   validarMovimientoNuevo,
@@ -228,6 +230,24 @@ export function crearApp({ crearRepositorio }) {
     return aplicar(c, resultado, async (valor) => {
       await repo.actualizar('equipos', id, valor.equipo);
       await repo.guardarDelegado(valor.delegado);
+      return { ok: true };
+    });
+  });
+
+  // Un equipo nuevo: arranca sin tabla inicial (0 partidos jugados)
+  admin.post('/equipos', sinVeedores, async (c) => {
+    const repo = c.get('repositorio');
+    const resultado = validarEquipoNuevo(await repo.leerPublico(), await leerCuerpo(c));
+    return aplicar(c, resultado, async (valor) => ({ id: (await repo.insertar('equipos', valor)).id }), 201);
+  });
+
+  // Dar de baja (deja la tabla; lo jugado queda) o volver a dar de alta
+  admin.put('/equipos/:id/baja', sinVeedores, async (c) => {
+    const repo = c.get('repositorio');
+    const id = idDeRuta(c);
+    const resultado = validarBaja(await repo.leerPublico(), id, await leerCuerpo(c));
+    return aplicar(c, resultado, async (valor) => {
+      await repo.actualizar('equipos', id, valor);
       return { ok: true };
     });
   });

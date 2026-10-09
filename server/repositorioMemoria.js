@@ -23,6 +23,7 @@ const POR_DEFECTO = {
   expulsiones: { nombreJugador: '', fechasSuspension: null, fechasCumplidas: 0, tipo: null },
   tarjetas: { nombreJugador: '' },
   movimientos: { partidoId: null, metodo: null, nota: '' },
+  equipos: { escudo: null, baja: false },
 };
 // Tablas privadas: la simulación las arranca vacías
 const PRIVADAS = ['delegados', 'expulsiones', 'tarjetas', 'movimientos'];
@@ -51,6 +52,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
           // Como las secuencias de la base: los ids no se reusan aunque se borre una fila
           db.ultimoId = {
             partidos: Math.max(0, ...db.partidos.map((p) => p.id)),
+            equipos: Math.max(0, ...db.equipos.map((e) => e.id)),
             expulsiones: 0,
             tarjetas: 0,
             movimientos: 0,

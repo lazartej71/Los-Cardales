@@ -12,7 +12,7 @@ function armar({ admin = true, veedor = false, rol = 'admin' } = {}) {
   const publico = () => ({
     categorias: datos.categorias,
     zonas: datos.zonas,
-    equipos: datos.equipos.map(({ id, zonaId, nombre }) => ({ id, zonaId, nombre })),
+    equipos: datos.equipos.map(({ id, zonaId, nombre, baja = false }) => ({ id, zonaId, nombre, baja })),
     tablaInicial: datos.tablaInicial,
     partidos: datos.partidos,
     configuracion: datos.configuracion,
@@ -219,6 +219,43 @@ describe('API de admin', () => {
     ]);
   });
 
+  it('agrega un equipo y devuelve su id', async () => {
+    const { app, guardados } = armar();
+    const respuesta = await pedir(app, '/admin/equipos', { metodo: 'POST', cuerpo: { zonaId: 1, nombre: ' CHIVERO F.C ' } });
+    expect(respuesta.status).toBe(201);
+    expect(await respuesta.json()).toEqual({ id: 500 });
+    expect(guardados).toEqual([{ accion: 'insertar', tabla: 'equipos', fila: { zona_id: 1, nombre: 'CHIVERO F.C' } }]);
+  });
+
+  it('no agrega un nombre repetido en la categoría', async () => {
+    const { app, guardados } = armar();
+    const respuesta = await pedir(app, '/admin/equipos', { metodo: 'POST', cuerpo: { zonaId: 2, nombre: 'LIBRE A1' } });
+    expect(respuesta.status).toBe(409);
+    expect((await respuesta.json()).error).toBe('Ya hay un equipo Libre A1 en Libre.');
+    expect(guardados).toEqual([]);
+  });
+
+  it('da de baja un equipo sin partidos pendientes y lo vuelve a dar de alta', async () => {
+    const { app, guardados, datos } = armar();
+    datos.partidos = datos.partidos.filter((p) => p.fecha < 3);
+    const id = datos.equipos[0].id;
+    expect((await pedir(app, `/admin/equipos/${id}/baja`, { metodo: 'PUT', cuerpo: { baja: true } })).status).toBe(200);
+    expect((await pedir(app, `/admin/equipos/${id}/baja`, { metodo: 'PUT', cuerpo: { baja: false } })).status).toBe(200);
+    expect(guardados).toEqual([
+      { accion: 'actualizar', tabla: 'equipos', id, cambios: { baja: true } },
+      { accion: 'actualizar', tabla: 'equipos', id, cambios: { baja: false } },
+    ]);
+  });
+
+  it('no da de baja un equipo con partidos pendientes ni uno que no existe', async () => {
+    const { app, guardados, datos } = armar();
+    const conPendiente = await pedir(app, `/admin/equipos/${datos.equipos[0].id}/baja`, { metodo: 'PUT', cuerpo: { baja: true } });
+    expect(conPendiente.status).toBe(409);
+    expect((await conPendiente.json()).error).toMatch(/tiene 1 partido sin resultado/);
+    expect((await pedir(app, '/admin/equipos/99999/baja', { metodo: 'PUT', cuerpo: { baja: true } })).status).toBe(404);
+    expect(guardados).toEqual([]);
+  });
+
   it('marca un W.O.', async () => {
     const { app, guardados, datos } = armar();
     const pendiente = datos.partidos.find((p) => p.golesLocal === null);
@@ -421,6 +458,8 @@ describe('API para veedores', () => {
       ['DELETE', '/admin/tarjetas/1'],
       ['PATCH', '/admin/equipos/1', { nombre: 'Otro' }],
       ['PATCH', '/admin/configuracion', { arancel: 1 }],
+      ['POST', '/admin/equipos', { zonaId: 1, nombre: 'Otro' }],
+      ['PUT', '/admin/equipos/1/baja', { baja: true }],
       ['GET', '/admin/visitas'],
       ['GET', '/admin/actividad?dia=2026-10-03'],
     ]) {
@@ -489,6 +528,30 @@ describe('escudos (solo el superadmin)', () => {
 });
 
 describe('API de la simulación (base en memoria)', () => {
+  it('agrega un equipo con el id siguiente al mayor, lo da de baja y la vista pública lo muestra así', async () => {
+    const datos = crearDatosEjemplo();
+    const publico = {
+      categorias: datos.categorias,
+      zonas: datos.zonas,
+      equipos: datos.equipos.map(({ id, zonaId, nombre }) => ({ id, zonaId, nombre, baja: false })),
+      tablaInicial: datos.tablaInicial,
+      partidos: datos.partidos,
+      configuracion: datos.configuracion,
+    };
+    const app = crearApp({ crearRepositorio: crearRepositorioMemoria(async () => publico) });
+    const token = 'simulacion-admin';
+    const creado = await pedir(app, '/admin/equipos', { metodo: 'POST', cuerpo: { zonaId: 1, nombre: 'CHIVERO F.C' }, token });
+    expect(creado.status).toBe(201);
+    const { id } = await creado.json();
+    expect(id).toBe(33);
+    expect((await pedir(app, `/admin/equipos/${id}/baja`, { metodo: 'PUT', cuerpo: { baja: true }, token })).status).toBe(200);
+    // Libre A1 tiene pendiente la fecha 3
+    expect((await pedir(app, '/admin/equipos/1/baja', { metodo: 'PUT', cuerpo: { baja: true }, token })).status).toBe(409);
+    const vista = await (await pedir(app, '/publico', { token: null })).json();
+    expect(vista.equipos.find((e) => e.id === id)).toEqual({ id, zonaId: 1, nombre: 'CHIVERO F.C', escudo: null, baja: true });
+    expect(vista.equipos.find((e) => e.id === 1).baja).toBe(false);
+  });
+
   it('el superadmin sube un escudo y la vista pública lo muestra; con "Ver como" admin, no puede', async () => {
     const datos = crearDatosEjemplo();
     const publico = {

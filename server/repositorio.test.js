@@ -53,15 +53,16 @@ describe('equipos leídos de Supabase', () => {
   const direccion = (archivo) => `https://base.supabase.co/storage/v1/object/public/escudos/${archivo}`;
   const fila = { id: 1, zona_id: 2, nombre: 'BRANCA' };
 
-  it('llegan con la dirección de su escudo, o null si no tienen o si la migración 8 no se corrió', () => {
-    expect(normalizarEquipo({ ...fila, escudo: 'equipo-1-5.webp' }, direccion)).toEqual({
+  it('llegan con la dirección de su escudo (o null) y si están dados de baja, aunque las migraciones 8 y 9 no se hayan corrido', () => {
+    expect(normalizarEquipo({ ...fila, escudo: 'equipo-1-5.webp', baja: true }, direccion)).toEqual({
       id: 1,
       zonaId: 2,
       nombre: 'BRANCA',
       escudo: 'https://base.supabase.co/storage/v1/object/public/escudos/equipo-1-5.webp',
+      baja: true,
     });
     expect(normalizarEquipo({ ...fila, escudo: null }, direccion).escudo).toBeNull();
-    expect(normalizarEquipo(fila, direccion)).toEqual({ id: 1, zonaId: 2, nombre: 'BRANCA', escudo: null });
+    expect(normalizarEquipo(fila, direccion)).toEqual({ id: 1, zonaId: 2, nombre: 'BRANCA', escudo: null, baja: false });
   });
 });
 

@@ -40,14 +40,15 @@ export function normalizarExpulsion(fila) {
   };
 }
 
-// Un equipo de la base, con la dirección pública de su escudo (o null). Se lee con select('*') para que
-// ande aunque la migración 8 todavía no se haya corrido.
+// Un equipo de la base, con la dirección pública de su escudo (o null) y si está dado de baja. Se lee con
+// select('*') para que ande aunque las migraciones 8 y 9 todavía no se hayan corrido.
 export function normalizarEquipo(fila, direccionEscudo) {
   return {
     id: fila.id,
     zonaId: fila.zona_id,
     nombre: fila.nombre,
     escudo: fila.escudo ? direccionEscudo(fila.escudo) : null,
+    baja: fila.baja ?? false,
   };
 }
 
