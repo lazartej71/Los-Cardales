@@ -9,7 +9,7 @@ import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosicion
 import { CRITERIOS, CRITERIOS_POR_DEFECTO } from '../../datos/constantes.js';
 import { equiposDeZona, partidosDeEquipos } from '../../logica/consultas.js';
 import { calcularTabla } from '../../logica/tabla.js';
-import { formatearMiles, formatearPesos, leerMonto } from '../../logica/cuentas.js';
+import { formatearMiles, formatearPesos, leerMonto, montoAlEscribir } from '../../logica/cuentas.js';
 
 function FormNombreCampeonato({ nombreActual, onGuardar }) {
   const [nombre, setNombre] = useState(nombreActual);
@@ -93,7 +93,7 @@ function FormArancel({ arancelActual, onGuardar }) {
               aria-invalid={Boolean(error) || undefined}
               aria-describedby="cfg-arancel-ayuda"
               onChange={(e) => {
-                setMonto(e.target.value.replace(/[^\d.,]/g, ''));
+                setMonto(montoAlEscribir(e.target.value));
                 setError('');
               }}
             />

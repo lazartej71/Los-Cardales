@@ -9,6 +9,7 @@ import {
   formatearPesos,
   hoyEnArgentina,
   leerMonto,
+  montoAlEscribir,
   motivoSinCobro,
   pagosDePartido,
 } from './cuentas.js';
@@ -210,6 +211,43 @@ describe('leerMonto', () => {
 
   it('rechaza vacíos, ceros y montos absurdos', () => {
     for (const texto of ['', '0', 'abc', '20.000.000']) expect(leerMonto(texto)).toBeNull();
+  });
+});
+
+describe('montoAlEscribir', () => {
+  it('pone los puntos de los miles mientras se escribe', () => {
+    expect(['5', '50', '500', '5000', '50000', '500000', '5000000'].map(montoAlEscribir)).toEqual([
+      '5',
+      '50',
+      '500',
+      '5.000',
+      '50.000',
+      '500.000',
+      '5.000.000',
+    ]);
+  });
+
+  it('al borrar o agregar una cifra vuelve a acomodar los puntos', () => {
+    // Borró el último 0 de "5.000", o le agregó un 0 a "50.000"
+    expect(montoAlEscribir('5.00')).toBe('500');
+    expect(montoAlEscribir('50.0000')).toBe('500.000');
+  });
+
+  it('se queda solo con los números', () => {
+    expect(montoAlEscribir('$ 50000')).toBe('50.000');
+    expect(montoAlEscribir('50.000abc')).toBe('50.000');
+    expect(montoAlEscribir('007')).toBe('7');
+    expect(montoAlEscribir('')).toBe('');
+    expect(montoAlEscribir('abc')).toBe('');
+  });
+
+  it('sin centavos: si se pega un monto con centavos, los descarta', () => {
+    expect(montoAlEscribir('95.000,00')).toBe('95.000');
+    expect(montoAlEscribir('95000,5')).toBe('95.000');
+  });
+
+  it('lo que muestra se guarda como el mismo número', () => {
+    expect(leerMonto(montoAlEscribir('105000'))).toBe(105000);
   });
 });
 

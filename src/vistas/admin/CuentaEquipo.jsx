@@ -15,6 +15,7 @@ import {
   hoyEnArgentina,
   leerMonto,
   METODOS_PAGO,
+  montoAlEscribir,
 } from '../../logica/cuentas.js';
 
 export function CuentaEquipo({ db, equipo, acciones, onVolver }) {
@@ -167,7 +168,7 @@ function FormMovimiento({ tipo, equipo, acciones, onListo }) {
             value={monto}
             aria-invalid={Boolean(error) || undefined}
             onChange={(e) => {
-              setMonto(e.target.value.replace(/[^\d.,]/g, ''));
+              setMonto(montoAlEscribir(e.target.value));
               setError('');
             }}
           />

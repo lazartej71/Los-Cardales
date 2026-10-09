@@ -12,6 +12,7 @@ import {
   hoyEnArgentina,
   leerMonto,
   METODOS_PAGO,
+  montoAlEscribir,
   pagosDePartido,
   sumarMontos,
 } from '../../logica/cuentas.js';
@@ -81,7 +82,7 @@ function PagoDeEquipo({ partido, equipo, pagos, arancel, saldo, acciones }) {
   const sinCambios = partes.every((p) => (p.pago ? p.monto === p.pago.monto : !p.texto));
 
   const cambiar = (metodo, texto) => {
-    setMontos((m) => ({ ...m, [metodo]: texto.replace(/[^\d.,]/g, '') }));
+    setMontos((m) => ({ ...m, [metodo]: montoAlEscribir(texto) }));
     setError('');
   };
 

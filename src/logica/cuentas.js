@@ -26,6 +26,16 @@ export const formatearMiles = (monto) => miles.format(monto);
 // 105000 → "$105.000"
 export const formatearPesos = (monto) => `$${formatearMiles(monto)}`;
 
+// Lo que se ve en un campo de plata mientras se escribe: solo números, con los puntos de los miles y sin
+// centavos. "50000" → "50.000", "5.00" (borró un 0 de "5.000") → "500", "95.000,00" (pegado) → "95.000".
+export function montoAlEscribir(texto) {
+  const digitos = String(texto ?? '')
+    .replace(/,\d{0,2}$/, '')
+    .replace(/\D/g, '')
+    .replace(/^0+(?=\d)/, '');
+  return digitos ? formatearMiles(Number(digitos)) : '';
+}
+
 // Lo que escribe la persona ("95.000", "$ 95000", "95.000,00", "105,000") → número; null si no es válido.
 // Un punto o una coma con 1 o 2 cifras al final son centavos y se descartan; con 3 cifras, son de miles.
 export function leerMonto(texto) {
