@@ -107,6 +107,21 @@ describe('acciones del panel', () => {
       ['ok', 'Escudo quitado de BRANCA.'],
     ]);
   });
+
+  it('agrega un equipo y lo da de baja, y avisa', async () => {
+    const { acciones, avisos, cliente, recargar } = armar();
+    cliente.crearEquipo = vi.fn(async () => ({ id: 99 }));
+    cliente.cambiarBaja = vi.fn(async () => ({ ok: true }));
+    expect(await acciones.crearEquipo({ zonaId: 9, nombre: 'CHIVERO F.C' }, 'Agregaste CHIVERO F.C a +40 · Zona C.')).toEqual({ id: 99 });
+    expect(cliente.crearEquipo).toHaveBeenCalledWith('tok', { zonaId: 9, nombre: 'CHIVERO F.C' });
+    await acciones.cambiarBaja(88, true, 'GOB GUTIERREZ quedó dado de baja.');
+    expect(cliente.cambiarBaja).toHaveBeenCalledWith('tok', 88, true);
+    expect(recargar).toHaveBeenCalledTimes(2);
+    expect(avisos).toEqual([
+      ['ok', 'Agregaste CHIVERO F.C a +40 · Zona C.'],
+      ['ok', 'GOB GUTIERREZ quedó dado de baja.'],
+    ]);
+  });
 });
 
 describe('pago de un partido en dos partes', () => {

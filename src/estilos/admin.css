@@ -229,6 +229,12 @@
 .equipo-form__titulo { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
 .equipo-form__escudo--imagen { background: transparent; }
 .equipo-form__escudo--imagen .escudo { width: 36px; height: 36px; }
+.bloque-baja { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--linea); }
+.bloque-baja > .btn { justify-self: start; }
+.equipos-baja__cab { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.equipos-baja__lista { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.equipos-baja__item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.equipos-baja__nombre { font-weight: 700; overflow-wrap: anywhere; }
 
 /* Escudo del equipo (solo el superadmin): elegir la imagen, ver cómo queda y guardarla */
 .bloque-escudo {

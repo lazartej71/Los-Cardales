@@ -1,5 +1,5 @@
 /**
- * Panel: equipos y delegados.
+ * Panel: equipos y delegados; agregar equipos y darlos de baja.
  */
 
 import { useState } from 'react';
@@ -7,13 +7,20 @@ import { CampoTexto } from '../../componentes/CampoTexto.jsx';
 import { Escudo } from '../../componentes/Escudo.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { FiltroCategoriaZona } from '../../componentes/Segmentado.jsx';
+import { partidosPendientes } from '../../logica/bajas.js';
 import { equiposDeZona } from '../../logica/consultas.js';
 import { soloDigitos } from '../../logica/expulsiones.js';
 import { validarTelefono } from '../../logica/validaciones.js';
+import { AgregarEquipo } from './AgregarEquipo.jsx';
+import { BloqueBaja, DadosDeBaja } from './BajasEquipos.jsx';
 import { BloqueEscudo } from './BloqueEscudo.jsx';
 
 export function AdminEquipos({ db, acciones, filtro }) {
-  const equipos = equiposDeZona(db.equipos, filtro.zonaId);
+  const deZona = equiposDeZona(db.equipos, filtro.zonaId);
+  const enJuego = deZona.filter((e) => !e.baja);
+  const deBaja = deZona.filter((e) => e.baja);
+  const categoria = db.categorias.find((c) => c.id === filtro.categoriaId);
+  const zona = db.zonas.find((z) => z.id === filtro.zonaId);
   return (
     <>
       <p className="admin-intro">
@@ -22,21 +29,24 @@ export function AdminEquipos({ db, acciones, filtro }) {
       <div className="panel">
         <FiltroCategoriaZona db={db} filtro={filtro} />
       </div>
+      {categoria && zona && <AgregarEquipo key={zona.id} categoria={categoria} zona={zona} acciones={acciones} />}
       <div className="equipos">
-        {equipos.map((e) => (
+        {enJuego.map((e) => (
           <EditorEquipo
             key={`${e.id}|${e.nombre}|${e.delegado}|${e.telefonoDelegado}`}
             equipo={e}
+            pendientes={partidosPendientes(db.partidos, e.id).length}
             acciones={acciones}
             superadmin={db.rol === 'superadmin'}
           />
         ))}
       </div>
+      {deBaja.length > 0 && <DadosDeBaja equipos={deBaja} acciones={acciones} />}
     </>
   );
 }
 
-function EditorEquipo({ equipo, acciones, superadmin }) {
+function EditorEquipo({ equipo, pendientes, acciones, superadmin }) {
   const delegadoGuardado = equipo.delegado || '';
   const telefonoGuardado = equipo.telefonoDelegado || '';
   const [nombre, setNombre] = useState(equipo.nombre);
@@ -113,6 +123,7 @@ function EditorEquipo({ equipo, acciones, superadmin }) {
       <button type="submit" className="btn btn--primario" disabled={sinCambios || guardando}>
         {guardando ? 'Guardando…' : sinCambios ? 'Sin cambios' : 'Guardar cambios'}
       </button>
+      <BloqueBaja equipo={equipo} pendientes={pendientes} acciones={acciones} />
     </form>
   );
 }

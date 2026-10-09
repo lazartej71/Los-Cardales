@@ -72,4 +72,18 @@ describe('cliente de la API', () => {
     ]);
     expect([urlQuitar, quitar.method, quitar.body]).toEqual(['/api/admin/equipos/3/escudo', 'DELETE', undefined]);
   });
+
+  it('agrega un equipo y cambia su baja', async () => {
+    const fetchFalso = vi.fn(async () => respuestaJson(200, { ok: true }));
+    vi.stubGlobal('fetch', fetchFalso);
+    await api.crearEquipo('tok', { zonaId: 9, nombre: 'CHIVERO F.C' });
+    await api.cambiarBaja('tok', 88, true);
+    const [[urlCrear, crear], [urlBaja, baja]] = fetchFalso.mock.calls;
+    expect([urlCrear, crear.method, JSON.parse(crear.body)]).toEqual([
+      '/api/admin/equipos',
+      'POST',
+      { zonaId: 9, nombre: 'CHIVERO F.C' },
+    ]);
+    expect([urlBaja, baja.method, JSON.parse(baja.body)]).toEqual(['/api/admin/equipos/88/baja', 'PUT', { baja: true }]);
+  });
 });
