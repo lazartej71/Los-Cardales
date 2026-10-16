@@ -17,11 +17,11 @@ Qué se busca:
 
 ## Lo que falta para cerrar el diseño
 
-1. **Confirmar las canchas:** que las de F7 son canchas propias de F7 y no las mismas de F11 usadas a la misma hora (punto C). Se tomó C1 por lo que indican los datos.
-2. **Lo ya jugado de F7**, para la migración 10b (no hace falta para programar):
-   - los partidos y resultados de la fecha 1 (sábado 10/10), con el pendiente FECHA LIBRE FC vs CRUZEIRO FC;
-   - la programación de la fecha 2 si ya está;
-   - si EL CHAÑAR jugó la fecha 1 antes de que lo reemplazara BOBBY F.C.
+1. ~~Confirmar las canchas~~: **confirmado el 16/10**, son canchas de F7 aparte de las de F11 (C1).
+2. **Lo ya jugado de F7**, para la migración 10b (no hace falta para programar). Ya se jugaron las fechas 1, 2 y 3, y el usuario tiene los resultados. Falta:
+   - los partidos y resultados de las fechas 1, 2 y 3, con los pendientes (FECHA LIBRE FC vs CRUZEIRO FC de la fecha 1);
+   - en qué fecha entró BOBBY F.C en lugar de EL CHAÑAR;
+   - qué pasa con el arancel de esas tres fechas: si ya está cobrado, o si cada equipo debe lo que no pagó.
 3. **Los dos HTML de referencia** (`futbol7-mockups.html` y `prototipo-cardales.html`): no están en esta compu ni en el repo. Este documento sale de la descripción del prompt, y los detalles visuales marcados "a confirmar con las maquetas" se ajustan si aparecen.
 4. **Tu OK sobre este documento.**
 
@@ -35,10 +35,10 @@ Es un campeonato aparte del de F11: sus equipos no se vinculan con los de F11 au
 | Libre | B | LOS AMIGOS, TRIANGULITO FC, LA JUJUY FC, LA BANDA DE ROJAS, EL BAJO FC, LAPRIDA FC, LA 330 FC, SMATA FC | $65.000 |
 | +30 | Única | SAN RAMÓN, LA FLORIDA, BOBBY F.C, B° SAN MARTIN, 20 DE JUNIO, EL BOSQUE FC, SPORTIVO EL CHAÑAR, CITY FC | $60.000 |
 
-- **+30:** BOBBY F.C reemplaza a EL CHAÑAR (aviso de Gaby). Se carga BOBBY F.C desde el principio, salvo que EL CHAÑAR haya jugado la fecha 1: en ese caso va EL CHAÑAR dado de baja, como con las bajas de la migración 9.
+- **+30:** BOBBY F.C reemplaza a EL CHAÑAR (aviso de Gaby). EL CHAÑAR ya había jugado fechas, así que 10b lo carga con sus partidos y **dado de baja**, y crea BOBBY F.C en la zona, igual que las bajas de F11 en la migración 9.
 - **FECHA LIBRE FC** es un equipo de verdad (tiene escudo y juega contra CRUZEIRO FC), no la fecha libre de una zona impar.
 - **Canchas:** Cura Borges 1, 2 y 3; Los Cardales 1 y 2. Los sábados, a las 15:30 y 16:30 (lo visto en la fecha 1).
-- **Ya arrancó:** la fecha 1 se jugó el sábado 10/10/2026. FECHA LIBRE FC vs CRUZEIRO FC quedó sin día (pendiente).
+- **Ya arrancó:** se jugaron las fechas 1 (sábado 10/10/2026), 2 y 3. En la fecha 1, FECHA LIBRE FC vs CRUZEIRO FC quedó sin día (pendiente). 10b carga cada partido con su resultado (no como tabla inicial), así la tabla, el fixture y los resultados de F7 se ven completos.
 
 ## Decisiones tomadas con el usuario
 
@@ -91,23 +91,18 @@ El código nuevo también anda **sin 10a**. La vista previa usa la base real y s
 - En las listas que muestran las dos modalidades juntas (el superadmin con Todas, y los textos de Control), la categoría lleva la modalidad: "F7 · Libre". Donde ya se eligió la modalidad, queda "Libre".
 - Como los nombres de equipo se controlan dentro de cada categoría, el mismo nombre en F7 y en F11 ya se acepta sin tocar `validarEquipoNuevo`.
 
-### C. Canchas de F7: C1 (canchas propias), a confirmar
+### C. Canchas de F7: C1 (canchas propias), confirmado
 
-Gaby pasó Cura Borges 1, 2 y 3, y Los Cardales 1 y 2. Se toma **C1** porque:
-
-- Cura Borges 2 y 3 no existen en F11 (F11 usa 1 y de la 4 a la 9), así que la numeración de F7 es propia.
-- F7 juega los sábados a las 15:30 y 16:30.
-
-Falta que Gaby confirme que Cura Borges 1 y Los Cardales 1 y 2 de F7 no son las mismas canchas de F11 usadas al mismo tiempo. Si lo fueran, se pasa a C2.
+Gaby pasó Cura Borges 1, 2 y 3, y Los Cardales 1 y 2. **El 16/10 el usuario confirmó que son canchas de F7, distintas de las de F11** aunque compartan número: la cancha 1 de Cura Borges de F7 no es la cancha 1 de Cura Borges de F11.
 
 **C1. Canchas distintas de las de F11** (lo elegido):
 
-- Cada cancha de F7 tiene en la base un número propio que no choca con los de F11: Los Cardales 21 y 22, Cura Borges 21, 22 y 23. En pantalla se muestran como Gaby las nombra ("Cancha 1", "Cancha 2"…), porque en F7 ya está claro que son de F7. En las listas con las dos modalidades (superadmin con Todas, Control) llevan "F7": "Cura Borges · Cancha 2 (F7)".
+- Cada cancha de F7 tiene en la base un número propio que no choca con los de F11: Los Cardales 21 y 22, Cura Borges 21, 22 y 23. En pantalla se muestran como Gaby las nombra ("Cancha 1", "Cancha 2"…), porque en F7 ya está claro que son de F7. En las listas con las dos modalidades (superadmin con Todas, Control) llevan la modalidad, como propuso el usuario: "Cura Borges · Cancha 1 (7)" y "Cura Borges · Cancha 1 (11)".
 - `PREDIOS` suma a cada predio su lista de canchas de F7 (número en la base y nombre), y la migración suma esos números a `partidos_cancha_check`.
 - El trigger rechaza una cancha de F11 en un partido de F7 y al revés.
 - El índice de cancha ocupada queda como está. Como los números no se repiten entre modalidades, F7 y F11 nunca chocan, y dentro de F7 controla por fecha como hoy.
 
-**C2. Si resultaran las mismas canchas, o mitades de una de F11** (queda descartado mientras Gaby no diga lo contrario):
+**C2. Las mismas canchas, o mitades de una de F11** (descartado el 16/10; queda como referencia):
 
 - El control de cancha ocupada compara el **número de fecha**, y F7 va a tener su propia numeración: la fecha 1 de F7 puede jugarse el mismo fin de semana que la fecha 6 de F11. Esto ya pasa dentro de F11 (Libre fecha 5 con el resto en la 4). Para detectar un choque real hace falta saber **qué día** se juega cada fecha.
 - Propuesta: una tabla `jornadas (categoria_id, fecha, dia)` que se completa al armar cada fecha. El control de cancha ocupada pasa a ser por día real, con un trigger en la base y la regla en la API.
@@ -368,9 +363,8 @@ Gaby cobra distinto según la categoría (Libre $65.000, +30 $60.000), así que 
 
 - El conmutador **no aparece** mientras F7 no tenga categorías, así publicar el código antes de 10b no muestra una pestaña vacía. Con F7 cargado, está siempre visible.
 - El chip y el banner dicen la modalidad **también en F11** ("FÚTBOL 11"), para no depender solo del color.
-- Las canchas de F7 son propias (C1), por la numeración que pasó Gaby y porque juega los sábados a la tarde. Se muestran como él las nombra ("Cancha 1"), y con "(F7)" solo donde se ven las dos modalidades juntas.
+- Las canchas de F7 se muestran como las nombra Gaby ("Cancha 1"), y con "(7)" y "(11)" solo donde se ven las dos modalidades juntas.
 - El arancel de F7 es por equipo y por partido, como el de F11.
-- BOBBY F.C se carga en lugar de EL CHAÑAR desde el principio, salvo que EL CHAÑAR haya jugado la fecha 1.
 - **Los criterios de desempate los cambia solo el superadmin**, porque valen para las dos modalidades. Hoy también los puede cambiar Franco: deja de poder.
 - El nombre del campeonato ("Copa GP") es el de F11: lo cambian Franco y el superadmin. F7 no tiene nombre (dice "Fútbol 7").
 - Un choque de canchas entre F7 y F11 (solo si es C2) se avisa sin mostrar los partidos de la otra modalidad.
