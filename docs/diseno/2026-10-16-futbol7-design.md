@@ -1,6 +1,6 @@
 # Diseño: Fútbol 7 en la misma app
 
-Fecha: 2026-10-16. Estado: **borrador para revisar**. Incluye las respuestas del usuario del 16/10. Faltan tu OK sobre el documento y los datos de Fútbol 7, que se le piden a Gaby (ver "Lo que falta para cerrar el diseño").
+Fecha: 2026-10-16. Estado: **borrador para revisar**. Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
 
 ## Objetivo
 
@@ -17,9 +17,28 @@ Qué se busca:
 
 ## Lo que falta para cerrar el diseño
 
-1. **Datos de Fútbol 7**, que tiene Gaby. Lo más urgente es saber si **las canchas** son las mismas que usa F11 o son otras, porque cambia la base (punto C). Lo demás (categorías, zonas, equipos, arancel, si ya arrancó y el fixture) hace falta para la migración 10b, pero no para programar: mientras tanto se trabaja con equipos de prueba en la simulación.
-2. **Los dos HTML de referencia** (`futbol7-mockups.html` y `prototipo-cardales.html`): no están en esta compu ni en el repo. Este documento sale de la descripción del prompt, y los detalles visuales marcados "a confirmar con las maquetas" se ajustan si aparecen.
-3. **Tu OK sobre este documento.**
+1. **Confirmar las canchas:** que las de F7 son canchas propias de F7 y no las mismas de F11 usadas a la misma hora (punto C). Se tomó C1 por lo que indican los datos.
+2. **Lo ya jugado de F7**, para la migración 10b (no hace falta para programar):
+   - los partidos y resultados de la fecha 1 (sábado 10/10), con el pendiente FECHA LIBRE FC vs CRUZEIRO FC;
+   - la programación de la fecha 2 si ya está;
+   - si EL CHAÑAR jugó la fecha 1 antes de que lo reemplazara BOBBY F.C.
+3. **Los dos HTML de referencia** (`futbol7-mockups.html` y `prototipo-cardales.html`): no están en esta compu ni en el repo. Este documento sale de la descripción del prompt, y los detalles visuales marcados "a confirmar con las maquetas" se ajustan si aparecen.
+4. **Tu OK sobre este documento.**
+
+## Datos de Fútbol 7 (de Gaby, 16/10)
+
+Es un campeonato aparte del de F11: sus equipos no se vinculan con los de F11 aunque algún nombre se repita (por ejemplo CITY FC o SAN RAMÓN).
+
+| Categoría | Zona | Equipos | Arancel por partido |
+| --- | --- | --- | --- |
+| Libre | A | LA COLOMBIA FC, SAN RAMÓN FC, MALA JUNTA, PJE LOLA MORA, BAJO LA PÓLVORA, LOS PIBES FC, FECHA LIBRE FC, CRUZEIRO FC | $65.000 |
+| Libre | B | LOS AMIGOS, TRIANGULITO FC, LA JUJUY FC, LA BANDA DE ROJAS, EL BAJO FC, LAPRIDA FC, LA 330 FC, SMATA FC | $65.000 |
+| +30 | Única | SAN RAMÓN, LA FLORIDA, BOBBY F.C, B° SAN MARTIN, 20 DE JUNIO, EL BOSQUE FC, SPORTIVO EL CHAÑAR, CITY FC | $60.000 |
+
+- **+30:** BOBBY F.C reemplaza a EL CHAÑAR (aviso de Gaby). Se carga BOBBY F.C desde el principio, salvo que EL CHAÑAR haya jugado la fecha 1: en ese caso va EL CHAÑAR dado de baja, como con las bajas de la migración 9.
+- **FECHA LIBRE FC** es un equipo de verdad (tiene escudo y juega contra CRUZEIRO FC), no la fecha libre de una zona impar.
+- **Canchas:** Cura Borges 1, 2 y 3; Los Cardales 1 y 2. Los sábados, a las 15:30 y 16:30 (lo visto en la fecha 1).
+- **Ya arrancó:** la fecha 1 se jugó el sábado 10/10/2026. FECHA LIBRE FC vs CRUZEIRO FC quedó sin día (pendiente).
 
 ## Decisiones tomadas con el usuario
 
@@ -34,7 +53,7 @@ Del prompt, salvo lo que se cambió el 16/10 (marcado):
 | Distinción visual | F11 conserva `--marca` (`#ffb21a`) y F7 usa `--info` (`#7cc8ff`). Una variable de acento cambia según la modalidad. Hay un chip con ícono junto al título de cada sección. Logo, botón primario, tipografías y radios no cambian. |
 | **Permisos (cambia el 16/10)** | Cada organizador ve y toca **solo su modalidad**: Franco, F11; Gaby, F7. Eso incluye partidos, equipos, cuentas, suspendidos y su arancel. El superadmin ve todo. La restricción va **también en la base** (reglas RLS), como con los veedores. El prompt decía "sin permisos por modalidad"; cambió porque son dos organizadores. |
 | **Cuentas (cambia el 16/10)** | **Separadas:** cada equipo tiene su cuenta, como hoy en F11, y cada organizador cobra lo suyo. **No** hay cuenta única por club ni vínculo entre clubes: un club que juega las dos modalidades tiene un equipo en cada una, sin relación en la base. |
-| Arancel | Uno por modalidad. Cada organizador cambia el suyo. |
+| Arancel (16/10, datos de Gaby) | F11 sigue con un arancel único ($105.000 hoy). En F7 cambia **por categoría**: Libre $65.000 y +30 $60.000. Cada organizador cambia el suyo (punto E). |
 | Filtro del panel | El superadmin tiene el filtro Todas / F11 / F7, debajo de la cabecera. En Cargar no hay Todas. Franco y Gaby no lo ven: su panel ya está fijo en su modalidad. |
 | Anti-error de carga | Banner "Estás cargando en FÚTBOL 7", predios, canchas y equipos de la modalidad, y confirmación antes de descartar cambios sin guardar. |
 | Hoja de confirmación (16/10) | Antes de guardar un resultado o un W.O., con la modalidad en grande. Va en **F11 y en F7**: un toque más por resultado. |
@@ -60,7 +79,7 @@ Del prompt, salvo lo que se cambió el 16/10 (marcado):
 
 **Ojo con Franco:** 10a deja la cuenta `franco1` fija en F11. Desde ese momento, con el código viejo todavía publicado, Franco puede seguir cargando F11 como siempre. Lo único que pierde es cambiar los criterios de desempate (ver "Lo que asumí").
 
-El código nuevo también anda **sin 10a**. La vista previa usa la base real y se va a probar antes de correr nada. En ese caso lee la modalidad como `'f11'`, el arancel de F7 vacío y las cuentas sin modalidad fija, igual que hoy. Es el mismo criterio de las migraciones 3, 7, 8 y 9.
+El código nuevo también anda **sin 10a**. La vista previa usa la base real y se va a probar antes de correr nada. En ese caso lee la modalidad como `'f11'`, el arancel de cada categoría vacío y las cuentas sin modalidad fija, igual que hoy. Es el mismo criterio de las migraciones 3, 7, 8 y 9.
 
 ### B. Modalidad en la base
 
@@ -72,15 +91,23 @@ El código nuevo también anda **sin 10a**. La vista previa usa la base real y s
 - En las listas que muestran las dos modalidades juntas (el superadmin con Todas, y los textos de Control), la categoría lleva la modalidad: "F7 · Libre". Donde ya se eligió la modalidad, queda "Libre".
 - Como los nombres de equipo se controlan dentro de cada categoría, el mismo nombre en F7 y en F11 ya se acepta sin tocar `validarEquipoNuevo`.
 
-### C. Canchas de F7: depende de la respuesta de Gaby
+### C. Canchas de F7: C1 (canchas propias), a confirmar
 
-**C1. Si son canchas distintas de las de F11** (lo más simple):
+Gaby pasó Cura Borges 1, 2 y 3, y Los Cardales 1 y 2. Se toma **C1** porque:
 
-- Cada cancha de F7 tiene un número propio que no choca con los de F11 (por ejemplo 21, 22, 23) y se muestra con su nombre ("F7-1", "F7-2"). `PREDIOS` suma la lista de canchas de F7 de cada predio, y la migración suma esos números a `partidos_cancha_check`. Si F7 se juega en un predio que no está, se suma.
+- Cura Borges 2 y 3 no existen en F11 (F11 usa 1 y de la 4 a la 9), así que la numeración de F7 es propia.
+- F7 juega los sábados a las 15:30 y 16:30.
+
+Falta que Gaby confirme que Cura Borges 1 y Los Cardales 1 y 2 de F7 no son las mismas canchas de F11 usadas al mismo tiempo. Si lo fueran, se pasa a C2.
+
+**C1. Canchas distintas de las de F11** (lo elegido):
+
+- Cada cancha de F7 tiene en la base un número propio que no choca con los de F11: Los Cardales 21 y 22, Cura Borges 21, 22 y 23. En pantalla se muestran como Gaby las nombra ("Cancha 1", "Cancha 2"…), porque en F7 ya está claro que son de F7. En las listas con las dos modalidades (superadmin con Todas, Control) llevan "F7": "Cura Borges · Cancha 2 (F7)".
+- `PREDIOS` suma a cada predio su lista de canchas de F7 (número en la base y nombre), y la migración suma esos números a `partidos_cancha_check`.
 - El trigger rechaza una cancha de F11 en un partido de F7 y al revés.
 - El índice de cancha ocupada queda como está. Como los números no se repiten entre modalidades, F7 y F11 nunca chocan, y dentro de F7 controla por fecha como hoy.
 
-**C2. Si son las mismas canchas, o mitades de una de F11:**
+**C2. Si resultaran las mismas canchas, o mitades de una de F11** (queda descartado mientras Gaby no diga lo contrario):
 
 - El control de cancha ocupada compara el **número de fecha**, y F7 va a tener su propia numeración: la fecha 1 de F7 puede jugarse el mismo fin de semana que la fecha 6 de F11. Esto ya pasa dentro de F11 (Libre fecha 5 con el resto en la 4). Para detectar un choque real hace falta saber **qué día** se juega cada fecha.
 - Propuesta: una tabla `jornadas (categoria_id, fecha, dia)` que se completa al armar cada fecha. El control de cancha ocupada pasa a ser por día real, con un trigger en la base y la regla en la API.
@@ -99,19 +126,23 @@ El código nuevo también anda **sin 10a**. La vista previa usa la base real y s
 
 Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin cambios extra. El título pasa a "Cargar resultados · Fútbol 7", con las fechas en cada renglón.
 
-### E. Arancel por modalidad
+### E. Arancel: único en F11, por categoría en F7
 
-- `configuracion.arancel_f7 integer` (de 0 a 10.000.000). Puede quedar vacío hasta que 10b lo cargue con el valor que diga Gaby.
-  - Con dos cajas no tiene sentido que "vacío" quiera decir "el mismo que F11": si Franco cambia el suyo, cambiaría el de Gaby.
-  - Mientras está vacío, los partidos de F7 no generan deuda, y en Ajustes la cuenta de Gaby ve "Cargá el arancel de Fútbol 7".
-- `calcularCuentas` y `detalleCuenta` reciben, además del `arancel` de siempre, `arancelDe(partido)` (opcional), que da el arancel según la modalidad de la categoría del partido. Sin él se comportan igual que hoy, así que las cuentas y las pruebas de F11 no cambian.
+Gaby cobra distinto según la categoría (Libre $65.000, +30 $60.000), así que el arancel de F7 va en la categoría y no en `configuracion`:
+
+- `categorias.arancel integer` (de 0 a 10.000.000), que puede quedar vacío.
+  - En F11 queda vacío: vale `configuracion.arancel`, como hoy ($105.000). Nada cambia para Franco.
+  - En F7, 10b carga 65.000 en Libre y 60.000 en +30.
+  - Una categoría de F7 **no** usa el arancel de F11 si está vacía: con dos cajas, si Franco cambia el suyo, cambiaría el de Gaby. Mientras esté vacía, sus partidos no generan deuda, y en Ajustes Gaby ve "Cargá el arancel de +30".
+- `calcularCuentas` y `detalleCuenta` reciben, además del `arancel` de siempre, `arancelDe(partido)` (opcional), que da el arancel de la categoría del partido. Sin él se comportan igual que hoy, así que las cuentas y las pruebas de F11 no cambian.
 - **Ajustes:**
   - Franco ve el arancel de F11, como hoy.
-  - Gaby ve el de F7.
-  - El superadmin ve los dos.
-  - Cada uno lleva el aviso de hoy: cambiarlo recalcula las cuentas de esa modalidad.
-- El bloque Arancel del partido y la cuenta de cada equipo muestran el arancel de la modalidad del partido.
+  - Gaby ve uno por categoría de F7 (Libre y +30).
+  - El superadmin ve todos.
+  - Cada uno lleva el aviso de hoy: cambiarlo recalcula las cuentas de esa categoría (o de F11).
+- El bloque Arancel del partido y la cuenta de cada equipo muestran el arancel de la categoría del partido.
 - No se toca nada cargado: el arancel de F11 sigue igual y los pagos no se modifican.
+- Si algún día F11 quisiera aranceles por categoría, sirve la misma columna.
 
 ### F. Cuentas por modalidad (sin club)
 
@@ -128,7 +159,7 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
 ### H. Datos ya cargados y tolerancia
 
 - **Lectura:**
-  - Categorías y configuración pasan a `select('*')`: si 10a no se corrió, la modalidad es `'f11'` y el arancel de F7 queda vacío.
+  - Categorías y configuración pasan a `select('*')`: si 10a no se corrió, la modalidad es `'f11'` y el arancel de cada categoría queda vacío (vale el de `configuracion`, como hoy).
   - La modalidad de la cuenta se lee como el rol: si la columna no existe, la cuenta ve todo, como hoy.
   - `normalizarEquipo` y `normalizarPartido` no cambian.
 - **Equipo nuevo:** `POST /admin/equipos` no cambia de forma. La regla nueva es que la zona tiene que ser de la modalidad de la cuenta (I).
@@ -148,11 +179,11 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
   - `equipos`: por su zona. Al dar de alta un equipo todavía no tiene id: se controla la zona elegida, y en un cambio también la zona nueva.
   - `tabla_inicial` y `delegados`: por el equipo.
   - `expulsiones`, `tarjetas` y `movimientos`: por el equipo y por el partido.
-  - `categorias` y `zonas`: solo las cuentas sin modalidad (nadie las cambia desde la app).
+  - `zonas`: solo las cuentas sin modalidad (nadie las cambia desde la app).
+  - `categorias`: cambiar solo las de su modalidad, y un trigger deja que una cuenta con modalidad cambie **solo el arancel**. Crear, borrar o cambiar otra columna: solo las cuentas sin modalidad.
   - En las tablas privadas el control vale **también para leer**: Gaby no ve los pagos, deudas, delegados ni rojas de F11, y Franco no ve los de F7.
 - **`configuracion`:** un trigger deja cambiar cada columna solo a quien corresponde:
   - el arancel de F11 y el nombre del campeonato: cuentas de F11 o sin modalidad;
-  - el arancel de F7: cuentas de F7 o sin modalidad;
   - los criterios de desempate, que valen para las dos: solo cuentas sin modalidad.
 
 **API:**
@@ -213,7 +244,7 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
 ### Migración 10a: estructura y permisos (`supabase/migracion-10a-futbol7-estructura.sql`)
 
 - `categorias.modalidad` con su check, y la unicidad `(modalidad, nombre)` en lugar de `(nombre)`.
-- `configuracion.arancel_f7`, que puede quedar vacía.
+- `categorias.arancel`, que puede quedar vacía (en F11 queda vacía).
 - `administradores.modalidad`, que puede quedar vacía. Al final, `franco1` queda en `'f11'`.
 - Funciones de permisos, reglas RLS con la modalidad y el trigger de columnas de `configuracion` (I).
 - `validar_partido()`: la cancha tiene que ser de la modalidad. En C1, además, `partidos_cancha_check` suma los números de las canchas de F7.
@@ -225,7 +256,7 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
 - **Contenido**, en una sola transacción:
   - categorías desde la 6 y zonas desde la 11;
   - equipos con id explícito desde el siguiente libre al generar el SQL;
-  - el arancel de F7;
+  - el arancel de cada categoría de F7 (Libre 65.000 y +30 60.000);
   - la tabla inicial, si F7 ya arrancó;
   - el fixture, si Gaby lo pasa.
 - **Controles del script**, que no genera nada si hay errores:
@@ -254,18 +285,18 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
 ## API (`server/`)
 
 - `/api/publico`:
-  - suma la modalidad de cada categoría y el arancel de F7;
+  - suma la modalidad y el arancel de cada categoría;
   - crece con los datos de F7 (hoy pesa unos 44 KB), a tener en cuenta en el control de Egress.
 - `/api/admin/datos`: suma la modalidad de la cuenta.
 - Reglas con permisos por modalidad en partidos, equipos, bajas, rojas, pagos, deudas y configuración. Un veedor con modalidad, igual.
-- `PATCH /admin/configuracion`: acepta `arancelF7`, que puede ser un número o vacío.
+- `PATCH /admin/categorias/:id`: nueva, solo para el arancel de una categoría (un número o vacío). La cuenta tiene que ser de la modalidad de la categoría, o sin modalidad.
 - Crear partido y cambiar el lugar: la cancha tiene que ser de la modalidad. El error sería "Elegí una cancha de Fútbol 7 de Los Cardales."
 - `repositorioMemoria.js`: lo mismo que la base real, con la modalidad de cada rol simulado.
 
 ## Simulación
 
 - Arranca, como hoy, con una copia de los datos reales.
-- Mientras la base real no tenga F7 (antes de 10b), suma **datos de ejemplo de F7** solo en memoria. Tienen nombres claramente ficticios ("F7 A1", "F7 B2"…), como `datosEjemplo.js`: una categoría con dos zonas y una fecha armada con lugar y hora.
+- Mientras la base real no tenga F7 (antes de 10b), suma **F7 solo en memoria** con las categorías, zonas, equipos, canchas y aranceles reales de Gaby (los de `datos/futbol7.csv`), más una fecha de prueba armada con lugar y hora para poder cargar resultados.
 - Con F7 cargado en la base real, usa esos datos y no agrega ejemplos.
 - "Ver como": superadmin, organizador F11, organizador F7 y veedor.
 
@@ -337,7 +368,9 @@ Con F7 se suma la modalidad: cada categoría de F7 tiene su fecha en juego, sin 
 
 - El conmutador **no aparece** mientras F7 no tenga categorías, así publicar el código antes de 10b no muestra una pestaña vacía. Con F7 cargado, está siempre visible.
 - El chip y el banner dicen la modalidad **también en F11** ("FÚTBOL 11"), para no depender solo del color.
-- Para mostrar las canchas de F7 uso "F7-1", "F7-2" (si es C1), hasta ver las maquetas.
+- Las canchas de F7 son propias (C1), por la numeración que pasó Gaby y porque juega los sábados a la tarde. Se muestran como él las nombra ("Cancha 1"), y con "(F7)" solo donde se ven las dos modalidades juntas.
+- El arancel de F7 es por equipo y por partido, como el de F11.
+- BOBBY F.C se carga en lugar de EL CHAÑAR desde el principio, salvo que EL CHAÑAR haya jugado la fecha 1.
 - **Los criterios de desempate los cambia solo el superadmin**, porque valen para las dos modalidades. Hoy también los puede cambiar Franco: deja de poder.
 - El nombre del campeonato ("Copa GP") es el de F11: lo cambian Franco y el superadmin. F7 no tiene nombre (dice "Fútbol 7").
 - Un choque de canchas entre F7 y F11 (solo si es C2) se avisa sin mostrar los partidos de la otra modalidad.
