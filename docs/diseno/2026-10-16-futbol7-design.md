@@ -15,11 +15,11 @@ Hoy la app maneja solo Fútbol 11 (Libre, +30, +35, +40 y +45). Se suma Fútbol 
 
 1. **Datos de Fútbol 7** (sección 7 del prompt): están todos sin completar. Sin ellos no se escribe la migración 10b. La respuesta sobre las **canchas** además cambia el diseño de la base (punto C).
 2. **Los dos HTML de referencia** (`futbol7-mockups.html` y `prototipo-cardales.html`) no están en esta compu ni en el repo. Este borrador sale de la descripción del prompt. Al leerlos se ajustan los detalles visuales marcados como "a confirmar con las maquetas".
-3. **Decisiones que necesitan tu OK** porque cambian lo pedido o lo que se construye:
-   - D: la fecha en juego **por categoría**, no por modalidad. Además arregla un problema que ya existe hoy en Cargar.
-   - G: el delegado, si es uno **por equipo** o uno por club.
-   - La hoja de confirmación al guardar un resultado, si va **también en F11**.
-   - La rama: el prompt pide `feature/futbol-7` y vos me pediste trabajar solo en `dev`.
+3. **Tu OK sobre el resto del documento.** Ya respondiste el 2026-10-16:
+   - D: fecha en juego **por categoría**. Ya está hecho (etapa 0).
+   - G: delegado **por equipo**, copiado del de F11 al vincular.
+   - La hoja de confirmación va **en F11 y en F7**.
+   - F7 se trabaja en la rama **`feature/futbol-7`**. `dev` queda libre para arreglos urgentes.
 
 ## Decisiones tomadas con el usuario (del prompt)
 
@@ -79,6 +79,8 @@ El código nuevo también anda **sin 10a**. La vista previa de `dev` usa la base
 
 ### D. Fecha en juego por categoría (en lugar de por modalidad)
 
+**Aprobado y hecho el 2026-10-16 (etapa 0), antes de F7.** `fechaEnJuegoPorCategoria` (`consultas.js`), `fechasDeVeedores` y `listaDeFechas` (`veedores.js`). En Cargar y Veedores, con fechas distintas, el título dice "Fechas 4 y 5" y cada renglón "Libre · Fecha 5". Con una sola fecha, todo se ve como antes. Con los datos reales del 16/10, Cargar muestra los 46 partidos del fin de semana. Cuando llegue F7, se suma la modalidad: el título pasa a ser "Cargar resultados · Fútbol 11".
+
 - **Hallazgo con los datos reales del 16/10:** la fecha en juego única de Cargar y Veedores da **4**. Entonces muestra los 12 partidos de Libre de la fecha 4, que ya están cargados, y **no muestra los 12 de Libre de la fecha 5** de este fin de semana. Hoy Franco tiene que cargar esos partidos desde Partidos.
 - Una fecha por modalidad no alcanza, porque dentro de F11 las categorías ya van desfasadas.
 - Propuesta: `fechasEnJuego(partidos)` devuelve la fecha en juego de **cada categoría** (`fechaEnJuego` de sus partidos, la misma regla de hoy). En cada cancha, Cargar y Veedores muestran los partidos de la fecha en juego de su propia categoría. F7 queda separado solo, porque sus categorías son otras.
@@ -124,11 +126,10 @@ Alternativas descartadas:
 - **Copiar el archivo:** Franco no puede escribir en Storage, así que vincular necesitaría al superadmin.
 - **Contar referencias:** el trigger de la migración 8 no deja a Franco crear un equipo con escudo.
 
-**Delegado: propongo uno por equipo** (como hoy) y que al vincular se copie el del equipo de F11 como punto de partida, que después se puede cambiar.
+**Delegado: uno por equipo** (como hoy; aprobado el 2026-10-16). Al vincular se copia el del equipo de F11 como punto de partida, que después se puede cambiar.
 
 - Motivo: el plantel de F7 suele tener otro delegado, y el aviso de una roja de F7 tiene que llegarle al de F7.
-- La alternativa es un delegado por club, que cambia la tabla `delegados` y el aviso.
-- El prompt pone el delegado en el club, así que **esto necesita tu OK**.
+- La tabla `delegados` no cambia.
 
 ### H. Datos ya cargados y tolerancia
 
@@ -175,7 +176,7 @@ Alternativas descartadas:
 - **Hoja de confirmación** al guardar un resultado o un W.O. en `EditorPartido`:
   - Muestra la modalidad en grande, la categoría, las zonas, la fecha, la cancha y el marcador, con **Confirmar** y **Volver**.
   - Los pagos y las rojas no la piden.
-  - Propongo que valga en Cargar, Partidos y Veedores, también en F11: un toque más por resultado (ver "Lo que falta…").
+  - Vale en Cargar, Partidos y Veedores, en F11 y en F7 (aprobado el 2026-10-16): un toque más por resultado.
 - **Cambios sin guardar:** si se tocaron los goles sin guardar y se cierra el partido, se cambia de cancha o se cambia de modalidad, aparece "¿Descartar el resultado sin guardar?".
 - **Partidos, Cuentas, Suspendidos y Equipos:** Todas, F11 o F7 limita las categorías que se ofrecen. Con Todas aparecen las de las dos modalidades, las de F7 como "F7 · Libre". En Suspendidos, el filtro de categoría que ya tiene se arma con las categorías de la modalidad.
 - **Equipos:**
@@ -310,7 +311,7 @@ Alternativas descartadas:
 
 ## Etapas (un commit por etapa, `npm test` y `npm run lint` en cada una)
 
-0. **Arreglo chico, si lo querés antes:** fecha en juego por categoría en Cargar y Veedores (D). Hace que aparezca Libre fecha 5. Se puede publicar solo.
+0. **Hecho el 2026-10-16, en `dev`:** fecha en juego por categoría en Cargar y Veedores (D). Hace que aparezca Libre fecha 5.
 1. Migración 10a y sus pruebas.
 2. Lectura tolerante en los dos repositorios: modalidad, arancel de F7, clubes y herencia de escudos. Simulación con el ejemplo de F7.
 3. Lógica: modalidades, cuentas por club y arancel, y textos de Control.
