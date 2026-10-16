@@ -1,6 +1,6 @@
 # Diseño: Fútbol 7 en la misma app
 
-Fecha: 2026-10-16. Estado: **borrador para revisar**. Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
+Fecha: 2026-10-16. Estado: **aprobado por el usuario el 16/10**; se implementa en `feature/futbol-7`. Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
 
 ## Objetivo
 
@@ -20,8 +20,8 @@ Qué se busca:
 1. ~~Confirmar las canchas~~: **confirmado el 16/10**, son canchas de F7 aparte de las de F11 (C1).
 2. **Lo ya jugado de F7**, para la migración 10b (no hace falta para programar). Ya se jugaron las fechas 1, 2 y 3, y el usuario tiene los resultados. Falta:
    - los partidos y resultados de las fechas 1, 2 y 3, con los pendientes (FECHA LIBRE FC vs CRUZEIRO FC de la fecha 1);
-   - en qué fecha entró BOBBY F.C en lugar de EL CHAÑAR;
-   - qué pasa con el arancel de esas tres fechas: si ya está cobrado, o si cada equipo debe lo que no pagó.
+   - en qué fecha entró BOBBY F.C en lugar de EL CHAÑAR.
+   - El arancel de esas tres fechas **ya lo cobró Gaby** (16/10): 10b carga cada partido jugado con el pago de los dos equipos, así nadie queda debiendo.
 3. **Los dos HTML de referencia** (`futbol7-mockups.html` y `prototipo-cardales.html`): no están en esta compu ni en el repo. Este documento sale de la descripción del prompt, y los detalles visuales marcados "a confirmar con las maquetas" se ajustan si aparecen.
 4. **Tu OK sobre este documento.**
 
