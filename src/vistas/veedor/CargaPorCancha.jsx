@@ -1,10 +1,11 @@
 /**
  * Cargar partidos por cancha: se elige el predio, después la cancha, y se cargan los partidos de esa
- * cancha en la fecha en juego. Una barra fija arriba vuelve a elegir otra cancha. Aparte, el botón
- * Postergados lleva a los postergados reprogramados para un día especial, con los mismos pasos.
+ * cancha en la fecha en juego de cada categoría. Una barra fija arriba vuelve a elegir otra cancha. Aparte,
+ * el botón Postergados lleva a los postergados reprogramados para un día especial, con los mismos pasos.
  * En cada partido: resultado, W.O., rojas y arancel (postergar, borrar y el lugar se hacen en Partidos).
  * La usan los veedores y el panel en la pestaña Cargar (admin: además avisa las rojas por WhatsApp).
- * encabezado: "Veedores" o "Cargar resultados" (el título suma la fecha o "Postergados").
+ * encabezado: "Veedores" o "Cargar resultados" (el título suma la fecha o "Postergados"). Si una categoría
+ * va una fecha adelante, el título dice las dos ("Fechas 4 y 5") y cada partido, la suya.
  * inicial: { modo, predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
  */
 
@@ -15,7 +16,8 @@ import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { canchasDe, nombrePredio } from '../../logica/lugar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 import {
-  fechaDeVeedores,
+  fechasDeVeedores,
+  listaDeFechas,
   partidosDeCancha,
   partidosDePredio,
   partidosDeVeedor,
@@ -41,7 +43,7 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
     ...inicial,
   }));
   const { modo, predio, cancha, abierto } = eleccion;
-  const fecha = fechaDeVeedores(db.partidos);
+  const fechas = fechasDeVeedores(db.partidos);
   const postergados = modo === 'postergados';
   const reprogramados = partidosDeVeedor(db.partidos, 'postergados');
 
@@ -121,7 +123,7 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
           db={db}
           partidos={partidosDeCancha(db.partidos, predio, cancha, modo)}
           postergados={postergados}
-          fecha={fecha}
+          fechas={fechas}
           abierto={abierto}
           onAbrir={(id) => setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }))}
           acciones={acciones}
@@ -133,7 +135,11 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
 
   return (
     <>
-      <h2 className="admin-main__titulo">{postergados ? `${encabezado} · Postergados` : `${encabezado} · Fecha ${fecha}`}</h2>
+      <h2 className="admin-main__titulo">
+        {postergados
+          ? `${encabezado} · Postergados`
+          : `${encabezado} · ${fechas.length > 1 ? 'Fechas' : 'Fecha'} ${listaDeFechas(fechas)}`}
+      </h2>
       {contenido}
     </>
   );
@@ -166,9 +172,11 @@ function Barra({ texto, lugar, onVolver }) {
   );
 }
 
-function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, acciones, admin }) {
+function PartidosDeCancha({ db, partidos, postergados, fechas, abierto, onAbrir, acciones, admin }) {
+  const variasFechas = fechas.length > 1;
   if (!partidos.length) {
-    const vacio = postergados ? 'No hay postergados en esta cancha.' : `No hay partidos en esta cancha en la fecha ${fecha}.`;
+    const enFecha = `${variasFechas ? 'las fechas' : 'la fecha'} ${listaDeFechas(fechas)}`;
+    const vacio = postergados ? 'No hay postergados en esta cancha.' : `No hay partidos en esta cancha en ${enFecha}.`;
     return <p className="vacio-texto">{vacio}</p>;
   }
 
@@ -176,8 +184,12 @@ function PartidosDeCancha({ db, partidos, postergados, fecha, abierto, onAbrir, 
   // Escudos en los renglones si algún equipo de esta cancha tiene
   const conEscudos = hayEscudos(equiposDePartidos(partidos, equipo));
   const categoria = (p) => db.categorias.find((c) => c.id === p.categoriaId)?.nombre ?? '';
-  // Un postergado dice de qué fecha es (suma en esa fecha al cargarle el resultado)
-  const detalle = (p) => (postergados ? `${categoria(p)} · Postergado de la fecha ${p.fecha}` : categoria(p));
+  // Un postergado dice de qué fecha es (suma en esa fecha al cargarle el resultado). Si las categorías van
+  // por fechas distintas, cada partido dice la suya.
+  const detalle = (p) => {
+    if (postergados) return `${categoria(p)} · Postergado de la fecha ${p.fecha}`;
+    return variasFechas ? `${categoria(p)} · Fecha ${p.fecha}` : categoria(p);
+  };
   const porCargar = partidos.filter((p) => !tieneResultado(p));
   const cargados = partidos.filter(tieneResultado);
 

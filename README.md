@@ -9,7 +9,7 @@ App web mobile-first del campeonato de fútbol amateur, con cinco categorías: L
   - en cada partido se cargan el resultado (o el W.O.), las rojas (doble amarilla o directa, con aviso al delegado por WhatsApp) y lo que pagó cada equipo, en efectivo, por transferencia o en las dos partes;
   - en **Cuentas** se ve cuánto debe cada equipo y se anotan pagos sueltos y deudas anteriores;
   - se manejan los suspendidos, los equipos y delegados, y la configuración (incluido el valor del arancel).
-- **Veedores:** con una cuenta de veedor, el panel muestra solo la pantalla **Veedores**. El veedor elige el predio y la cancha, y carga los partidos de esa cancha en la fecha en juego: resultado, W.O., rojas y pago del arancel. Los postergados reprogramados van aparte, en el botón **Postergados**. No puede crear, borrar ni postergar partidos, ni entrar a las otras secciones.
+- **Veedores:** con una cuenta de veedor, el panel muestra solo la pantalla **Veedores**. El veedor elige el predio y la cancha, y carga los partidos de esa cancha en la fecha en juego de cada categoría (si una va una fecha adelante, como Libre cuando recupera una fecha entera un feriado, se ven las dos): resultado, W.O., rojas y pago del arancel. Los postergados reprogramados van aparte, en el botón **Postergados**. No puede crear, borrar ni postergar partidos, ni entrar a las otras secciones.
 
 ## Cómo está armado
 
@@ -92,7 +92,7 @@ insert into public.administradores (user_id, nombre, rol)
 select id, 'Veedor Juan', 'veedor' from auth.users where email = 'veedor1@loscardalesfutbol.com';
 ```
 
-El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el resultado y el W.O. de un partido, agregar rojas y borrar las que todavía no tienen sanción, y manejar los pagos de los partidos; la API además lo limita a los partidos de la fecha en juego. Lo que carga queda en Control con su nombre.
+El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el resultado y el W.O. de un partido, agregar rojas y borrar las que todavía no tienen sanción, y manejar los pagos de los partidos; la API además lo limita a los partidos de la fecha en juego de cada categoría. Lo que carga queda en Control con su nombre.
 
 **Visitas:** la pestaña Control muestra cuántas personas entraron hoy, ayer, en los últimos 7 días (con barras) y en total. Cada navegador avisa una sola vez por día al abrir la vista pública (no cuentan el panel ni la simulación) y en Supabase queda solo un número por día, sin datos de la persona. Para más detalle (países, dispositivos) está Vercel Web Analytics, activado en el proyecto los-cardales → **Analytics**.
 

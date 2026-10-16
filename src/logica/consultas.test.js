@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fechaEnJuego, partidosDeCategoria } from './consultas.js';
+import { fechaEnJuego, fechaEnJuegoPorCategoria, partidosDeCategoria } from './consultas.js';
 
 let ultimoId = 0;
 const pendiente = (fecha, cambios = {}) => ({
@@ -37,6 +37,35 @@ describe('fechaEnJuego', () => {
   it('si todo está cargado es la última, y sin fechas es la 1', () => {
     expect(fechaEnJuego(fechas([1, [jugado(1)]], [2, [jugado(2)]]))).toBe(2);
     expect(fechaEnJuego([])).toBe(1);
+  });
+});
+
+describe('fecha en juego de cada categoría', () => {
+  const de = (categoriaId, partido) => ({ ...partido, categoriaId });
+
+  // Como el fin de semana del 17/10: Libre jugó toda la fecha 4 un feriado y ya va por la 5; el resto, por la 4
+  it('cada categoría tiene la suya, aunque una vaya una fecha adelante', () => {
+    const partidos = [
+      de(1, jugado(3)),
+      de(1, jugado(4)),
+      de(1, pendiente(5)),
+      de(2, jugado(3)),
+      de(2, pendiente(4)),
+      de(5, jugado(3)),
+      de(5, postergado(3)),
+      de(5, pendiente(4)),
+    ];
+    expect(fechaEnJuegoPorCategoria(partidos)).toEqual(
+      new Map([
+        [1, 5],
+        [2, 4],
+        [5, 4],
+      ])
+    );
+  });
+
+  it('sin partidos no hay ninguna', () => {
+    expect(fechaEnJuegoPorCategoria([])).toEqual(new Map());
   });
 });
 

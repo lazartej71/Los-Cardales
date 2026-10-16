@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   esPartidoDeVeedor,
-  fechaDeVeedores,
+  fechasDeVeedores,
+  listaDeFechas,
   partidosDeCancha,
   partidosDePredio,
   partidosDeVeedor,
@@ -49,13 +50,50 @@ function armarTorneo() {
   return { p, partidos: Object.values(p) };
 }
 
-describe('fecha de los veedores', () => {
-  it('es la fecha en juego mirando todas las categorías juntas', () => {
-    expect(fechaDeVeedores(armarTorneo().partidos)).toBe(3);
+// Como el fin de semana del 17/10 en la cancha 2: Libre (categoría 1) jugó toda la fecha 4 un feriado y
+// juega la 5; la categoría 2 juega la 4
+function armarFindeDesfasado() {
+  const p = {
+    libreFecha4: jugado(4, { hora: '14:40' }),
+    libreFecha5: partido(5, { hora: '17:30' }),
+    otraFecha3: jugado(3, { categoriaId: 2, hora: '13:40' }),
+    otraFecha4: partido(4, { categoriaId: 2, hora: '15:10' }),
+  };
+  return { p, partidos: Object.values(p) };
+}
+
+describe('fechas de los veedores', () => {
+  it('si todas las categorías van por la misma fecha, es una sola', () => {
+    expect(fechasDeVeedores(armarTorneo().partidos)).toEqual([3]);
+  });
+
+  it('cada categoría aporta la suya, sin repetir y en orden', () => {
+    expect(fechasDeVeedores(armarFindeDesfasado().partidos)).toEqual([4, 5]);
   });
 
   it('sin partidos es la 1', () => {
-    expect(fechaDeVeedores([])).toBe(1);
+    expect(fechasDeVeedores([])).toEqual([1]);
+  });
+
+  it('se leen como en el título: "3", "4 y 5", "3, 4 y 5"', () => {
+    expect(listaDeFechas([3])).toBe('3');
+    expect(listaDeFechas([4, 5])).toBe('4 y 5');
+    expect(listaDeFechas([3, 4, 5])).toBe('3, 4 y 5');
+  });
+});
+
+describe('una categoría que va una fecha adelante', () => {
+  it('cada cancha trae los partidos de la fecha en juego de cada categoría', () => {
+    const { p, partidos } = armarFindeDesfasado();
+    expect(partidosDeCancha(partidos, 'los_cardales', 2).map((x) => x.id)).toEqual([p.otraFecha4.id, p.libreFecha5.id]);
+  });
+
+  it('el veedor toca el de la fecha 5 de Libre y no los de fechas que ya pasaron', () => {
+    const { p, partidos } = armarFindeDesfasado();
+    expect(esPartidoDeVeedor(partidos, p.libreFecha5.id)).toBe(true);
+    expect(esPartidoDeVeedor(partidos, p.otraFecha4.id)).toBe(true);
+    expect(esPartidoDeVeedor(partidos, p.libreFecha4.id)).toBe(false);
+    expect(esPartidoDeVeedor(partidos, p.otraFecha3.id)).toBe(false);
   });
 });
 
@@ -111,7 +149,7 @@ describe('postergados que se recuperan en un día especial', () => {
   });
 
   it('no mueven la fecha en juego', () => {
-    expect(fechaDeVeedores(armarTorneo().partidos)).toBe(3);
+    expect(fechasDeVeedores(armarTorneo().partidos)).toEqual([3]);
   });
 });
 

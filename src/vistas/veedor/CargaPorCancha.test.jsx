@@ -37,6 +37,42 @@ describe('carga por predio y cancha', () => {
     expect(html).not.toContain('Lugar y hora');
   });
 
+  // Como el fin de semana del 17/10: Libre ya completó su fecha 3 y juega la 4; el resto sigue en la 3
+  it('si una categoría va una fecha adelante, el título dice las dos fechas y cada partido la suya', () => {
+    const db = armarDb();
+    const id = (nombre) => db.equipos.find((e) => e.nombre === nombre).id;
+    const libre = db.categorias.find((c) => c.nombre === 'Libre').id;
+    db.partidos = db.partidos.map((p) => {
+      if (p.categoriaId === libre && p.fecha === 3) return { ...p, golesLocal: 1, golesVisitante: 0 };
+      if (p.fecha === 3 && p.localId === id('+35 A1')) return { ...p, predio: 'los_cardales', cancha: 2, hora: '16:20' };
+      return p;
+    });
+    db.partidos.push({
+      id: Math.max(...db.partidos.map((p) => p.id)) + 1,
+      categoriaId: libre,
+      fecha: 4,
+      localId: id('Libre A1'),
+      visitanteId: id('Libre A2'),
+      golesLocal: null,
+      golesVisitante: null,
+      postergado: false,
+      ausente: null,
+      predio: 'los_cardales',
+      cancha: 2,
+      hora: '15:10',
+    });
+
+    const html = dibujar({ inicial: { predio: 'los_cardales', cancha: 2 } }, db);
+    expect(html).toContain('>Cargar resultados · Fechas 3 y 4</h2>');
+    expect(html).toContain('Libre · Fecha 4');
+    expect(html).toContain('+35 · Fecha 3');
+    // El de Libre de la fecha 3 (13:40 en esta cancha) ya pasó: no aparece
+    expect(html).not.toContain('Libre · Fecha 3');
+    expect(dibujar({ inicial: { predio: 'los_cardales', cancha: 1 } }, db)).toContain(
+      'No hay partidos en esta cancha en las fechas 3 y 4.'
+    );
+  });
+
   it('en el panel (admin) la roja se puede avisar por WhatsApp; el veedor no', () => {
     const db = armarDb();
     const jugado = db.partidos.find((p) => p.fecha === 1);

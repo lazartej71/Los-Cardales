@@ -95,6 +95,19 @@ export function fechaEnJuego(fechas) {
   return fechas.length ? fechas[fechas.length - 1].fecha : 1;
 }
 
+// La fecha en juego de cada categoría (Map categoriaId → fecha). Las categorías pueden ir desfasadas:
+// por ejemplo, Libre recupera una fecha entera un feriado y queda una fecha adelante del resto.
+export function fechaEnJuegoPorCategoria(partidos) {
+  const porCategoria = new Map();
+  partidos.forEach((p) => {
+    if (!porCategoria.has(p.categoriaId)) porCategoria.set(p.categoriaId, []);
+    porCategoria.get(p.categoriaId).push(p);
+  });
+  return new Map(
+    [...porCategoria].map(([categoriaId, lista]) => [categoriaId, fechaEnJuego(agruparPorFecha(lista))])
+  );
+}
+
 // Todo lo que hace falta para mostrar una expulsión
 export function detalleExpulsion(db, expulsion) {
   const partido = db.partidos.find((p) => p.id === expulsion.partidoId);
