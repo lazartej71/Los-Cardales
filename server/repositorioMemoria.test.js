@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
+import { conFutbol7 } from '../src/datos/datosEjemploFutbol7.js';
 import { crearRepositorioMemoria } from './repositorioMemoria.js';
 
 // Lo mismo que devuelve la base real a cualquiera (sin expulsiones ni delegados)
@@ -254,5 +255,38 @@ describe('base en memoria de la simulación', () => {
       ['equipos', ['escudo']],
       ['equipos', ['escudo']],
     ]);
+  });
+});
+
+describe('cuentas de los organizadores en la simulación', () => {
+  it('Franco y Gaby entran como admin con su modalidad; la cuenta de Gaby ve solo lo privado de F7', async () => {
+    const { categorias, zonas, equipos, tablaInicial, partidos, configuracion } = conFutbol7();
+    const crearRepositorio = crearRepositorioMemoria(async () => ({
+      categorias,
+      zonas,
+      equipos: equipos.map(({ id, zonaId, nombre }) => ({ id, zonaId, nombre })),
+      tablaInicial,
+      partidos,
+      configuracion,
+    }));
+    const gaby = crearRepositorio('simulacion-f7');
+    expect(await gaby.rol()).toBe('admin');
+    expect(await gaby.esAdmin()).toBe(true);
+    expect(await gaby.modalidad()).toBe('f7');
+    expect(await crearRepositorio('simulacion-f11').modalidad()).toBe('f11');
+    expect(await crearRepositorio('simulacion').modalidad()).toBeNull();
+
+    // La simulación arranca sin nada privado: el superadmin carga un pago de cada modalidad y un delegado de F11
+    const superadmin = crearRepositorio('simulacion');
+    const pago = (equipo, partido, monto) => ({ equipo_id: equipo, partido_id: partido, tipo: 'pago', monto, metodo: 'efectivo', fecha: '2026-10-10' });
+    await superadmin.insertar('movimientos', pago(101, 201, 65000));
+    await superadmin.insertar('movimientos', pago(1, 1, 105000));
+    await superadmin.guardarDelegado({ equipo_id: 1, nombre: 'Delegado F11', telefono: '' });
+    const vistoPorGaby = await gaby.leerAdmin();
+    expect(vistoPorGaby.movimientos.map((m) => m.equipoId)).toEqual([101]);
+    expect(vistoPorGaby.equipos.find((e) => e.id === 1).delegado).toBe('');
+    // Lo público llega completo, como en la base real
+    expect(vistoPorGaby.categorias).toHaveLength(5);
+    expect((await superadmin.leerAdmin()).movimientos).toHaveLength(2);
   });
 });

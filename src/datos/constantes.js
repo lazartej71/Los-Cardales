@@ -46,12 +46,17 @@ export const PREDIOS = [
 
 // Simulación: con qué rol se prueba el panel. La sesión simulada lleva el token y la base en memoria
 // responde con ese rol (el selector "Ver como" del cartel de la simulación)
+// (los organizadores son admins con la modalidad fija: Franco en Fútbol 11 y Gaby en Fútbol 7)
 export const ROLES_SIMULACION = [
   { valor: 'superadmin', etiqueta: 'Superadmin', token: 'simulacion' },
   { valor: 'admin', etiqueta: 'Admin', token: 'simulacion-admin' },
+  { valor: 'f11', etiqueta: 'Organizador F11 (Franco)', token: 'simulacion-f11', modalidad: 'f11' },
+  { valor: 'f7', etiqueta: 'Organizador F7 (Gaby)', token: 'simulacion-f7', modalidad: 'f7' },
   { valor: 'veedor', etiqueta: 'Veedor', token: 'simulacion-veedor' },
 ];
 
 export const tokenSimulado = (rol) => ROLES_SIMULACION.find((r) => r.valor === rol)?.token ?? 'simulacion';
 
 export const rolSimulado = (token) => ROLES_SIMULACION.find((r) => r.token === token)?.valor ?? 'superadmin';
+
+export const modalidadSimulada = (token) => ROLES_SIMULACION.find((r) => r.token === token)?.modalidad ?? null;

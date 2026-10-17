@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
+import { conFutbol7 } from '../src/datos/datosEjemploFutbol7.js';
 import {
+  permisoModalidad,
   permisoVeedorBorrarRoja,
   permisoVeedorPago,
   permisoVeedorPagoNuevo,
@@ -13,8 +15,10 @@ import {
   validarCambioEquipo,
   validarCambioExpulsion,
   validarCambioMovimiento,
+  validarArancelCategoria,
   validarCambioPartido,
   validarConfiguracion,
+  validarConfiguracionDeCuenta,
   validarEquipoNuevo,
   validarEscudo,
   validarExpulsionNueva,
@@ -688,5 +692,83 @@ describe('escudo de un equipo', () => {
 
   it('el equipo tiene que existir', () => {
     expect(validarEscudo(datos, 99999, { imagen: WEBP })).toEqual({ error: 'Ese equipo no existe.', estado: 404 });
+  });
+});
+
+describe('Fútbol 7: modalidad de la cuenta, canchas y arancel', () => {
+  const f7 = conFutbol7();
+  const lugar = (predio, cancha, hora = '16:30') => ({ predio, cancha, hora });
+  // La fecha 2 de la Libre de F7: F7 A1 contra F7 A3
+  const nuevoF7 = (cambios = {}) => ({ categoriaId: 10, fecha: 2, localId: 101, visitanteId: 103, ...cambios });
+
+  it('una cuenta con modalidad no toca lo de la otra', () => {
+    expect(permisoModalidad(f7, 'f7', { partidoId: 1 })).toEqual({
+      error: 'Tu cuenta es de Fútbol 7: no puede cambiar partidos de Fútbol 11.',
+      estado: 403,
+    });
+    expect(permisoModalidad(f7, 'f11', { equipoId: 101 })).toEqual({
+      error: 'Tu cuenta es de Fútbol 11: no puede cambiar equipos de Fútbol 7.',
+      estado: 403,
+    });
+    expect(permisoModalidad(f7, 'f11', { movimientoId: 900 }).error).toBe(
+      'Tu cuenta es de Fútbol 11: no puede cambiar pagos de Fútbol 7.'
+    );
+    expect(permisoModalidad(f7, 'f11', { expulsionId: 900 }).error).toBe(
+      'Tu cuenta es de Fútbol 11: no puede cambiar tarjetas de Fútbol 7.'
+    );
+    expect(permisoModalidad(f7, 'f11', { categoriaArancelId: 10 }).error).toBe(
+      'Tu cuenta es de Fútbol 11: no puede cambiar aranceles de Fútbol 7.'
+    );
+    expect(permisoModalidad(f7, 'f7', { zonaId: 20 })).toBeNull();
+    expect(permisoModalidad(f7, null, { partidoId: 1 })).toBeNull();
+    // Lo que no existe lo responde la regla de siempre (404)
+    expect(permisoModalidad(f7, 'f7', { partidoId: 9999 })).toBeNull();
+  });
+
+  it('un partido de F7 va en una cancha de F7', () => {
+    expect(validarPartidoNuevo(f7, nuevoF7(lugar('los_cardales', 1))).error).toBe(
+      'Elegí una cancha de Fútbol 7 de Los Cardales.'
+    );
+    expect(validarPartidoNuevo(f7, nuevoF7(lugar('los_cardales', 21))).valor.cancha).toBe(21);
+  });
+
+  it('la cancha ocupada se nombra con su número de F7', () => {
+    const sin202 = { ...f7, partidos: f7.partidos.filter((p) => p.id !== 202) };
+    const choca = validarPartidoNuevo(sin202, {
+      categoriaId: 10,
+      fecha: 1,
+      localId: 103,
+      visitanteId: 104,
+      ...lugar('los_cardales', 21, '15:30'),
+    });
+    expect(choca).toEqual({ error: 'La cancha 1 de Los Cardales ya tiene un partido a las 15:30 en la fecha 1.', estado: 409 });
+  });
+
+  it('el lugar de un partido de F7 se cambia a otra cancha de F7', () => {
+    expect(validarCambioPartido(f7, 202, lugar('cura_borges', 4)).error).toBe('Elegí una cancha de Fútbol 7 de Cura Borges.');
+    expect(validarCambioPartido(f7, 202, lugar('cura_borges', 23, '17:30')).valor).toEqual(lugar('cura_borges', 23, '17:30'));
+  });
+
+  it('el arancel de una categoría: solo en F7, un número o vacío', () => {
+    const NO_NUMERO = 'El arancel tiene que ser un número entero de pesos.';
+    expect(validarArancelCategoria(f7, 10, { arancel: 70000 })).toEqual({ valor: { arancel: 70000 } });
+    expect(validarArancelCategoria(f7, 10, { arancel: null })).toEqual({ valor: { arancel: null } });
+    expect(validarArancelCategoria(f7, 10, { arancel: -1 }).error).toBe(NO_NUMERO);
+    expect(validarArancelCategoria(f7, 10, {}).error).toBe(NO_NUMERO);
+    expect(validarArancelCategoria(f7, 1, { arancel: 70000 }).error).toBe('El arancel por categoría es solo de Fútbol 7.');
+    expect(validarArancelCategoria(f7, 99, { arancel: 70000 })).toEqual({ error: 'Esa categoría no existe.', estado: 404 });
+  });
+
+  it('los ajustes de F11 no los cambia la cuenta de F7, y los criterios solo el superadmin', () => {
+    expect(validarConfiguracionDeCuenta('f7', { arancel: 1 })).toEqual({
+      error: 'Tu cuenta es de Fútbol 7: los ajustes de Fútbol 11 los cambia su organizador.',
+      estado: 403,
+    });
+    expect(validarConfiguracionDeCuenta('f11', { criteriosDesempate: ['puntos', 'gf', 'dg', 'enfrentamiento'] })).toEqual({
+      error: 'Los criterios de desempate los cambia solo el superadmin.',
+      estado: 403,
+    });
+    expect(validarConfiguracionDeCuenta('f11', { arancel: 110000 })).toBeNull();
+    expect(validarConfiguracionDeCuenta(null, { criteriosDesempate: [] })).toBeNull();
   });
 });

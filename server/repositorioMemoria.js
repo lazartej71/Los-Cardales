@@ -4,8 +4,9 @@
  * Tiene la misma forma que crearRepositorioSupabase, así la API no nota la diferencia.
  */
 
-import { rolSimulado } from '../src/datos/constantes.js';
+import { modalidadSimulada, rolSimulado } from '../src/datos/constantes.js';
 import { hoyEnArgentina } from '../src/logica/cuentas.js';
+import { filtrarPorModalidad } from '../src/logica/modalidades.js';
 import { aCamel, armarDatosAdmin } from './repositorio.js';
 
 // Lo que completa la base sola al insertar (los valores por defecto de esquema.sql y las migraciones)
@@ -87,6 +88,7 @@ export function crearRepositorioMemoria(cargarDatosReales) {
   return function crearRepositorio(token) {
     // La sesión simulada dice con qué rol se prueba (el selector "Ver como" del cartel de la simulación)
     const rol = rolSimulado(token);
+    const modalidad = modalidadSimulada(token);
     const veedor = rol === 'veedor';
     const quien = rol === 'superadmin' ? 'Simulación' : `Simulación (${rol})`;
 
@@ -105,11 +107,22 @@ export function crearRepositorioMemoria(cargarDatosReales) {
     return {
       leerPublico,
 
-      // Como las reglas de la base: el veedor no ve los teléfonos de los delegados ni las amarillas
+      // Como las reglas de la base: el veedor no ve los teléfonos de los delegados ni las amarillas, y un
+      // organizador ve solo lo privado de su modalidad (lo público, completo)
       async leerAdmin() {
         const publico = await leerPublico();
         const { delegados, expulsiones, tarjetas, movimientos } = await base();
-        const privados = veedor ? { delegados: [], expulsiones, tarjetas: [], movimientos } : { delegados, expulsiones, tarjetas, movimientos };
+        let privados = veedor ? { delegados: [], expulsiones, tarjetas: [], movimientos } : { delegados, expulsiones, tarjetas, movimientos };
+        if (modalidad) {
+          const propio = filtrarPorModalidad({ ...publico, ...privados }, modalidad);
+          const equipos = new Set(propio.equipos.map((e) => e.id));
+          privados = {
+            delegados: privados.delegados.filter((d) => equipos.has(d.equipoId)),
+            expulsiones: propio.expulsiones,
+            tarjetas: propio.tarjetas,
+            movimientos: propio.movimientos,
+          };
+        }
         return armarDatosAdmin(publico, copia(privados));
       },
 
@@ -142,6 +155,10 @@ export function crearRepositorioMemoria(cargarDatosReales) {
       // Como en la base real: el rol de una cuenta del panel (por defecto se ve todo, también Control)
       async rol() {
         return rol === 'superadmin' ? 'superadmin' : 'admin';
+      },
+
+      async modalidad() {
+        return modalidad;
       },
 
       async leerActividad({ desde, hasta }) {

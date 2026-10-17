@@ -13,6 +13,7 @@ function armar(fallo) {
       return { id: 1 };
     }),
     crearMovimiento: vi.fn(async () => ({ id: 9 })),
+    actualizarCategoria: vi.fn(async () => ({ id: 10 })),
     actividad: vi.fn(async () => {
       if (fallo) throw fallo;
       return [{ id: 1 }];
@@ -29,6 +30,13 @@ function armar(fallo) {
 }
 
 describe('acciones del panel', () => {
+  it('guarda el arancel de una categoría con el token y avisa', async () => {
+    const { acciones, avisos, cliente } = armar();
+    expect(await acciones.actualizarCategoria(10, { arancel: 70000 }, 'Arancel guardado.')).toEqual({ id: 10 });
+    expect(cliente.actualizarCategoria).toHaveBeenCalledWith('tok', 10, { arancel: 70000 });
+    expect(avisos).toEqual([['ok', 'Arancel guardado.']]);
+  });
+
   it('lee la actividad sin volver a pedir los datos ni avisar', async () => {
     const { acciones, avisos, recargar, cliente } = armar();
     expect(await acciones.leerActividad('2026-10-03')).toEqual([{ id: 1 }]);

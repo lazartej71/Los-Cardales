@@ -86,6 +86,7 @@ export function crearAcciones({ token, recargar, avisar, onSesionInvalida, clien
     quitarEscudo: (id, mensaje) => ejecutar(() => cliente.quitarEscudo(token, id), mensaje),
     actualizarConfiguracion: (cambios, mensaje) =>
       ejecutar(() => cliente.actualizarConfiguracion(token, cambios), mensaje),
+    actualizarCategoria: (id, cambios, mensaje) => ejecutar(() => cliente.actualizarCategoria(token, id, cambios), mensaje),
   };
 }
 

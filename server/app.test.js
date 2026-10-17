@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
+import { conFutbol7 } from '../src/datos/datosEjemploFutbol7.js';
 import { crearApp } from './app.js';
 import { crearRepositorioMemoria } from './repositorioMemoria.js';
 
 // Repositorio en memoria: registra lo que la API intenta guardar
-function armar({ admin = true, veedor = false, rol = 'admin' } = {}) {
-  const datos = crearDatosEjemplo();
+function armar({ admin = true, veedor = false, rol = 'admin', modalidad = null, datos = crearDatosEjemplo() } = {}) {
   const guardados = [];
   const pedidosActividad = [];
   let visitas = 0;
@@ -24,6 +24,7 @@ function armar({ admin = true, veedor = false, rol = 'admin' } = {}) {
     esAdmin: async () => admin,
     esVeedor: async () => veedor,
     rol: async () => rol,
+    modalidad: async () => modalidad,
     sumarVisita: async () => {
       visitas++;
     },
@@ -597,5 +598,51 @@ describe('API de la simulación (base en memoria)', () => {
     ]);
     // Los datos de partida no se tocan
     expect(publico.partidos.some((p) => p.fecha === 9)).toBe(false);
+  });
+});
+
+describe('cada organizador, solo su modalidad', () => {
+  const conCuenta = (modalidad) => armar({ modalidad, datos: conFutbol7() });
+  const NO_F11 = 'Tu cuenta es de Fútbol 7: no puede cambiar partidos de Fútbol 11.';
+
+  it('la cuenta de F7 no toca un partido de F11, y sí uno de F7', async () => {
+    const { app, guardados } = conCuenta('f7');
+    const ajeno = await pedir(app, '/admin/partidos/1', { metodo: 'PATCH', cuerpo: { golesLocal: 1, golesVisitante: 0 } });
+    expect(ajeno.status).toBe(403);
+    expect(await ajeno.json()).toEqual({ error: NO_F11 });
+    const propio = await pedir(app, '/admin/partidos/202', { metodo: 'PATCH', cuerpo: { golesLocal: 1, golesVisitante: 0 } });
+    expect(propio.status).toBe(200);
+    expect(guardados).toHaveLength(1);
+  });
+
+  it('la cuenta de F11 no agrega un equipo en una zona de F7', async () => {
+    const { app, guardados } = conCuenta('f11');
+    const respuesta = await pedir(app, '/admin/equipos', { metodo: 'POST', cuerpo: { zonaId: 20, nombre: 'INTRUSO' } });
+    expect(respuesta.status).toBe(403);
+    expect(await respuesta.json()).toEqual({ error: 'Tu cuenta es de Fútbol 11: no puede cambiar equipos de Fútbol 7.' });
+    expect(guardados).toEqual([]);
+  });
+
+  it('el arancel de una categoría de F7 lo cambia su organizador', async () => {
+    const { app, guardados } = conCuenta('f7');
+    const respuesta = await pedir(app, '/admin/categorias/10', { metodo: 'PATCH', cuerpo: { arancel: 70000 } });
+    expect(respuesta.status).toBe(200);
+    expect(guardados).toEqual([{ accion: 'actualizar', tabla: 'categorias', id: 10, cambios: { arancel: 70000 } }]);
+    const deFranco = await pedir(conCuenta('f11').app, '/admin/categorias/10', { metodo: 'PATCH', cuerpo: { arancel: 1 } });
+    expect(deFranco.status).toBe(403);
+    expect(await deFranco.json()).toEqual({ error: 'Tu cuenta es de Fútbol 11: no puede cambiar aranceles de Fútbol 7.' });
+  });
+
+  it('la cuenta de F7 no cambia los ajustes de F11', async () => {
+    const { app, guardados } = conCuenta('f7');
+    const respuesta = await pedir(app, '/admin/configuracion', { metodo: 'PATCH', cuerpo: { arancel: 1 } });
+    expect(respuesta.status).toBe(403);
+    expect(guardados).toEqual([]);
+  });
+
+  it('el panel recibe la modalidad de la cuenta', async () => {
+    const cuerpo = await (await pedir(conCuenta('f7').app, '/admin/datos')).json();
+    expect(cuerpo.modalidad).toBe('f7');
+    expect((await (await pedir(armar().app, '/admin/datos')).json()).modalidad).toBeNull();
   });
 });

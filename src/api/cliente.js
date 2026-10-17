@@ -52,6 +52,7 @@ export const api = {
   crearEquipo: (token, cuerpo) => pedir('/admin/equipos', { metodo: 'POST', cuerpo, token }),
   cambiarBaja: (token, id, baja) => pedir(`/admin/equipos/${id}/baja`, { metodo: 'PUT', cuerpo: { baja }, token }),
   actualizarConfiguracion: (token, cuerpo) => pedir('/admin/configuracion', { metodo: 'PATCH', cuerpo, token }),
+  actualizarCategoria: (token, id, cuerpo) => pedir(`/admin/categorias/${id}`, { metodo: 'PATCH', cuerpo, token }),
   visita: () => pedir('/visita', { metodo: 'POST' }),
   visitas: (token) => pedir('/admin/visitas', { token }),
   actividad: (token, dia) => pedir(`/admin/actividad?dia=${encodeURIComponent(dia)}`, { token }),

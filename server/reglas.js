@@ -9,8 +9,14 @@ import { CRITERIOS } from '../src/datos/constantes.js';
 import { mismoNombre, partidosPendientes, textoPendientes } from '../src/logica/bajas.js';
 import { pagosDePartido } from '../src/logica/cuentas.js';
 import { PESO_MAXIMO_ESCUDO } from '../src/logica/escudos.js';
-import { nombrePredio, textoDia, validarLugar } from '../src/logica/lugar.js';
+import { nombrePredio, numeroVisible, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
+import {
+  modalidadDeCategoria,
+  modalidadDeEquipo,
+  modalidadDePartido,
+  nombreModalidad,
+} from '../src/logica/modalidades.js';
 import { validarTelefono } from '../src/logica/validaciones.js';
 import { esPartidoDeVeedor } from '../src/logica/veedores.js';
 
@@ -53,11 +59,11 @@ const canchaOcupada = (datos, fecha, { predio, cancha, hora }, partidoId = null)
       p.hora === hora
   );
 const textoOcupada = (fecha, { predio, cancha, hora }) =>
-  `La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`;
+  `La cancha ${numeroVisible(cancha)} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`;
 
-// Lugar y hora válidos y con la cancha libre en esa fecha (los postergados no la ocupan)
-function validarLugarLibre(datos, fecha, cuerpo, partidoId = null) {
-  const lugar = validarLugar(cuerpo);
+// Lugar y hora válidos (una cancha de la modalidad) y con la cancha libre en esa fecha (los postergados no la ocupan)
+function validarLugarLibre(datos, fecha, cuerpo, partidoId = null, modalidad = 'f11') {
+  const lugar = validarLugar(cuerpo, modalidad);
   if (lugar.error) return fallo(lugar.error);
   if (canchaOcupada(datos, fecha, lugar.valor, partidoId)) return fallo(textoOcupada(fecha, lugar.valor), 409);
   return lugar;
@@ -77,7 +83,8 @@ function validarVuelveAJugarse(datos, partido, resultado) {
 
 export function validarPartidoNuevo(datos, cuerpo) {
   const { categoriaId, fecha, localId, visitanteId } = cuerpo || {};
-  if (!datos.categorias.some((c) => c.id === categoriaId)) return fallo('Elegí una categoría válida.');
+  const categoria = datos.categorias.find((c) => c.id === categoriaId);
+  if (!categoria) return fallo('Elegí una categoría válida.');
   if (!esEntero(fecha, 1, 60)) return fallo('La fecha tiene que ser un número entre 1 y 60.');
   if (!Number.isInteger(localId) || !Number.isInteger(visitanteId)) {
     return fallo('Elegí el equipo local y el visitante.');
@@ -98,7 +105,7 @@ export function validarPartidoNuevo(datos, cuerpo) {
       return fallo(`${nombre} ya tiene un partido en la fecha ${fecha}.`, 409);
     }
   }
-  const lugar = validarLugarLibre(datos, fecha, cuerpo);
+  const lugar = validarLugarLibre(datos, fecha, cuerpo, null, modalidadDeCategoria(categoria));
   if (lugar.error) return lugar;
   return { valor: { categoria_id: categoriaId, fecha, local_id: localId, visitante_id: visitanteId, ...lugar.valor } };
 }
@@ -147,7 +154,7 @@ function validarCambioDe(datos, partido, cuerpo) {
   }
   if ('dia' in c) return validarReprogramacion(datos, partido, c);
   if ('predio' in c || 'cancha' in c || 'hora' in c) {
-    return validarLugarLibre(datos, partido.fecha, c, partidoId);
+    return validarLugarLibre(datos, partido.fecha, c, partidoId, modalidadDePartido(datos, partido));
   }
   if ('postergado' in c) {
     if (typeof c.postergado !== 'boolean') return fallo('Indicá si el partido queda postergado o no.');
@@ -164,7 +171,7 @@ function validarCambioDe(datos, partido, cuerpo) {
 function validarReprogramacion(datos, partido, cuerpo) {
   if (!partido.postergado) return fallo('El día se carga solo en los postergados.');
   if (!esFecha(cuerpo.dia)) return fallo('Elegí el día.');
-  const lugar = validarLugar(cuerpo);
+  const lugar = validarLugar(cuerpo, modalidadDePartido(datos, partido));
   if (lugar.error) return fallo(lugar.error);
   const { predio, cancha, hora } = lugar.valor;
   const ocupada = datos.partidos.some(
@@ -173,7 +180,7 @@ function validarReprogramacion(datos, partido, cuerpo) {
   if (ocupada) {
     const dia = textoDia(cuerpo.dia);
     return fallo(
-      `La cancha ${cancha} de ${nombrePredio(predio)} ya tiene un partido el ${dia[0].toLowerCase()}${dia.slice(1)} a las ${hora}.`,
+      `La cancha ${numeroVisible(cancha)} de ${nombrePredio(predio)} ya tiene un partido el ${dia[0].toLowerCase()}${dia.slice(1)} a las ${hora}.`,
       409
     );
   }
@@ -423,6 +430,71 @@ export function validarConfiguracion(cuerpo) {
   }
   if (!Object.keys(valor).length) return fallo('No hay cambios para guardar.');
   return { valor };
+}
+
+// ---------- Modalidad de la cuenta ----------
+// Una cuenta fija en una modalidad (Franco en Fútbol 11, Gaby en Fútbol 7) solo toca lo de la suya.
+// La base además lo frena con sus reglas. Devuelven null si puede, o el error 403.
+
+// Qué se nombra en el mensaje, y la modalidad de lo que se quiere tocar (null si no existe)
+const RECURSOS = {
+  categoriaId: ['partidos', (datos, id) => datos.categorias.find((c) => c.id === id)],
+  categoriaArancelId: ['aranceles', (datos, id) => datos.categorias.find((c) => c.id === id)],
+  partidoId: ['partidos', (datos, id) => datos.partidos.find((p) => p.id === id)],
+  zonaId: ['equipos', (datos, id) => datos.zonas.find((z) => z.id === id)],
+  equipoId: ['equipos', (datos, id) => datos.equipos.find((e) => e.id === id)],
+  movimientoId: ['pagos', (datos, id) => (datos.movimientos || []).find((m) => m.id === id)],
+  expulsionId: ['tarjetas', (datos, id) => (datos.expulsiones || []).find((e) => e.id === id)],
+  tarjetaId: ['tarjetas', (datos, id) => (datos.tarjetas || []).find((t) => t.id === id)],
+};
+
+function modalidadDe(datos, clave, fila) {
+  if (clave === 'categoriaId' || clave === 'categoriaArancelId') return modalidadDeCategoria(fila);
+  if (clave === 'zonaId') return modalidadDeCategoria(datos.categorias.find((c) => c.id === fila.categoriaId));
+  if (clave === 'equipoId') return modalidadDeEquipo(datos, fila.id);
+  if (clave === 'partidoId') return modalidadDePartido(datos, fila);
+  if (clave === 'movimientoId') return modalidadDeEquipo(datos, fila.equipoId);
+  const partido = datos.partidos.find((p) => p.id === fila.partidoId);
+  return partido ? modalidadDePartido(datos, partido) : null;
+}
+
+// recurso: { partidoId }, { equipoId }, { zonaId }, { categoriaId }, { categoriaArancelId }, { movimientoId },
+// { expulsionId } o { tarjetaId }. Si no existe, responde la regla de siempre (404).
+export function permisoModalidad(datos, cuentaModalidad, recurso) {
+  if (!cuentaModalidad) return null;
+  const [clave, id] = Object.entries(recurso)[0];
+  const [que, buscar] = RECURSOS[clave];
+  const fila = buscar(datos, id);
+  const modalidad = fila ? modalidadDe(datos, clave, fila) : null;
+  if (!modalidad || modalidad === cuentaModalidad) return null;
+  return fallo(
+    `Tu cuenta es de ${nombreModalidad(cuentaModalidad)}: no puede cambiar ${que} de ${nombreModalidad(modalidad)}.`,
+    403
+  );
+}
+
+// El nombre del campeonato y el arancel son de Fútbol 11; los criterios de desempate valen para las dos
+// modalidades y los cambia solo una cuenta sin modalidad
+export function validarConfiguracionDeCuenta(cuentaModalidad, cuerpo) {
+  if (cuentaModalidad === 'f7') {
+    return fallo('Tu cuenta es de Fútbol 7: los ajustes de Fútbol 11 los cambia su organizador.', 403);
+  }
+  if (cuentaModalidad === 'f11' && 'criteriosDesempate' in (cuerpo || {})) {
+    return fallo('Los criterios de desempate los cambia solo el superadmin.', 403);
+  }
+  return null;
+}
+
+// El arancel de una categoría de Fútbol 7: { arancel: número o null } (vacío: sus partidos no se cobran)
+export function validarArancelCategoria(datos, categoriaId, cuerpo) {
+  const categoria = datos.categorias.find((c) => c.id === categoriaId);
+  if (!categoria) return fallo('Esa categoría no existe.', 404);
+  if (modalidadDeCategoria(categoria) !== 'f7') return fallo('El arancel por categoría es solo de Fútbol 7.');
+  const arancel = cuerpo?.arancel;
+  if (arancel !== null && !esEntero(arancel, 0, MONTO_MAXIMO)) {
+    return fallo('El arancel tiene que ser un número entero de pesos.');
+  }
+  return { valor: { arancel } };
 }
 
 // ---------- Veedores ----------
