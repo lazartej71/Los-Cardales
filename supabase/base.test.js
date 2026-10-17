@@ -746,4 +746,115 @@ describe('migración 10a: Fútbol 7', () => {
       });
     });
   });
+
+  describe('permisos', () => {
+    const comoFranco = (consulta) => como('authenticated', FRANCO, consulta);
+    const comoGaby = (consulta) => como('authenticated', GABY, consulta);
+    const comoSuper = (consulta) => como('authenticated', SUPER, consulta);
+    const NO_F7 = 'Tu cuenta es de Fútbol 7: los ajustes de Fútbol 11 los cambia su organizador.';
+    const NO_CRITERIOS = 'Los criterios de desempate los cambia solo el superadmin.';
+    const pago = (equipo, partido) => `insert into public.movimientos (equipo_id, partido_id, tipo, monto, metodo, fecha)
+      values (${equipo}, ${partido}, 'pago', 1000, 'efectivo', '2026-10-16') returning id`;
+    // Un partido jugado de cada modalidad (fecha 35), cada uno con un pago y una roja del local
+    let f11;
+    let f7;
+
+    beforeAll(async () => {
+      await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+      const crear = async (categoria, local, visitante) =>
+        (await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id, goles_local, goles_visitante)
+          values (${categoria}, 35, ${local}, ${visitante}, 1, 0) returning id`)).id;
+      f11 = await crear(1, 1, 2);
+      f7 = await crear(90, 900, 901);
+      await db.exec(`
+        ${pago(1, f11)}; ${pago(900, f7)};
+        insert into public.expulsiones (partido_id, equipo_id, numero_camiseta) values (${f11}, 1, 4), (${f7}, 900, 4);
+        insert into public.delegados (equipo_id, nombre) values (900, 'Delegado F7') on conflict (equipo_id) do nothing;
+      `);
+    });
+
+    // Los equipos de las filas que la cuenta ve (de los partidos de la fecha 35 y los delegados de 1 y 900)
+    const equiposQueVe = async (quien, tabla) => {
+      const donde = tabla === 'delegados' ? 'equipo_id in (1, 900)' : `partido_id in (${f11}, ${f7})`;
+      const { filas } = await quien(`select equipo_id from public.${tabla} where ${donde} order by equipo_id`);
+      return filas.map((f) => Number(f.equipo_id));
+    };
+
+    it('Gaby no lee pagos, rojas ni delegados de F11, y sí los de F7', async () => {
+      for (const tabla of ['movimientos', 'expulsiones', 'delegados']) {
+        expect(await equiposQueVe(comoGaby, tabla), tabla).toEqual([900]);
+      }
+    });
+
+    it('Franco no lee los de F7', async () => {
+      for (const tabla of ['movimientos', 'expulsiones', 'delegados']) {
+        expect(await equiposQueVe(comoFranco, tabla), tabla).toEqual([1]);
+      }
+    });
+
+    it('Gaby no carga el resultado de F11 ni crea un partido de F11; sí los de F7', async () => {
+      expect((await comoGaby(`update public.partidos set goles_local = 3 where id = ${f11} returning id`)).filas).toEqual([]);
+      const nuevo = await comoGaby(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+        values (1, 36, 1, 2)`);
+      expect(nuevo.error).toMatch(/row-level security/);
+      expect((await comoGaby(`update public.partidos set goles_local = 2 where id = ${f7} returning id`)).filas).toHaveLength(1);
+      expect(await uno(`select goles_local from public.partidos where id = ${f11}`)).toEqual({ goles_local: 1 });
+    });
+
+    it('Gaby no agrega un equipo en una zona de F11 ni pasa uno de F7 a F11', async () => {
+      expect((await comoGaby(`insert into public.equipos (zona_id, nombre) values (1, 'INTRUSO')`)).error).toMatch(
+        /row-level security/
+      );
+      expect((await comoGaby('update public.equipos set zona_id = 1 where id = 900')).error).toMatch(/row-level security/);
+    });
+
+    it('Gaby no anota un pago a un equipo de F11', async () => {
+      expect((await comoGaby(pago(2, f11))).error).toMatch(/row-level security/);
+    });
+
+    it('cada uno cambia solo su arancel', async () => {
+      expect((await comoGaby('update public.categorias set arancel = 70000 where id = 90 returning id')).filas).toHaveLength(1);
+      expect((await comoGaby('update public.categorias set arancel = 70000 where id = 1 returning id')).filas).toEqual([]);
+      expect((await comoGaby(`update public.categorias set nombre = 'X' where id = 90`)).error).toBe(
+        'Desde tu cuenta solo se cambia el arancel de la categoría.'
+      );
+      expect((await comoGaby('update public.configuracion set arancel = 1')).error).toBe(NO_F7);
+      expect((await comoFranco('update public.configuracion set arancel = 110000')).error).toBeUndefined();
+      const otroOrden = `update public.configuracion set criterios_desempate = array['puntos', 'gf', 'dg', 'enfrentamiento']`;
+      expect((await comoFranco(otroOrden)).error).toBe(NO_CRITERIOS);
+      expect((await comoSuper(otroOrden)).error).toBeUndefined();
+      await db.exec(`update public.configuracion set criterios_desempate = array['puntos', 'dg', 'gf', 'enfrentamiento'];
+        update public.categorias set arancel = 65000 where id = 90`);
+    });
+
+    it('Franco y Gaby no crean categorías ni zonas', async () => {
+      for (const quien of [comoFranco, comoGaby]) {
+        expect((await quien(`insert into public.categorias (id, nombre, orden) values (92, 'Nueva', 92)`)).error).toMatch(
+          /row-level security/
+        );
+        expect((await quien(`insert into public.zonas (id, categoria_id, nombre) values (92, 1, 'Zona Z')`)).error).toMatch(
+          /row-level security/
+        );
+      }
+    });
+
+    it('el superadmin, el admin sin modalidad y el veedor siguen como antes', async () => {
+      expect(await equiposQueVe(comoSuper, 'movimientos')).toEqual([1, 900]);
+      const nuevos = [];
+      for (const [categoria, local, visitante] of [[1, 3, 4], [90, 901, 900]]) {
+        const creado = await comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+          values (${categoria}, 37, ${local}, ${visitante}) returning id`);
+        expect(creado.error).toBeUndefined();
+        nuevos.push(creado.filas[0].id);
+      }
+      const veedor = await como('authenticated', VEEDOR, `update public.partidos set goles_local = 0, goles_visitante = 0
+        where id = ${nuevos[1]} returning id`);
+      expect(veedor.filas).toHaveLength(1);
+      await db.exec(`delete from public.partidos where id in (${nuevos.join(', ')})`);
+    });
+
+    it('sin sesión se sigue leyendo todo lo público, también F7', async () => {
+      expect((await como('anon', null, 'select count(*)::int as n from public.categorias')).filas).toEqual([{ n: 6 }]);
+    });
+  });
 });

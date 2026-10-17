@@ -69,6 +69,134 @@ create trigger categorias_actividad
 after insert or update or delete on public.categorias
 for each row execute function public.registrar_actividad();
 
+-- ---------- Permisos por modalidad ----------
+
+-- La modalidad de quien consulta, o vacío si ve las dos (superadmin, admin sin restricción, veedor)
+create function public.modalidad_admin() returns text
+language sql stable security definer set search_path = '' as $$
+  select modalidad from public.administradores where user_id = (select auth.uid());
+$$;
+
+-- ¿La cuenta puede tocar esta fila? Sí, si no tiene modalidad o si la fila es de la suya
+create function public.puede_categoria(categoria smallint) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select public.modalidad_admin() is null
+    or exists (select 1 from public.categorias c where c.id = categoria and c.modalidad = public.modalidad_admin());
+$$;
+
+create function public.puede_zona(zona smallint) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select public.modalidad_admin() is null
+    or exists (
+      select 1 from public.zonas z join public.categorias c on c.id = z.categoria_id
+      where z.id = zona and c.modalidad = public.modalidad_admin()
+    );
+$$;
+
+create function public.puede_equipo(equipo bigint) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select public.modalidad_admin() is null
+    or exists (
+      select 1 from public.equipos e
+      join public.zonas z on z.id = e.zona_id
+      join public.categorias c on c.id = z.categoria_id
+      where e.id = equipo and c.modalidad = public.modalidad_admin()
+    );
+$$;
+
+create function public.puede_partido(partido bigint) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select public.modalidad_admin() is null
+    or exists (
+      select 1 from public.partidos p join public.categorias c on c.id = p.categoria_id
+      where p.id = partido and c.modalidad = public.modalidad_admin()
+    );
+$$;
+
+grant execute on function public.modalidad_admin(), public.puede_categoria(smallint), public.puede_zona(smallint),
+  public.puede_equipo(bigint), public.puede_partido(bigint) to anon, authenticated;
+
+-- Reglas restrictivas: se suman a las de siempre (que no cambian) y las dos tienen que cumplirse
+do $$
+declare
+  par text[];
+begin
+  -- Lo público lo sigue leyendo cualquiera: se controla solo lo que se escribe
+  foreach par slice 1 in array array[
+    ['partidos', 'public.puede_categoria(categoria_id)'],
+    ['equipos', 'public.puede_zona(zona_id)'],
+    ['tabla_inicial', 'public.puede_equipo(equipo_id)'],
+    ['zonas', 'public.modalidad_admin() is null']
+  ] loop
+    execute format('create policy "Modalidad: agregar" on public.%I as restrictive for insert to authenticated '
+      'with check (%s)', par[1], par[2]);
+    execute format('create policy "Modalidad: cambiar" on public.%I as restrictive for update to authenticated '
+      'using (%s) with check (%s)', par[1], par[2], par[2]);
+    execute format('create policy "Modalidad: borrar" on public.%I as restrictive for delete to authenticated '
+      'using (%s)', par[1], par[2]);
+  end loop;
+  -- Lo privado, también para leer: cada organizador ve solo lo de su modalidad
+  foreach par slice 1 in array array[
+    ['delegados', 'public.puede_equipo(equipo_id)'],
+    ['movimientos', 'public.puede_equipo(equipo_id)'],
+    ['expulsiones', 'public.puede_partido(partido_id)'],
+    ['tarjetas', 'public.puede_partido(partido_id)']
+  ] loop
+    execute format('create policy "Modalidad" on public.%I as restrictive for all to authenticated '
+      'using (%s) with check (%s)', par[1], par[2], par[2]);
+  end loop;
+end;
+$$;
+
+-- Categorías: crearlas o borrarlas, solo una cuenta sin modalidad; cambiarlas, solo las de la suya
+create policy "Modalidad: agregar" on public.categorias as restrictive for insert to authenticated
+  with check (public.modalidad_admin() is null);
+create policy "Modalidad: cambiar" on public.categorias as restrictive for update to authenticated
+  using (public.puede_categoria(id)) with check (public.puede_categoria(id));
+create policy "Modalidad: borrar" on public.categorias as restrictive for delete to authenticated
+  using (public.modalidad_admin() is null);
+
+-- Desde la app, una cuenta con modalidad cambia solo el arancel de sus categorías (el SQL Editor, todo)
+create function public.validar_cambio_categoria() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if current_user in ('anon', 'authenticated') and public.modalidad_admin() is not null
+    and to_jsonb(new) - 'arancel' is distinct from to_jsonb(old) - 'arancel' then
+    raise exception 'Desde tu cuenta solo se cambia el arancel de la categoría.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger categorias_modalidad
+before update on public.categorias
+for each row execute function public.validar_cambio_categoria();
+
+-- Ajustes: el nombre del campeonato y el arancel son de Fútbol 11; los criterios de desempate valen
+-- para las dos modalidades y los cambia solo una cuenta sin modalidad
+create function public.validar_cambio_configuracion() returns trigger
+language plpgsql set search_path = '' as $$
+declare
+  modalidad text;
+begin
+  if current_user not in ('anon', 'authenticated') then
+    return new;
+  end if;
+  modalidad := public.modalidad_admin();
+  if modalidad = 'f7' then
+    raise exception 'Tu cuenta es de Fútbol 7: los ajustes de Fútbol 11 los cambia su organizador.';
+  end if;
+  if modalidad = 'f11' and new.criterios_desempate is distinct from old.criterios_desempate then
+    raise exception 'Los criterios de desempate los cambia solo el superadmin.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger configuracion_modalidad
+before update on public.configuracion
+for each row execute function public.validar_cambio_configuracion();
+
 -- ---------- La cuenta de Franco ----------
 
 update public.administradores set modalidad = 'f11'
