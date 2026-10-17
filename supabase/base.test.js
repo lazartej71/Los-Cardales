@@ -7,13 +7,15 @@
 
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const leer = (archivo) => readFileSync(new URL(archivo, import.meta.url), 'utf8');
 const ADMIN = '11111111-1111-1111-1111-111111111111';
 const OTRO = '22222222-2222-2222-2222-222222222222';
 const SUPER = '33333333-3333-3333-3333-333333333333';
 const VEEDOR = '44444444-4444-4444-4444-444444444444';
+const FRANCO = '55555555-5555-5555-5555-555555555555';
+const GABY = '66666666-6666-6666-6666-666666666666';
 let db;
 let partidoId;
 
@@ -642,5 +644,106 @@ describe('migración 9: equipos dados de baja', () => {
 
   it('falla si se corre dos veces', async () => {
     await expect(db.exec(leer('./migracion-9-bajas.sql'))).rejects.toThrow(/already exists/);
+    await db.exec('rollback');
+  });
+});
+
+// La 10a se corre acá y no en el beforeAll general: las pruebas de la migración 5 listan los admins
+// y no esperan a Franco ni a Gaby. El Fútbol 7 de prueba (categoría 90) se borra al final, así la 10b
+// encuentra libres sus ids.
+describe('migración 10a: Fútbol 7', () => {
+  const NO_MODALIDAD = 'La cancha tiene que ser de la modalidad del partido';
+
+  beforeAll(async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(`
+      insert into auth.users values ('${FRANCO}', 'franco1@loscardalesfutbol.com'), ('${GABY}', 'gaby1@loscardalesfutbol.com');
+      insert into public.administradores (user_id, nombre) values ('${FRANCO}', 'Franco');
+    `);
+    await db.exec(leer('./migracion-10a-futbol7.sql'));
+    await db.exec(`
+      insert into public.administradores (user_id, nombre, modalidad) values ('${GABY}', 'Gaby', 'f7');
+      insert into public.categorias (id, nombre, orden, modalidad, arancel) values (90, 'Libre', 90, 'f7', 65000);
+      insert into public.zonas (id, categoria_id, nombre) values (90, 90, 'Zona A');
+      insert into public.equipos (id, zona_id, nombre) values (900, 90, 'F7 UNO'), (901, 90, 'F7 DOS');
+    `);
+  });
+
+  afterAll(async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(`
+      delete from public.movimientos where equipo_id in (900, 901);
+      delete from public.expulsiones where equipo_id in (900, 901);
+      delete from public.tarjetas where equipo_id in (900, 901);
+      delete from public.partidos where categoria_id = 90;
+      delete from public.equipos where zona_id = 90;
+      delete from public.zonas where categoria_id = 90;
+      delete from public.categorias where id = 90;
+    `);
+  });
+
+  describe('estructura', () => {
+    // Un partido nuevo de la fecha 33 con lugar y hora
+    const crear = (categoria, local, visitante, lugar, fecha = 33) =>
+      comoAdmin(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id, predio, cancha, hora)
+        values (${categoria}, ${fecha}, ${local}, ${visitante}, ${lugar}) returning id`);
+
+    it('todo lo que había queda en F11, sin arancel propio', async () => {
+      expect(
+        await uno(`select count(*) filter (where modalidad = 'f11')::int as f11, count(*)::int as total,
+          count(arancel)::int as con_arancel from public.categorias where id < 90`)
+      ).toEqual({ f11: 5, total: 5, con_arancel: 0 });
+    });
+
+    it('puede haber una Libre en cada modalidad, pero no dos en la misma', async () => {
+      expect(await uno(`select count(*)::int as n from public.categorias where nombre = 'Libre'`)).toEqual({ n: 2 });
+      const otra = await como('authenticated', SUPER, `insert into public.categorias (id, nombre, orden, modalidad)
+        values (91, 'Libre', 91, 'f7')`);
+      expect(otra.error).toMatch(/categorias_modalidad_nombre_key/);
+    });
+
+    it('franco1 queda en F11 y el resto sin modalidad', async () => {
+      expect((await db.query('select nombre, modalidad from public.administradores order by nombre')).rows).toEqual([
+        { nombre: 'Franco', modalidad: 'f11' },
+        { nombre: 'Gaby', modalidad: 'f7' },
+        { nombre: 'Jorge', modalidad: null },
+        { nombre: 'Prueba', modalidad: null },
+        { nombre: 'Veedor Juan', modalidad: null },
+      ]);
+    });
+
+    it('una cancha de F7 solo en un partido de F7, y al revés', async () => {
+      expect((await crear(1, 1, 2, `'los_cardales', 21, '15:30'`)).error).toBe(NO_MODALIDAD);
+      expect((await crear(90, 900, 901, `'cura_borges', 1, '15:30'`)).error).toBe(NO_MODALIDAD);
+      expect((await crear(90, 900, 901, `'los_cardales', 23, '15:30'`)).error).toMatch(/partidos_cancha_check/);
+      const bien = await crear(90, 900, 901, `'cura_borges', 23, '15:30'`);
+      expect(bien.error).toBeUndefined();
+      await db.exec(`delete from public.partidos where id = ${bien.filas[0].id}`);
+    });
+
+    it('una F7 y una F11 no chocan aunque compartan fecha y hora', async () => {
+      const f11 = await crear(1, 1, 2, `'los_cardales', 2, '13:40'`, 34);
+      expect(f11.error).toBeUndefined();
+      const f7 = await crear(90, 900, 901, `'los_cardales', 22, '13:40'`, 34);
+      expect(f7.error).toBeUndefined();
+      await db.exec(`delete from public.partidos where id in (${f11.filas[0].id}, ${f7.filas[0].id})`);
+    });
+
+    it('el cambio de arancel de una categoría queda en el registro', async () => {
+      await db.exec('update public.categorias set arancel = 70000 where id = 90');
+      expect(await uno('select tabla, cambios from public.actividad order by id desc limit 1')).toEqual({
+        tabla: 'categorias',
+        cambios: ['arancel'],
+      });
+      await db.exec('update public.categorias set arancel = 65000 where id = 90');
+    });
+
+    it('si 10a se corre dos veces, falla al principio y no cambia nada', async () => {
+      await expect(db.exec(leer('./migracion-10a-futbol7.sql'))).rejects.toThrow(/already exists/);
+      await db.exec('rollback');
+      expect(await uno(`select modalidad from public.administradores where nombre = 'Franco'`)).toEqual({
+        modalidad: 'f11',
+      });
+    });
   });
 });
