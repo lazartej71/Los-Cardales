@@ -31,10 +31,17 @@ export const CRITERIOS = {
 
 export const CRITERIOS_POR_DEFECTO = ['puntos', 'dg', 'gf', 'enfrentamiento'];
 
-// Predios donde se juega y sus canchas (las migraciones 3 y 4 repiten estas listas en la base)
+// Las dos modalidades del campeonato. Cada categoría es de una (la columna modalidad de la base).
+export const MODALIDADES = [
+  { id: 'f11', nombre: 'Fútbol 11', corto: 'F11', chip: 'FÚTBOL 11' },
+  { id: 'f7', nombre: 'Fútbol 7', corto: 'F7', chip: 'FÚTBOL 7' },
+];
+
+// Predios donde se juega y sus canchas (las migraciones 3, 4 y 10a repiten estas listas en la base).
+// Las de Fútbol 7 son otras canchas: en la base llevan 21 y más, y se ven como 1, 2, 3.
 export const PREDIOS = [
-  { id: 'los_cardales', nombre: 'Los Cardales', canchas: [1, 2, 3, 4, 5, 6, 7] },
-  { id: 'cura_borges', nombre: 'Cura Borges', canchas: [1, 4, 5, 6, 7, 8, 9] },
+  { id: 'los_cardales', nombre: 'Los Cardales', canchas: [1, 2, 3, 4, 5, 6, 7], canchasF7: [21, 22] },
+  { id: 'cura_borges', nombre: 'Cura Borges', canchas: [1, 4, 5, 6, 7, 8, 9], canchasF7: [21, 22, 23] },
 ];
 
 // Simulación: con qué rol se prueba el panel. La sesión simulada lleva el token y la base en memoria

@@ -1,5 +1,53 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { crearRepositorioSupabase, normalizarEquipo, normalizarExpulsion, normalizarPartido } from './repositorio.js';
+import {
+  crearRepositorioSupabase,
+  normalizarCategoria,
+  normalizarConfiguracion,
+  normalizarEquipo,
+  normalizarExpulsion,
+  normalizarPartido,
+} from './repositorio.js';
+
+describe('categorías, configuración y cuenta leídas de Supabase', () => {
+  it('sin la migración 10a, cada categoría es de Fútbol 11 y sin arancel propio', () => {
+    expect(normalizarCategoria({ id: 1, nombre: 'Libre', orden: 1 })).toEqual({
+      id: 1,
+      nombre: 'Libre',
+      orden: 1,
+      modalidad: 'f11',
+      arancel: null,
+    });
+    expect(normalizarCategoria({ id: 6, nombre: 'Libre', orden: 6, modalidad: 'f7', arancel: 65000 })).toEqual({
+      id: 6,
+      nombre: 'Libre',
+      orden: 6,
+      modalidad: 'f7',
+      arancel: 65000,
+    });
+  });
+
+  it('la configuración llega sin el id de la fila', () => {
+    const fila = { id: 1, nombre_campeonato: 'Copa GP', criterios_desempate: ['puntos'], arancel: 105000 };
+    expect(normalizarConfiguracion(fila)).toEqual({
+      nombreCampeonato: 'Copa GP',
+      criteriosDesempate: ['puntos'],
+      arancel: 105000,
+    });
+  });
+
+  // Supabase falso que responde la fila propia de administradores
+  const repoConCuenta = (respuesta) => {
+    const armador = { select: () => armador, maybeSingle: async () => respuesta };
+    const cliente = { from: () => armador };
+    return crearRepositorioSupabase({ url: 'https://base.supabase.co', clave: 'publica', crearCliente: () => cliente })('tok');
+  };
+
+  it('la modalidad de la cuenta: la de su fila, o ninguna si no tiene o si falta la columna', async () => {
+    expect(await repoConCuenta({ data: { rol: 'admin', modalidad: 'f7' }, error: null }).modalidad()).toBe('f7');
+    expect(await repoConCuenta({ data: { rol: 'admin' }, error: null }).modalidad()).toBeNull();
+    expect(await repoConCuenta({ data: null, error: { message: 'falla' } }).modalidad()).toBeNull();
+  });
+});
 
 describe('partidos leídos de Supabase', () => {
   it('sin las columnas de las migraciones 3 y 7, llegan sin lugar, hora ni día', () => {

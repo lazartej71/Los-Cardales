@@ -8,7 +8,18 @@ const predioPorId = (id) => PREDIOS.find((p) => p.id === id) || null;
 
 export const nombrePredio = (predioId) => predioPorId(predioId)?.nombre ?? '';
 
-export const canchasDe = (predioId) => predioPorId(predioId)?.canchas ?? [];
+// Las canchas del predio en la modalidad (las de Fútbol 7, con el número de la base: 21, 22…)
+export function canchasDe(predioId, modalidad = 'f11') {
+  const predio = predioPorId(predioId);
+  if (!predio) return [];
+  return modalidad === 'f7' ? predio.canchasF7 : predio.canchas;
+}
+
+// Las canchas de Fútbol 7 se guardan desde la 21 (así no chocan con las de Fútbol 11) y se ven desde la 1
+const PRIMERA_F7 = 21;
+export const numeroVisible = (cancha) => (cancha >= PRIMERA_F7 ? cancha - PRIMERA_F7 + 1 : cancha);
+
+export const nombreCancha = (cancha) => `Cancha ${numeroVisible(cancha)}`;
 
 // "9:05", "09:05" o "09:05:00" (como la devuelve Postgres) → "09:05"; cualquier otra cosa → null
 export function normalizarHora(texto) {
@@ -20,11 +31,13 @@ export function normalizarHora(texto) {
   return `${String(hora).padStart(2, '0')}:${partes[2]}`;
 }
 
-export function validarLugar(lugar) {
+export function validarLugar(lugar, modalidad = 'f11') {
   const { predio, cancha, hora } = lugar || {};
   const elegido = predioPorId(predio);
   if (!elegido) return { error: 'Elegí el predio.' };
-  if (!elegido.canchas.includes(cancha)) return { error: `Elegí una cancha de ${elegido.nombre}.` };
+  if (!canchasDe(predio, modalidad).includes(cancha)) {
+    return { error: `Elegí una cancha de ${modalidad === 'f7' ? 'Fútbol 7 de ' : ''}${elegido.nombre}.` };
+  }
   const horaNormal = normalizarHora(hora);
   if (!horaNormal) return { error: 'Escribí la hora como 13:40.' };
   return { valor: { predio, cancha, hora: horaNormal } };
@@ -44,7 +57,7 @@ export function textoDia(dia) {
 const armarTexto = (partido, cancha) => {
   const predio = predioPorId(partido.predio);
   if (!predio) return '';
-  const lugar = `${predio.nombre} · ${cancha}${partido.cancha} · ${partido.hora}`;
+  const lugar = `${predio.nombre} · ${cancha}${numeroVisible(partido.cancha)} · ${partido.hora}`;
   return partido.dia ? `${textoDia(partido.dia)} · ${lugar}` : lugar;
 };
 

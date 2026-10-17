@@ -1,11 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { canchasDe, normalizarHora, textoDia, textoLugar, textoLugarCorto, validarLugar } from './lugar.js';
+import {
+  canchasDe,
+  nombreCancha,
+  normalizarHora,
+  numeroVisible,
+  textoDia,
+  textoLugar,
+  textoLugarCorto,
+  validarLugar,
+} from './lugar.js';
 
 describe('lugar del partido', () => {
   it('cada predio tiene sus canchas', () => {
     expect(canchasDe('los_cardales')).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(canchasDe('cura_borges')).toEqual([1, 4, 5, 6, 7, 8, 9]);
     expect(canchasDe('otro')).toEqual([]);
+  });
+
+  it('Fútbol 7 tiene sus canchas: en la base, de la 21 en adelante', () => {
+    expect(canchasDe('los_cardales', 'f7')).toEqual([21, 22]);
+    expect(canchasDe('cura_borges', 'f7')).toEqual([21, 22, 23]);
+    expect(canchasDe('cura_borges', 'f11')).toEqual([1, 4, 5, 6, 7, 8, 9]);
+    expect(numeroVisible(23)).toBe(3);
+    expect(numeroVisible(4)).toBe(4);
+    expect(nombreCancha(21)).toBe('Cancha 1');
+    expect(nombreCancha(9)).toBe('Cancha 9');
+  });
+
+  it('el lugar tiene que ser una cancha de la modalidad del partido', () => {
+    const lugar = (cancha) => ({ predio: 'los_cardales', cancha, hora: '15:30' });
+    expect(validarLugar(lugar(21), 'f7')).toEqual({ valor: { predio: 'los_cardales', cancha: 21, hora: '15:30' } });
+    expect(validarLugar(lugar(21))).toEqual({ error: 'Elegí una cancha de Los Cardales.' });
+    expect(validarLugar(lugar(1), 'f7')).toEqual({ error: 'Elegí una cancha de Fútbol 7 de Los Cardales.' });
+  });
+
+  it('una cancha de Fútbol 7 se ve con su número, no con el de la base', () => {
+    const partido = { predio: 'cura_borges', cancha: 23, hora: '16:30', dia: null };
+    expect(textoLugar(partido)).toBe('Cura Borges · Cancha 3 · 16:30');
+    expect(textoLugarCorto(partido)).toBe('Cura Borges · C3 · 16:30');
   });
 
   it('normaliza la hora', () => {

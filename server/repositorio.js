@@ -52,6 +52,26 @@ export function normalizarEquipo(fila, direccionEscudo) {
   };
 }
 
+// Una categoría de la base, con su modalidad y su arancel aunque la migración 10a todavía no se haya
+// corrido (por eso se lee con select('*')): sin ella, todas son de Fútbol 11 y usan el arancel de configuración.
+export function normalizarCategoria(fila) {
+  return {
+    id: fila.id,
+    nombre: fila.nombre,
+    orden: fila.orden,
+    modalidad: fila.modalidad ?? 'f11',
+    arancel: fila.arancel ?? null,
+  };
+}
+
+export function normalizarConfiguracion(fila) {
+  return {
+    nombreCampeonato: fila.nombre_campeonato,
+    criteriosDesempate: fila.criterios_desempate,
+    arancel: fila.arancel,
+  };
+}
+
 /**
  * Lo que recibe el panel: lo público más el delegado de cada equipo y las expulsiones.
  * La usa también la base en memoria de la simulación, para que devuelva lo mismo.
@@ -96,7 +116,7 @@ export function crearRepositorioSupabase({ url, clave, crearCliente = createClie
 
     async function leerPublico() {
       const [categorias, zonas, equipos, tablaInicial, partidos, configuracion] = await Promise.all([
-        ejecutar(cliente.from('categorias').select('id, nombre, orden').order('orden')),
+        ejecutar(cliente.from('categorias').select('*').order('orden')),
         ejecutar(cliente.from('zonas').select('id, categoria_id, nombre').order('id')),
         ejecutar(cliente.from('equipos').select('*').order('id')),
         ejecutar(cliente.from('tabla_inicial').select('equipo_id, pj, pg, pe, pp, gf, gc')),
@@ -107,17 +127,15 @@ export function crearRepositorioSupabase({ url, clave, crearCliente = createClie
             .order('fecha')
             .order('id')
         ),
-        ejecutar(
-          cliente.from('configuracion').select('nombre_campeonato, criterios_desempate, arancel').eq('id', 1).single()
-        ),
+        ejecutar(cliente.from('configuracion').select('*').eq('id', 1).single()),
       ]);
       return {
-        categorias,
+        categorias: categorias.map(normalizarCategoria),
         zonas: zonas.map(aCamel),
         equipos: equipos.map((e) => normalizarEquipo(e, direccionEscudo)),
         tablaInicial: tablaInicial.map(aCamel),
         partidos: partidos.map(normalizarPartido),
-        configuracion: aCamel(configuracion),
+        configuracion: normalizarConfiguracion(configuracion),
       };
     }
 
@@ -174,6 +192,13 @@ export function crearRepositorioSupabase({ url, clave, crearCliente = createClie
       async rol() {
         const { data, error } = await cliente.from('administradores').select('rol').maybeSingle();
         return !error && data?.rol === 'superadmin' ? 'superadmin' : 'admin';
+      },
+
+      // La modalidad fija de la cuenta ('f11' o 'f7'), o null si ve las dos. Si la migración 10a todavía no
+      // se corrió, no hay columna: ve las dos, como siempre.
+      async modalidad() {
+        const { data, error } = await cliente.from('administradores').select('*').maybeSingle();
+        return (!error && data?.modalidad) || null;
       },
 
       // Hasta 500 registros del rango, del más nuevo al más viejo (la base solo se los da al superadmin)
