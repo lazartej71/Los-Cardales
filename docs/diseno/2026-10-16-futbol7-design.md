@@ -1,6 +1,6 @@
 # Diseño: Fútbol 7 en la misma app
 
-Fecha: 2026-10-16. Estado: **aprobado por el usuario el 16/10 e implementado en `feature/futbol-7`** (etapas 1 a 7 y 9). Solo falta la etapa 8: cargar en `datos/futbol7-partidos.csv` los resultados de las fechas 1 a 3 y generar la migración 10b (el generador ya está hecho y probado). Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
+Fecha: 2026-10-16. Estado: **aprobado por el usuario el 16/10 e implementado en `feature/futbol-7`**, incluida la migración 10b con los datos de Gaby (17/10). Falta publicarlo en el orden del README. Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
 
 ## Objetivo
 
@@ -31,12 +31,16 @@ Es un campeonato aparte del de F11: sus equipos no se vinculan con los de F11 au
 
 | Categoría | Zona | Equipos | Arancel por partido |
 | --- | --- | --- | --- |
-| Libre | A | LA COLOMBIA FC, SAN RAMÓN FC, MALA JUNTA, PJE LOLA MORA, BAJO LA PÓLVORA, LOS PIBES FC, FECHA LIBRE FC, CRUZEIRO FC | $65.000 |
+| Libre | A | LA COLOMBIA FC, SAN RAMÓN FC, MALA JUNTA, PJE LOLA MORA, BAJO LA PÓLVORA, LOS PIBES FC, CRUZEIRO FC | $65.000 |
 | Libre | B | LOS AMIGOS, TRIANGULITO FC, LA JUJUY FC, LA BANDA DE ROJAS, EL BAJO FC, LAPRIDA FC, LA 330 FC, SMATA FC | $65.000 |
-| +30 | Única | SAN RAMÓN, LA FLORIDA, BOBBY F.C, B° SAN MARTIN, 20 DE JUNIO, EL BOSQUE FC, SPORTIVO EL CHAÑAR, CITY FC | $60.000 |
+| +30 | Única | SAN RAMÓN, LA FLORIDA, EL CHAÑAR, B° SAN MARTIN, 20 DE JUNIO, EL BOSQUE FC, BOBBY FC, CITY FC | $60.000 |
 
-- **+30:** BOBBY F.C reemplaza a EL CHAÑAR (aviso de Gaby). EL CHAÑAR ya había jugado fechas, así que 10b lo carga con sus partidos y **dado de baja**, y crea BOBBY F.C en la zona, igual que las bajas de F11 en la migración 9.
-- **FECHA LIBRE FC** es un equipo de verdad (tiene escudo y juega contra CRUZEIRO FC), no la fecha libre de una zona impar.
+Corregido el 17/10 con el PDF de resultados de las fechas 1 a 3:
+
+- **+30:** el que sale es SPORTIVO EL CHAÑAR, que no jugó ningún partido, así que no se carga. Entra BOBBY FC en su lugar (el nombre se entendió por audio: a confirmar). EL CHAÑAR sigue en el campeonato.
+- **FECHA LIBRE FC no es un equipo:** es el descanso de la zona A, que tiene 7 equipos. Sus "partidos" no se cargan. Si resultara un equipo de verdad, Gaby lo agrega desde Equipos.
+- **Resultados** en `datos/futbol7-partidos.csv`: 30 partidos (25 con resultado, 2 de ellos por W.O.). Los 5 pendientes se cargan como postergados y sin lugar, como los de F11, así la fecha en juego no vuelve atrás.
+- **Fecha 2:** LOS PIBES FC vs CRUZEIRO FC figura en la misma cancha y hora que otro partido. Se carga sin lugar hasta saber la cancha real.
 - **Canchas:** Cura Borges 1, 2 y 3; Los Cardales 1 y 2. Los sábados, a las 15:30 y 16:30 (lo visto en la fecha 1).
 - **Ya arrancó:** se jugaron las fechas 1 (sábado 10/10/2026), 2 y 3. En la fecha 1, FECHA LIBRE FC vs CRUZEIRO FC quedó sin día (pendiente). 10b carga cada partido con su resultado (no como tabla inicial), así la tabla, el fixture y los resultados de F7 se ven completos.
 

@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
 import { armarFutbol7, leerCsv, sqlFutbol7, sumarFutbol7Simulado } from './futbol7.js';
 
-const equiposReales = () => leerCsv(readFileSync(new URL('../datos/futbol7-equipos.csv', import.meta.url), 'utf8'));
+const leerDatos = (archivo) => leerCsv(readFileSync(new URL(`../datos/${archivo}`, import.meta.url), 'utf8'));
+const equiposReales = () => leerDatos('futbol7-equipos.csv');
+const partidosReales = () => leerDatos('futbol7-partidos.csv');
 
 describe('leerCsv', () => {
   it('lee cada fila con los nombres del encabezado, sin espacios de más ni líneas vacías', () => {
@@ -33,10 +35,20 @@ describe('armarFutbol7', () => {
       { id: 12, categoriaId: 6, nombre: 'Zona B' },
       { id: 13, categoriaId: 7, nombre: 'Zona única' },
     ]);
-    expect(armado.equipos).toHaveLength(25);
-    expect(armado.equipos.filter((e) => e.baja)).toEqual([
-      { categoria: '+30', zona: 'Zona única', nombre: 'EL CHAÑAR', baja: true },
-    ]);
+    // Libre A tiene 7 (FECHA LIBRE FC es el descanso, no un equipo); SPORTIVO EL CHAÑAR no jugó y no se carga
+    expect(armado.equipos).toHaveLength(23);
+    expect(armado.equipos.filter((e) => e.baja)).toEqual([]);
+    expect(armado.equipos.some((e) => /FECHA LIBRE|SPORTIVO/.test(e.nombre))).toBe(false);
+  });
+
+  it('las fechas 1 a 3 de Gaby se leen sin errores', () => {
+    const armado = armarFutbol7({ equipos: equiposReales(), partidos: partidosReales() });
+    expect(armado.errores).toEqual([]);
+    expect(armado.partidos).toHaveLength(30);
+    const cuantos = (condicion) => armado.partidos.filter(condicion).length;
+    expect(cuantos((p) => p.golesLocal !== null && !p.ausente)).toBe(23);
+    expect(cuantos((p) => p.ausente)).toBe(2);
+    expect(cuantos((p) => p.postergado)).toBe(5);
   });
 
   it('avisa los nombres repetidos en una categoría, aunque cambien acentos o mayúsculas', () => {
@@ -59,20 +71,41 @@ describe('armarFutbol7', () => {
 });
 
 describe('sumarFutbol7Simulado', () => {
-  const armado = armarFutbol7({ equipos: equiposReales() });
+  const armado = armarFutbol7({ equipos: equiposReales(), partidos: partidosReales() });
 
-  it('suma F7 a los datos con una fecha 1 de prueba, sin repetir lugar ni hora', () => {
+  it('suma el F7 de Gaby con sus partidos y resultados', () => {
     const datos = sumarFutbol7Simulado(crearDatosEjemplo(), armado);
     expect(datos.categorias.map((c) => c.id)).toEqual([1, 2, 3, 4, 6, 7]);
     const equiposF7 = datos.equipos.filter((e) => e.id > 32);
     expect(equiposF7[0]).toEqual({ id: 33, zonaId: 11, nombre: 'LA COLOMBIA FC', escudo: null, baja: false });
-    expect(equiposF7).toHaveLength(25);
-    const fecha1 = datos.partidos.filter((p) => p.categoriaId >= 6);
-    expect(fecha1).toHaveLength(12);
-    expect(new Set(fecha1.map((p) => `${p.predio}-${p.cancha}-${p.hora}`)).size).toBe(12);
+    expect(equiposF7).toHaveLength(23);
+    const id = (nombre) => equiposF7.find((e) => e.nombre === nombre).id;
+    const partidosF7 = datos.partidos.filter((p) => p.categoriaId >= 6);
+    expect(partidosF7).toHaveLength(30);
+    expect(partidosF7[0]).toMatchObject({
+      categoriaId: 6,
+      fecha: 1,
+      localId: id('CRUZEIRO FC'),
+      visitanteId: id('PJE LOLA MORA'),
+      golesLocal: 4,
+      golesVisitante: 2,
+      predio: 'cura_borges',
+      cancha: 21,
+      hora: '14:50',
+      dia: null,
+    });
+    expect(new Set(partidosF7.map((p) => p.id)).size).toBe(30);
+  });
+
+  it('sin partidos cargados arma una fecha 1 de prueba, sin repetir lugar ni hora y sin los dados de baja', () => {
+    const chico = armarFutbol7({ equipos: equiposChicos });
+    const datos = sumarFutbol7Simulado(crearDatosEjemplo(), chico);
+    const fecha1 = datos.partidos.filter((p) => p.categoriaId === 6);
+    expect(fecha1).toHaveLength(2);
     expect(fecha1.every((p) => p.fecha === 1 && p.golesLocal === null && p.cancha >= 21)).toBe(true);
-    const chanar = equiposF7.find((e) => e.nombre === 'EL CHAÑAR').id;
-    expect(fecha1.some((p) => p.localId === chanar || p.visitanteId === chanar)).toBe(false);
+    expect(new Set(fecha1.map((p) => `${p.predio}-${p.cancha}-${p.hora}`)).size).toBe(2);
+    const seFue = datos.equipos.find((e) => e.nombre === 'SE FUE FC').id;
+    expect(fecha1.some((p) => p.localId === seFue || p.visitanteId === seFue)).toBe(false);
     expect(fecha1[0]).toMatchObject({ localId: 33, visitanteId: 34, predio: 'los_cardales', cancha: 21, hora: '15:30' });
   });
 

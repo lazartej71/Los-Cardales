@@ -1,0 +1,31 @@
+categoria,fecha,local,visitante,goles_local,goles_visitante,ausente,postergado,predio,cancha,hora
+Libre,1,CRUZEIRO FC,PJE LOLA MORA,4,2,,,Cura Borges,1,14:50
+Libre,1,LOS AMIGOS,LA JUJUY FC,3,8,,,Cura Borges,2,14:50
+Libre,1,SAN RAMÓN FC,BAJO LA PÓLVORA,2,3,,,Cura Borges,1,15:50
+Libre,1,EL BAJO FC,LA 330 FC,3,6,,,Cura Borges,2,15:50
+Libre,1,MALA JUNTA,LA COLOMBIA FC,2,2,,,Cura Borges,3,15:50
+Libre,1,SMATA FC,LA BANDA DE ROJAS,,,,si,,,
++30,1,B° SAN MARTIN,LA FLORIDA,3,4,,,Cura Borges,3,17:00
++30,1,20 DE JUNIO,SAN RAMÓN,3,2,,,Cura Borges,2,17:45
++30,1,EL BOSQUE FC,EL CHAÑAR,,,,si,,,
+Libre,2,MALA JUNTA,SAN RAMÓN FC,3,2,,,Cura Borges,2,14:45
+Libre,2,LA JUJUY FC,EL BAJO FC,0,2,,,Cura Borges,3,14:45
+Libre,2,LA COLOMBIA FC,PJE LOLA MORA,3,4,,,Cura Borges,1,15:50
+Libre,2,LOS PIBES FC,CRUZEIRO FC,4,2,,,,,
+Libre,2,LA 330 FC,LAPRIDA FC,,,,si,,,
++30,2,SAN RAMÓN,LA FLORIDA,3,1,,,Cura Borges,3,15:50
+Libre,2,LOS AMIGOS,SMATA FC,1,8,,,Los Cardales,1,14:45
++30,2,20 DE JUNIO,EL BOSQUE FC,4,4,,,Los Cardales,2,14:45
+Libre,2,TRIANGULITO FC,LA BANDA DE ROJAS,4,2,,,Los Cardales,1,16:10
++30,2,EL CHAÑAR,B° SAN MARTIN,9,3,,,Los Cardales,2,16:10
+Libre,3,LA COLOMBIA FC,SAN RAMÓN FC,0,3,,,Cura Borges,1,15:30
+Libre,3,LA JUJUY FC,LA BANDA DE ROJAS,2,1,,,Cura Borges,2,15:30
+Libre,3,MALA JUNTA,PJE LOLA MORA,2,1,,,Cura Borges,3,15:30
+Libre,3,BAJO LA PÓLVORA,LOS PIBES FC,4,5,,,Cura Borges,1,16:30
+Libre,3,EL BAJO FC,LAPRIDA FC,,,,si,,,
+Libre,3,LA 330 FC,SMATA FC,3,1,,,Cura Borges,3,16:30
++30,3,SAN RAMÓN,BOBBY FC,,,,si,,,
+Libre,3,LOS AMIGOS,TRIANGULITO FC,,,visitante,,Los Cardales,1,15:30
++30,3,EL CHAÑAR,20 DE JUNIO,2,2,,,Los Cardales,1,16:20
++30,3,EL BOSQUE FC,LA FLORIDA,,,visitante,,Los Cardales,2,16:20
++30,3,B° SAN MARTIN,CITY FC,1,6,,,Los Cardales,2,17:20

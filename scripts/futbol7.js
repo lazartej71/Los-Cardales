@@ -237,7 +237,8 @@ const LUGARES_DE_PRUEBA = ['15:30', '16:30', '17:30'].flatMap((hora) =>
 
 /**
  * Simulación: si los datos todavía no tienen Fútbol 7, le suma el de Gaby (ids de equipo después del mayor)
- * y una fecha 1 de prueba sin resultados: en cada zona, 1.º contra 2.º, 3.º contra 4.º… (sin los dados de baja).
+ * con sus partidos. Si todavía no hay partidos cargados, arma una fecha 1 de prueba sin resultados: en cada
+ * zona, 1.º contra 2.º, 3.º contra 4.º… (sin los dados de baja).
  */
 export function sumarFutbol7Simulado(datos, armado) {
   if (hayFutbol7(datos.categorias)) return datos;
@@ -246,9 +247,25 @@ export function sumarFutbol7Simulado(datos, armado) {
   const categoriaId = (nombre) => armado.categorias.find((c) => c.nombre === nombre).id;
   const zonaId = (e) => armado.zonas.find((z) => z.categoriaId === categoriaId(e.categoria) && z.nombre === e.zona).id;
   const equipos = armado.equipos.map((e) => ({ id: ++equipoId, zonaId: zonaId(e), nombre: e.nombre, escudo: null, baja: e.baja }));
+  const idDe = (categoria, nombre) =>
+    equipos.find((e) => e.nombre === nombre && armado.zonas.some((z) => z.id === e.zonaId && z.categoriaId === categoriaId(categoria))).id;
 
-  const partidos = [];
-  for (const zona of armado.zonas) {
+  const partidos = armado.partidos.map((p) => ({
+    id: ++partidoId,
+    categoriaId: categoriaId(p.categoria),
+    fecha: p.fecha,
+    localId: idDe(p.categoria, p.local),
+    visitanteId: idDe(p.categoria, p.visitante),
+    golesLocal: p.golesLocal,
+    golesVisitante: p.golesVisitante,
+    postergado: p.postergado,
+    ausente: p.ausente,
+    predio: p.predio,
+    cancha: p.cancha,
+    hora: p.hora,
+    dia: null,
+  }));
+  for (const zona of armado.partidos.length ? [] : armado.zonas) {
     const enJuego = equipos.filter((e) => e.zonaId === zona.id && !e.baja);
     for (let i = 0; i + 1 < enJuego.length; i += 2) {
       partidos.push({

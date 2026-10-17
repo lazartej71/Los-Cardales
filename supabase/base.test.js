@@ -954,3 +954,52 @@ describe('migración 10a sin la cuenta de Franco', () => {
     expect(columna.rows).toEqual([{ n: 0 }]);
   }, 60000);
 });
+
+describe('migración 10b: los datos de Gaby', () => {
+  beforeAll(async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(leer('./migracion-10b-futbol7-datos.sql'));
+  });
+
+  it('carga las dos categorías de F7 con sus 23 equipos, sin bajas', async () => {
+    expect(
+      (await db.query(`select c.nombre as categoria, z.nombre as zona, count(e.id)::int as equipos,
+          count(*) filter (where e.baja)::int as bajas
+        from public.categorias c join public.zonas z on z.categoria_id = c.id join public.equipos e on e.zona_id = z.id
+        where c.modalidad = 'f7' group by c.id, c.nombre, z.id, z.nombre order by z.id`)).rows
+    ).toEqual([
+      { categoria: 'Libre', zona: 'Zona A', equipos: 7, bajas: 0 },
+      { categoria: 'Libre', zona: 'Zona B', equipos: 8, bajas: 0 },
+      { categoria: '+30', zona: 'Zona única', equipos: 8, bajas: 0 },
+    ]);
+  });
+
+  it('carga las fechas 1 a 3: 25 con resultado (2 W.O.) y 5 postergados, en canchas de F7', async () => {
+    expect(
+      await uno(`select count(*)::int as total, count(goles_local)::int as con_resultado,
+          count(ausente)::int as wo, count(*) filter (where postergado)::int as postergados,
+          count(*) filter (where cancha is not null and cancha < 21)::int as canchas_de_f11
+        from public.partidos where categoria_id in (6, 7)`)
+    ).toEqual({ total: 30, con_resultado: 25, wo: 2, postergados: 5, canchas_de_f11: 0 });
+  });
+
+  it('lo jugado queda cobrado: ningún equipo de F7 debe', async () => {
+    const deudas = await db.query(`
+      select e.nombre,
+        coalesce((select sum(c.arancel) from public.partidos p join public.categorias c on c.id = p.categoria_id
+          where p.goles_local is not null and not p.postergado
+            and ((p.local_id = e.id and p.ausente is distinct from 'local')
+              or (p.visitante_id = e.id and p.ausente is distinct from 'visitante'))), 0)
+        - coalesce((select sum(m.monto) from public.movimientos m where m.equipo_id = e.id), 0) as saldo
+      from public.equipos e join public.zonas z on z.id = e.zona_id where z.categoria_id in (6, 7)`);
+    expect(deudas.rows.filter((f) => Number(f.saldo) !== 0)).toEqual([]);
+    expect(await uno(`select count(*)::int as n from public.movimientos m join public.equipos e on e.id = m.equipo_id
+      join public.zonas z on z.id = e.zona_id where z.categoria_id in (6, 7)`)).toEqual({ n: 48 });
+  });
+
+  it('si se corre dos veces, falla al principio y no cambia nada', async () => {
+    await expect(db.exec(leer('./migracion-10b-futbol7-datos.sql'))).rejects.toThrow(/duplicate key/);
+    await db.exec('rollback');
+    expect(await uno(`select count(*)::int as n from public.partidos where categoria_id in (6, 7)`)).toEqual({ n: 30 });
+  });
+});
