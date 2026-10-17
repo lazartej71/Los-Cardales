@@ -5,16 +5,21 @@
  */
 
 import { formatearPesos } from './cuentas.js';
+import { hayFutbol7, nombreCategoria } from './modalidades.js';
 
 const ETIQUETA_AJUSTE = { arancel: 'arancel', nombre_campeonato: 'nombre del campeonato', criterios_desempate: 'desempate' };
 const tiene = (cambios, columnas) => (cambios || []).some((c) => columnas.includes(c));
 const RESULTADO = ['goles_local', 'goles_visitante', 'ausente'];
 const LUGAR = ['predio', 'cancha', 'hora'];
 
+// La categoría con su modalidad ("F7 · Libre") si hay Fútbol 7 cargado: hay dos Libre
+const textoCategoria = (categoria, db) =>
+  categoria && nombreCategoria(categoria, { conModalidad: hayFutbol7(db.categorias) });
+
 // "BRANCA vs BARRIO POLICIAL (Libre, fecha 2)" con los datos que tenga el partido
 function cruce(partido, db) {
   const nombre = (id) => db.equipos.find((e) => e.id === id)?.nombre ?? 'un equipo';
-  const categoria = db.categorias.find((c) => c.id === partido.categoriaId)?.nombre;
+  const categoria = textoCategoria(db.categorias.find((c) => c.id === partido.categoriaId), db);
   const donde = categoria ? `${categoria}, fecha ${partido.fecha}` : `fecha ${partido.fecha}`;
   return `${nombre(partido.localId)} vs ${nombre(partido.visitanteId)} (${donde})`;
 }
@@ -71,6 +76,11 @@ export function describirActividad(entrada, db) {
     return `Cambió los datos de ${nombre}`;
   }
   if (tabla === 'delegados') return `Cambió el delegado de ${equipo}`;
+  if (tabla === 'categorias') {
+    const categoria = textoCategoria(db.categorias.find((c) => c.id === fila.id), db) ?? 'una categoría';
+    const monto = fila.arancel === null || fila.arancel === undefined ? 'sin arancel' : formatearPesos(fila.arancel);
+    return `Cambió el arancel de ${categoria} (${monto})`;
+  }
   if (tabla === 'configuracion') {
     const que = (cambios || []).map((c) => ETIQUETA_AJUSTE[c]).filter(Boolean);
     return que.length ? `Cambió los ajustes (${que.join(', ')})` : 'Cambió los ajustes';

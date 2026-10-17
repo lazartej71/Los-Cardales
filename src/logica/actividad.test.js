@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { conFutbol7 } from '../datos/datosEjemploFutbol7.js';
 import { describirActividad, rangoDelDia, resumirActividad } from './actividad.js';
 
 const db = {
@@ -125,5 +126,22 @@ describe('día en Argentina', () => {
   it('rechaza un día mal escrito', () => {
     expect(rangoDelDia('2026-13-01')).toBeNull();
     expect(rangoDelDia('ayer')).toBeNull();
+  });
+});
+
+describe('registro con Fútbol 7 cargado', () => {
+  const datos = conFutbol7();
+  const alta = (partido) => describirActividad({ accion: 'alta', tabla: 'partidos', fila: partido }, datos);
+
+  it('cada partido dice su modalidad, porque hay dos Libre', () => {
+    expect(alta(datos.partidos.find((p) => p.id === 201))).toBe('Agregó el partido F7 A1 vs F7 A2 (F7 · Libre, fecha 1)');
+    expect(alta(datos.partidos[0])).toBe('Agregó el partido Libre A1 vs Libre A2 (F11 · Libre, fecha 1)');
+  });
+
+  it('el cambio de arancel de una categoría', () => {
+    const cambio = (arancel) =>
+      describirActividad({ accion: 'cambio', tabla: 'categorias', fila: { id: 10, arancel }, cambios: ['arancel'] }, datos);
+    expect(cambio(70000)).toBe('Cambió el arancel de F7 · Libre ($70.000)');
+    expect(cambio(null)).toBe('Cambió el arancel de F7 · Libre (sin arancel)');
   });
 });

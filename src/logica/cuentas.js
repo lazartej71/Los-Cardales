@@ -3,6 +3,7 @@
  * anteriores, y se les descuenta lo que pagaron. Funciones puras: las usan el panel y el servidor.
  */
 
+import { modalidadDeCategoria } from './modalidades.js';
 import { tieneResultado } from './tabla.js';
 
 export const METODOS_PAGO = [
@@ -15,7 +16,21 @@ export const TEXTO_SIN_COBRO = {
   postergado: 'postergado',
   ausente: 'no se presentó: no paga',
   pendiente: 'se cobra cuando se juegue',
+  sinArancel: 'sin arancel cargado',
 };
+
+/**
+ * El arancel de cada partido según su categoría: en Fútbol 11, el de la categoría si tiene uno y si no
+ * el de configuración (hoy todas usan ese); en Fútbol 7, el de su categoría, o null si todavía no se
+ * cargó (no se cobra: no se usa el de Fútbol 11, que es de otro organizador).
+ */
+export function arancelDe({ categorias, configuracion }) {
+  return (partido) => {
+    const categoria = categorias.find((c) => c.id === partido.categoriaId);
+    const propio = categoria?.arancel ?? null;
+    return modalidadDeCategoria(categoria) === 'f7' ? propio : (propio ?? configuracion.arancel);
+  };
+}
 
 const MONTO_MAXIMO = 10000000;
 const miles = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
@@ -94,17 +109,19 @@ export const sumarMontos = (movimientos) => movimientos.reduce((total, m) => tot
 /**
  * Saldo de cada equipo de la lista: Map equipoId → { cobrado, pagado, saldo }.
  * saldo mayor que 0: debe; 0: al día; menor que 0: a favor.
+ * arancelDe(partido) (opcional) da el arancel de cada partido; sin él, todos cobran `arancel`.
  */
-export function calcularCuentas({ equipos, partidos, movimientos, arancel }) {
+export function calcularCuentas({ equipos, partidos, movimientos, arancel, arancelDe = () => arancel }) {
   const cuentas = new Map(equipos.map((e) => [e.id, { cobrado: 0, pagado: 0, saldo: 0 }]));
   const pagaron = new Set(
     movimientos.filter((m) => m.tipo === 'pago' && m.partidoId !== null).map((m) => `${m.partidoId}-${m.equipoId}`)
   );
   for (const partido of partidos) {
+    const monto = arancelDe(partido) ?? 0;
     for (const equipoId of [partido.localId, partido.visitanteId]) {
       const cuenta = cuentas.get(equipoId);
       const conPago = pagaron.has(`${partido.id}-${equipoId}`);
-      if (cuenta && motivoSinCobro(partido, equipoId, conPago) === null) cuenta.cobrado += arancel;
+      if (cuenta && motivoSinCobro(partido, equipoId, conPago) === null) cuenta.cobrado += monto;
     }
   }
   for (const movimiento of movimientos) {
@@ -130,9 +147,9 @@ const porFechaEId = (a, b) => a.fecha.localeCompare(b.fecha) || a.id - b.id;
  * La cuenta de un equipo en el orden de la pantalla: deudas anteriores, partidos (por número de
  * fecha) y pagos sueltos (por fecha del calendario), con el saldo total.
  */
-export function detalleCuenta({ equipoId, equipos, partidos, movimientos, arancel }) {
+export function detalleCuenta({ equipoId, equipos, partidos, movimientos, arancel, arancelDe = () => arancel }) {
   const propios = movimientos.filter((m) => m.equipoId === equipoId);
-  const { saldo } = calcularCuentas({ equipos, partidos, movimientos, arancel }).get(equipoId);
+  const { saldo } = calcularCuentas({ equipos, partidos, movimientos, arancel, arancelDe }).get(equipoId);
   return {
     saldo,
     deudas: propios.filter((m) => m.tipo === 'deuda_anterior').sort(porFechaEId),
@@ -141,11 +158,12 @@ export function detalleCuenta({ equipoId, equipos, partidos, movimientos, arance
       .sort((a, b) => a.fecha - b.fecha || a.id - b.id)
       .map((p) => {
         const pagos = pagosDePartido(propios, p.id, equipoId);
-        const motivo = motivoSinCobro(p, equipoId, pagos.length > 0);
+        const monto = arancelDe(p);
+        const motivo = motivoSinCobro(p, equipoId, pagos.length > 0) ?? (monto === null ? 'sinArancel' : null);
         return {
           partido: p,
           rivalId: p.localId === equipoId ? p.visitanteId : p.localId,
-          cobrado: motivo === null ? arancel : 0,
+          cobrado: motivo === null ? monto : 0,
           motivo,
           pagos,
         };

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { conFutbol7 } from '../datos/datosEjemploFutbol7.js';
 import {
+  arancelDe,
   calcularCuentas,
   coincideNombre,
   describirPartidoEnCuenta,
@@ -275,5 +277,52 @@ describe('coincideNombre', () => {
   it('sin texto coinciden todos', () => {
     expect(coincideNombre('BRANCA', '')).toBe(true);
     expect(coincideNombre('BRANCA', '   ')).toBe(true);
+  });
+});
+
+describe('arancel de cada categoría (Fútbol 7)', () => {
+  const db = conFutbol7();
+  const saldos = (datos, conArancelDe = true) =>
+    calcularCuentas({
+      equipos: datos.equipos,
+      partidos: datos.partidos,
+      movimientos: datos.movimientos,
+      arancel: datos.configuracion.arancel,
+      ...(conArancelDe ? { arancelDe: arancelDe(datos) } : {}),
+    });
+
+  it('en F11 vale el de configuración; en F7, el de su categoría', () => {
+    const libreF7 = db.categorias.find((c) => c.id === 10);
+    expect(arancelDe(db)(db.partidos[0])).toBe(105000);
+    expect(arancelDe(db)(db.partidos.find((p) => p.id === 201))).toBe(65000);
+    expect(arancelDe({ ...db, categorias: [{ ...libreF7, arancel: null }] })({ categoriaId: 10 })).toBeNull();
+  });
+
+  it('a cada equipo de F7 se le cobra el arancel de su categoría; F11 queda igual', () => {
+    const conCategoria = saldos(db);
+    expect(conCategoria.get(101).saldo).toBe(0);
+    expect(conCategoria.get(102).saldo).toBe(65000);
+    const sinCategoria = saldos(db, false);
+    for (const equipo of db.equipos.filter((e) => e.id < 100)) {
+      expect(conCategoria.get(equipo.id)).toEqual(sinCategoria.get(equipo.id));
+    }
+  });
+
+  it('una categoría de F7 sin arancel no cobra sus partidos', () => {
+    const sinArancel = {
+      ...db,
+      categorias: db.categorias.map((c) => (c.id === 10 ? { ...c, arancel: null } : c)),
+    };
+    expect(saldos(sinArancel).get(102).saldo).toBe(0);
+    const detalle = detalleCuenta({
+      equipoId: 102,
+      equipos: sinArancel.equipos,
+      partidos: sinArancel.partidos,
+      movimientos: sinArancel.movimientos,
+      arancel: 105000,
+      arancelDe: arancelDe(sinArancel),
+    });
+    expect(detalle.partidos[0]).toMatchObject({ cobrado: 0, motivo: 'sinArancel' });
+    expect(describirPartidoEnCuenta(detalle.partidos[0])).toBe('sin pago · sin arancel cargado');
   });
 });
