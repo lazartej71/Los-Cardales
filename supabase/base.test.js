@@ -8,6 +8,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { armarFutbol7, sqlFutbol7 } from '../scripts/futbol7.js';
 
 const leer = (archivo) => readFileSync(new URL(archivo, import.meta.url), 'utf8');
 const ADMIN = '11111111-1111-1111-1111-111111111111';
@@ -856,5 +857,82 @@ describe('migración 10a: Fútbol 7', () => {
     it('sin sesión se sigue leyendo todo lo público, también F7', async () => {
       expect((await como('anon', null, 'select count(*)::int as n from public.categorias')).filas).toEqual([{ n: 6 }]);
     });
+  });
+});
+
+// La 10b de verdad se genera con los datos de Gaby (scripts/generar-futbol7.mjs). Acá se prueba el SQL que
+// arma el generador con una Libre chica: se carga, se controla y se borra, así no ocupa los ids de la real.
+describe('migración 10b: el SQL que arma el generador', () => {
+  const equipos = ['UNO FC', "D'ALESSANDRO", 'TRES FC', 'SE FUE FC'].map((equipo) => ({
+    categoria: 'Libre',
+    zona: 'Zona A',
+    equipo,
+    baja: equipo === 'SE FUE FC' ? 'si' : '',
+  }));
+  const fila = (fecha, local, visitante, extra) => ({
+    categoria: 'Libre', fecha: String(fecha), local, visitante, goles_local: '', goles_visitante: '', ausente: '',
+    postergado: '', predio: 'Los Cardales', cancha: '1', hora: '15:30', ...extra,
+  });
+  const partidos = [
+    fila(1, 'UNO FC', "D'ALESSANDRO", { goles_local: '2', goles_visitante: '1' }),
+    fila(1, 'TRES FC', 'SE FUE FC', { ausente: 'visitante', predio: 'Cura Borges', cancha: '3' }),
+    fila(2, 'UNO FC', 'TRES FC', { predio: '', cancha: '', hora: '', postergado: 'si' }),
+  ];
+  const armado = armarFutbol7({ equipos, partidos });
+  const sql = sqlFutbol7(armado, { cobradoEl: '2026-10-16' });
+
+  afterAll(async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(`
+      delete from public.movimientos where partido_id in (select id from public.partidos where categoria_id in (6, 7));
+      delete from public.partidos where categoria_id in (6, 7);
+      delete from public.equipos where zona_id in (select id from public.zonas where categoria_id in (6, 7));
+      delete from public.zonas where categoria_id in (6, 7);
+      delete from public.categorias where id in (6, 7);
+    `);
+  });
+
+  it('carga categoría, zona, equipos, partidos y los pagos de lo ya jugado', async () => {
+    expect(armado.errores).toEqual([]);
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec(sql);
+    expect(await uno(`select nombre, modalidad, arancel from public.categorias where id = 6`)).toEqual({
+      nombre: 'Libre',
+      modalidad: 'f7',
+      arancel: 65000,
+    });
+    expect((await db.query(`select nombre, baja from public.equipos where zona_id = 11 order by nombre`)).rows).toEqual([
+      { nombre: "D'ALESSANDRO", baja: false },
+      { nombre: 'SE FUE FC', baja: true },
+      { nombre: 'TRES FC', baja: false },
+      { nombre: 'UNO FC', baja: false },
+    ]);
+    expect(
+      (await db.query(`select fecha, goles_local, goles_visitante, ausente, postergado, predio, cancha
+        from public.partidos where categoria_id = 6 order by fecha, id`)).rows
+    ).toEqual([
+      { fecha: 1, goles_local: 2, goles_visitante: 1, ausente: null, postergado: false, predio: 'los_cardales', cancha: 21 },
+      { fecha: 1, goles_local: 3, goles_visitante: 0, ausente: 'visitante', postergado: false, predio: 'cura_borges', cancha: 23 },
+      { fecha: 2, goles_local: null, goles_visitante: null, ausente: null, postergado: true, predio: null, cancha: null },
+    ]);
+    // Los dos del 2 a 1 y el que se presentó en el W.O.: todos con el arancel de su categoría, nadie debe
+    expect(
+      (await db.query(`select e.nombre, m.monto, m.metodo from public.movimientos m join public.equipos e on e.id = m.equipo_id
+        where e.zona_id = 11 order by e.nombre`)).rows
+    ).toEqual([
+      { nombre: "D'ALESSANDRO", monto: 65000, metodo: 'efectivo' },
+      { nombre: 'TRES FC', monto: 65000, metodo: 'efectivo' },
+      { nombre: 'UNO FC', monto: 65000, metodo: 'efectivo' },
+    ]);
+  });
+
+  it('si se corre dos veces, falla al principio y no cambia nada', async () => {
+    await expect(db.exec(sql)).rejects.toThrow(/duplicate key/);
+    await db.exec('rollback');
+    expect(await uno(`select count(*)::int as n from public.equipos where zona_id = 11`)).toEqual({ n: 4 });
+  });
+
+  it('sin la 10a no carga nada', () => {
+    expect(sql.indexOf('Falta correr la migración 10a')).toBeLessThan(sql.indexOf('insert into'));
   });
 });

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../src/datos/datosEjemplo.js';
-import { armarFutbol7, leerCsv, sumarFutbol7Simulado } from './futbol7.js';
+import { armarFutbol7, leerCsv, sqlFutbol7, sumarFutbol7Simulado } from './futbol7.js';
 
 const equiposReales = () => leerCsv(readFileSync(new URL('../datos/futbol7-equipos.csv', import.meta.url), 'utf8'));
 
@@ -79,5 +79,86 @@ describe('sumarFutbol7Simulado', () => {
   it('si ya hay F7 cargado, no suma nada', () => {
     const una = sumarFutbol7Simulado(crearDatosEjemplo(), armado);
     expect(sumarFutbol7Simulado(una, armado)).toBe(una);
+  });
+});
+
+// Una Libre de F7 chica: 4 equipos en una zona y uno dado de baja, con la fecha 1 jugada (un W.O.) y un pendiente
+const equiposChicos = [
+  { categoria: 'Libre', zona: 'Zona A', equipo: 'UNO FC', baja: '' },
+  { categoria: 'Libre', zona: 'Zona A', equipo: "D'ALESSANDRO", baja: '' },
+  { categoria: 'Libre', zona: 'Zona A', equipo: 'TRES FC', baja: '' },
+  { categoria: 'Libre', zona: 'Zona A', equipo: 'CUATRO FC', baja: '' },
+  { categoria: 'Libre', zona: 'Zona A', equipo: 'SE FUE FC', baja: 'si' },
+];
+const fila = (fecha, local, visitante, extra = {}) => ({
+  categoria: 'Libre',
+  fecha: String(fecha),
+  local,
+  visitante,
+  goles_local: '',
+  goles_visitante: '',
+  ausente: '',
+  postergado: '',
+  predio: 'Los Cardales',
+  cancha: '1',
+  hora: '15:30',
+  ...extra,
+});
+const partidosChicos = [
+  fila(1, 'UNO FC', "D'ALESSANDRO", { goles_local: '2', goles_visitante: '1' }),
+  fila(1, 'TRES FC', 'SE FUE FC', { ausente: 'visitante', predio: 'Cura Borges', cancha: '3' }),
+  fila(2, 'Uno FC', 'TRES FC', { predio: '', cancha: '', hora: '', postergado: 'si' }),
+];
+
+describe('partidos de Fútbol 7 desde el CSV', () => {
+  it('lee resultado, W.O., postergado y la cancha de F7 (con el número de la base)', () => {
+    const { partidos, errores } = armarFutbol7({ equipos: equiposChicos, partidos: partidosChicos });
+    expect(errores).toEqual([]);
+    expect(partidos).toEqual([
+      { categoria: 'Libre', fecha: 1, local: 'UNO FC', visitante: "D'ALESSANDRO", golesLocal: 2, golesVisitante: 1, ausente: null, postergado: false, predio: 'los_cardales', cancha: 21, hora: '15:30' },
+      { categoria: 'Libre', fecha: 1, local: 'TRES FC', visitante: 'SE FUE FC', golesLocal: 3, golesVisitante: 0, ausente: 'visitante', postergado: false, predio: 'cura_borges', cancha: 23, hora: '15:30' },
+      { categoria: 'Libre', fecha: 2, local: 'UNO FC', visitante: 'TRES FC', golesLocal: null, golesVisitante: null, ausente: null, postergado: true, predio: null, cancha: null, hora: null },
+    ]);
+  });
+
+  it('avisa equipos que no son de la categoría, canchas que no son de F7 y resultados a medias', () => {
+    const malos = [
+      fila(1, 'UNO FC', 'NADIE FC'),
+      fila(1, 'TRES FC', 'CUATRO FC', { predio: 'Los Cardales', cancha: '3' }),
+      fila(1, 'TRES FC', 'CUATRO FC', { goles_local: '1' }),
+      fila(1, 'TRES FC', 'CUATRO FC', { predio: 'Otro predio' }),
+    ];
+    expect(armarFutbol7({ equipos: equiposChicos, partidos: malos }).errores).toEqual([
+      'Fecha 1: NADIE FC no es un equipo de Libre.',
+      'Fecha 1: Los Cardales no tiene la cancha 3 de Fútbol 7.',
+      'Fecha 1: TRES FC vs CUATRO FC tiene el resultado a medias.',
+      'Fecha 1: no existe el predio Otro predio.',
+    ]);
+  });
+});
+
+describe('sqlFutbol7', () => {
+  const sql = sqlFutbol7(armarFutbol7({ equipos: equiposChicos, partidos: partidosChicos }), { cobradoEl: '2026-10-16' });
+
+  it('primero controla que esté la 10a y después carga en orden, en una sola transacción', () => {
+    const orden = [
+      'begin;',
+      'Falta correr la migración 10a',
+      'insert into public.categorias',
+      'insert into public.zonas',
+      'insert into public.equipos',
+      'insert into public.partidos',
+      'insert into public.movimientos',
+      'update public.equipos set baja = true',
+      'commit;',
+    ].map((texto) => sql.indexOf(texto));
+    expect(orden.every((posicion) => posicion >= 0)).toBe(true);
+    expect([...orden].sort((a, b) => a - b)).toEqual(orden);
+  });
+
+  it('escapa los apóstrofos y pone las canchas de F7 y los pagos del día', () => {
+    expect(sql).toContain("'D''ALESSANDRO'");
+    expect(sql).toContain("'cura_borges', 23,");
+    expect(sql).toContain("'2026-10-16', 'Cobrado antes de pasar F7 al sistema'");
   });
 });
