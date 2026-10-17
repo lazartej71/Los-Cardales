@@ -36,9 +36,10 @@ async function como(rol, usuario, consulta) {
 }
 const comoAdmin = (consulta) => como('authenticated', ADMIN, consulta);
 
-beforeAll(async () => {
-  db = new PGlite();
-  await db.exec(`
+// Una base nueva con el esquema, los datos y las migraciones 2 a 9, como está hoy en Supabase
+async function armarBase() {
+  const base = new PGlite();
+  await base.exec(`
     create schema auth;
     create table auth.users (id uuid primary key, email text);
     create function auth.uid() returns uuid language sql stable as
@@ -66,22 +67,27 @@ beforeAll(async () => {
     grant select on storage.buckets to anon, authenticated;
     grant select, insert, update, delete on storage.objects to anon, authenticated;
   `);
-  await db.exec(leer('./esquema.sql'));
-  await db.exec(leer('./datos-iniciales.sql'));
-  await db.exec(leer('./migracion-2-cuentas.sql'));
-  await db.exec(leer('./migracion-3-predios.sql'));
-  await db.exec(leer('./migracion-4-cancha-6-cura-borges.sql'));
-  await db.exec(`
+  await base.exec(leer('./esquema.sql'));
+  await base.exec(leer('./datos-iniciales.sql'));
+  await base.exec(leer('./migracion-2-cuentas.sql'));
+  await base.exec(leer('./migracion-3-predios.sql'));
+  await base.exec(leer('./migracion-4-cancha-6-cura-borges.sql'));
+  await base.exec(`
     insert into auth.users values ('${ADMIN}', 'admin@prueba.com'), ('${OTRO}', 'otro@prueba.com'),
       ('${SUPER}', 'ljdev@loscardalesfutbol.com');
     insert into public.administradores (user_id, nombre) values ('${ADMIN}', 'Prueba'), ('${SUPER}', 'Jorge');
   `);
   // La 5 va después de las cuentas: al final pasa a superadmin la de ljdev
-  await db.exec(leer('./migracion-5-control.sql'));
-  await db.exec(leer('./migracion-6-visitas.sql'));
-  await db.exec(leer('./migracion-7-veedores.sql'));
-  await db.exec(leer('./migracion-8-escudos.sql'));
-  await db.exec(leer('./migracion-9-bajas.sql'));
+  await base.exec(leer('./migracion-5-control.sql'));
+  await base.exec(leer('./migracion-6-visitas.sql'));
+  await base.exec(leer('./migracion-7-veedores.sql'));
+  await base.exec(leer('./migracion-8-escudos.sql'));
+  await base.exec(leer('./migracion-9-bajas.sql'));
+  return base;
+}
+
+beforeAll(async () => {
+  db = await armarBase();
 }, 60000);
 
 describe('carga inicial', () => {
@@ -935,4 +941,16 @@ describe('migración 10b: el SQL que arma el generador', () => {
   it('sin la 10a no carga nada', () => {
     expect(sql.indexOf('Falta correr la migración 10a')).toBeLessThan(sql.indexOf('insert into'));
   });
+});
+
+describe('migración 10a sin la cuenta de Franco', () => {
+  // Si franco1 no está (o tiene otro email), quedaría sin modalidad y vería la plata de Fútbol 7
+  it('falla y no cambia nada', async () => {
+    const otra = await armarBase();
+    await expect(otra.exec(leer('./migracion-10a-futbol7.sql'))).rejects.toThrow(/franco1/);
+    await otra.exec('rollback');
+    const columna = await otra.query(`select count(*)::int as n from information_schema.columns
+      where table_name = 'categorias' and column_name = 'modalidad'`);
+    expect(columna.rows).toEqual([{ n: 0 }]);
+  }, 60000);
 });

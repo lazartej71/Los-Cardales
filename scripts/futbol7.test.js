@@ -121,6 +121,13 @@ describe('partidos de Fútbol 7 desde el CSV', () => {
     ]);
   });
 
+  it('un equipo dado de baja no puede quedar con partidos sin resultado (como en la migración 9)', () => {
+    const conPendiente = [...partidosChicos, fila(3, 'SE FUE FC', 'UNO FC')];
+    expect(armarFutbol7({ equipos: equiposChicos, partidos: conPendiente }).errores).toEqual([
+      'SE FUE FC está dado de baja y tiene un partido sin resultado en la fecha 3: cargale el resultado o sacalo.',
+    ]);
+  });
+
   it('avisa equipos que no son de la categoría, canchas que no son de F7 y resultados a medias', () => {
     const malos = [
       fila(1, 'UNO FC', 'NADIE FC'),

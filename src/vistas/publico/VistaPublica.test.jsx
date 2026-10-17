@@ -256,6 +256,8 @@ describe('Fútbol 11 y Fútbol 7', () => {
     const html = dibujar(crearDatosEjemplo());
     expect(html).not.toContain('conmutador');
     expect(html).not.toContain('chip-modalidad');
+    // La cabecera, como siempre: un nombre largo sigue partiéndose en dos renglones en el celular
+    expect(html).not.toContain('cabecera__fila');
     expect(html).toContain('data-modalidad="f11"');
     expect(html).toContain('Campeonato de Fútbol');
   });

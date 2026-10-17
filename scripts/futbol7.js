@@ -114,6 +114,17 @@ export function armarFutbol7({ equipos: filas, partidos: filasPartidos = [] }) {
     errores.push(...armado.errores);
     return armado.partido;
   });
+  // Como en la app y en la migración 9: un dado de baja no queda con partidos sin resultado
+  for (const equipo of equipos.filter((e) => e.baja)) {
+    const pendientes = partidos.filter(
+      (p) => p.categoria === equipo.categoria && [p.local, p.visitante].includes(equipo.nombre) && p.golesLocal === null
+    );
+    for (const p of pendientes) {
+      errores.push(
+        `${equipo.nombre} está dado de baja y tiene un partido sin resultado en la fecha ${p.fecha}: cargale el resultado o sacalo.`
+      );
+    }
+  }
   return { categorias, zonas, equipos, partidos, errores };
 }
 

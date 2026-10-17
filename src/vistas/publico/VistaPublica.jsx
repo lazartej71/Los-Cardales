@@ -90,10 +90,15 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
       <header className="cabecera" ref={refPortada}>
         <div className="contenedor cabecera__inner">
           <Logo className="cabecera__logo" />
-          <div className="cabecera__fila">
-            <h1 className="cabecera__titulo">{modalidad === 'f7' ? 'Fútbol 7' : db.configuracion.nombreCampeonato}</h1>
-            {conFutbol7 && <ConmutadorModalidad valor={modalidad} onCambiar={cambiarModalidad} />}
-          </div>
+          {conFutbol7 ? (
+            // Nombre y conmutador en la misma fila (si no entra, el nombre se achica)
+            <div className="cabecera__fila">
+              <h1 className="cabecera__titulo">{modalidad === 'f7' ? 'Fútbol 7' : db.configuracion.nombreCampeonato}</h1>
+              <ConmutadorModalidad valor={modalidad} onCambiar={cambiarModalidad} />
+            </div>
+          ) : (
+            <h1 className="cabecera__titulo">{db.configuracion.nombreCampeonato}</h1>
+          )}
         </div>
       </header>
 

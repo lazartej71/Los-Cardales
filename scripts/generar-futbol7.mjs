@@ -2,8 +2,10 @@
  * Genera supabase/migracion-10b-futbol7-datos.sql con los datos de Fútbol 7 que pasó Gaby:
  *   datos/futbol7-equipos.csv   categoria,zona,equipo,baja
  *   datos/futbol7-partidos.csv  categoria,fecha,local,visitante,goles_local,goles_visitante,ausente,postergado,predio,cancha,hora
- *                               (opcional; la cancha como la nombra Gaby: 1, 2 o 3)
- * Uso: node scripts/generar-futbol7.mjs [--cobrado-el AAAA-MM-DD]   (por defecto, hoy en Argentina)
+ *                               (la cancha como la nombra Gaby: 1, 2 o 3)
+ * Uso: node scripts/generar-futbol7.mjs [--cobrado-el AAAA-MM-DD] [--sin-partidos]
+ *   --cobrado-el: el día de los pagos de lo ya jugado (por defecto, hoy en Argentina)
+ *   --sin-partidos: solo si de verdad no hay partidos jugados (la 10b no se puede volver a correr)
  * Si los datos tienen errores, los muestra y no escribe nada.
  */
 
@@ -21,9 +23,16 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(cobradoEl ?? '')) {
   process.exit(1);
 }
 
+// La 10b no se puede volver a correr: sin los partidos ya jugados, quedarían afuera para siempre
+const conPartidos = existsSync(ruta('datos/futbol7-partidos.csv'));
+if (!conPartidos && !process.argv.includes('--sin-partidos')) {
+  console.error('Falta datos/futbol7-partidos.csv con lo ya jugado. Si de verdad no hay partidos, usá --sin-partidos.');
+  process.exit(1);
+}
+
 const armado = armarFutbol7({
   equipos: leer('datos/futbol7-equipos.csv'),
-  partidos: existsSync(ruta('datos/futbol7-partidos.csv')) ? leer('datos/futbol7-partidos.csv') : [],
+  partidos: conPartidos ? leer('datos/futbol7-partidos.csv') : [],
 });
 
 if (armado.errores.length) {

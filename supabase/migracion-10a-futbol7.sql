@@ -202,4 +202,16 @@ for each row execute function public.validar_cambio_configuracion();
 update public.administradores set modalidad = 'f11'
 where user_id = (select id from auth.users where email = 'franco1@loscardalesfutbol.com');
 
+-- Si la cuenta no está (o tiene otro email), Franco quedaría sin modalidad y vería la plata de Fútbol 7
+do $$
+begin
+  if not exists (
+    select 1 from public.administradores a join auth.users u on u.id = a.user_id
+    where u.email = 'franco1@loscardalesfutbol.com' and a.modalidad = 'f11'
+  ) then
+    raise exception 'No está la cuenta franco1@loscardalesfutbol.com en administradores: no se cambió nada';
+  end if;
+end;
+$$;
+
 commit;
