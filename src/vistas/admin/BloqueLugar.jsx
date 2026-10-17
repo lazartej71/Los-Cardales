@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { textoLugar, validarLugar } from '../../logica/lugar.js';
 import { CamposLugar, lugarDePartido, lugarParaGuardar } from './CamposLugar.jsx';
 
-export function BloqueLugar({ partido, acciones }) {
+export function BloqueLugar({ partido, acciones, modalidad = 'f11' }) {
   const reprogramar = partido.postergado;
   const inicial = { ...lugarDePartido(partido), dia: partido.dia ?? '' };
   const [lugar, setLugar] = useState(inicial);
@@ -23,7 +23,7 @@ export function BloqueLugar({ partido, acciones }) {
       setError('Elegí el día.');
       return;
     }
-    const validado = validarLugar(lugarParaGuardar(lugar));
+    const validado = validarLugar(lugarParaGuardar(lugar), modalidad);
     if (validado.error) {
       setError(validado.error);
       return;
@@ -68,7 +68,13 @@ export function BloqueLugar({ partido, acciones }) {
             />
           </div>
         )}
-        <CamposLugar idBase={idBase} lugar={lugar} invalido={Boolean(error)} onCambiar={(nuevo) => cambiar({ ...nuevo, dia: lugar.dia })} />
+        <CamposLugar
+          idBase={idBase}
+          lugar={lugar}
+          modalidad={modalidad}
+          invalido={Boolean(error)}
+          onCambiar={(nuevo) => cambiar({ ...nuevo, dia: lugar.dia })}
+        />
         {error && (
           <p className="campo__error" role="alert">
             {error}

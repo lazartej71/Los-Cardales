@@ -38,3 +38,19 @@ describe('renglón del partido', () => {
     expect(html).toContain('Los Cardales · C2 · 13:40');
   });
 });
+
+describe('campos de lugar en Fútbol 7', () => {
+  it('ofrece las canchas de F7 del predio, con su número y el de la base como valor', () => {
+    const html = renderToString(
+      <CamposLugar idBase="f7" lugar={{ predio: 'cura_borges', cancha: '', hora: '' }} modalidad="f7" onCambiar={() => {}} />
+    );
+    expect(html).toContain('<option value="21">Cancha 1</option>');
+    expect(html).toContain('<option value="23">Cancha 3</option>');
+    expect(html).not.toContain('>Cancha 9</option>');
+  });
+
+  it('al cambiar de predio conserva la cancha de F7 si el otro también la tiene', () => {
+    expect(cambiarPredio({ predio: 'los_cardales', cancha: '22', hora: '' }, 'cura_borges', 'f7').cancha).toBe('22');
+    expect(cambiarPredio({ predio: 'cura_borges', cancha: '23', hora: '' }, 'los_cardales', 'f7').cancha).toBe('');
+  });
+});

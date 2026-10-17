@@ -1,5 +1,6 @@
 /**
- * Panel: nombre del campeonato y criterios de desempate.
+ * Panel: nombre del campeonato, aranceles y criterios de desempate. Cada cuenta ve solo lo que puede
+ * cambiar (ajustesDeCuenta): Franco, lo de Fútbol 11; Gaby, el arancel de cada categoría de Fútbol 7.
  */
 
 import { useMemo, useState } from 'react';
@@ -59,8 +60,9 @@ function FormNombreCampeonato({ nombreActual, onGuardar }) {
   );
 }
 
-function FormArancel({ arancelActual, onGuardar }) {
-  const [monto, setMonto] = useState(formatearMiles(arancelActual));
+// El arancel de Fútbol 11 (configuración) o el de una categoría de Fútbol 7, que puede estar sin cargar (null)
+function FormArancel({ idBase = 'cfg-arancel', titulo = 'Arancel por equipo y partido', ayuda, arancelActual, onGuardar }) {
+  const [monto, setMonto] = useState(arancelActual === null ? '' : formatearMiles(arancelActual));
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const valor = leerMonto(monto);
@@ -77,28 +79,30 @@ function FormArancel({ arancelActual, onGuardar }) {
   };
 
   return (
-    <form className="panel" onSubmit={guardar} noValidate aria-labelledby="titulo-arancel">
-      <h3 id="titulo-arancel" className="panel__titulo">Arancel por equipo y partido</h3>
+    <form className="panel" onSubmit={guardar} noValidate aria-labelledby={`${idBase}-titulo`}>
+      <h3 id={`${idBase}-titulo`} className="panel__titulo">{titulo}</h3>
       <div className="fila-form">
         <div className="campo">
-          <label className="campo__label" htmlFor="cfg-arancel">En pesos</label>
+          <label className="campo__label" htmlFor={idBase}>En pesos</label>
           <div className="pago__monto">
             <span className="pago__signo" aria-hidden="true">$</span>
             <input
-              id="cfg-arancel"
+              id={idBase}
               className="input"
               inputMode="numeric"
               autoComplete="off"
               value={monto}
               aria-invalid={Boolean(error) || undefined}
-              aria-describedby="cfg-arancel-ayuda"
+              aria-describedby={`${idBase}-ayuda`}
               onChange={(e) => {
                 setMonto(montoAlEscribir(e.target.value));
                 setError('');
               }}
             />
           </div>
-          <p id="cfg-arancel-ayuda" className="campo__ayuda">Cambiarlo recalcula todas las cuentas del torneo.</p>
+          <p id={`${idBase}-ayuda`} className="campo__ayuda">
+            {ayuda ?? 'Cambiarlo recalcula todas las cuentas del torneo.'}
+          </p>
         </div>
         <button type="submit" className="btn btn--primario" disabled={guardando || valor === arancelActual}>
           {guardando ? 'Guardando…' : 'Guardar arancel'}
@@ -113,7 +117,60 @@ function FormArancel({ arancelActual, onGuardar }) {
   );
 }
 
-export function AdminConfiguracion({ db, acciones, filtro }) {
+// Por defecto (sin Fútbol 7 ni modalidad en la cuenta), todo como siempre
+const TODOS_LOS_AJUSTES = { generales: true, criterios: true, categoriasConArancel: [] };
+
+export function AdminConfiguracion({ db, acciones, filtro, ajustes = TODOS_LOS_AJUSTES }) {
+  return (
+    <>
+      {ajustes.generales && (
+        <>
+          <FormNombreCampeonato
+            key={db.configuracion.nombreCampeonato}
+            nombreActual={db.configuracion.nombreCampeonato}
+            onGuardar={(nombre) =>
+              acciones.actualizarConfiguracion({ nombreCampeonato: nombre }, 'Nombre del campeonato guardado.')
+            }
+          />
+
+          <FormArancel
+            key={db.configuracion.arancel}
+            arancelActual={db.configuracion.arancel}
+            onGuardar={(arancel) =>
+              acciones.actualizarConfiguracion({ arancel }, `Arancel guardado: ${formatearPesos(arancel)} por equipo y partido.`)
+            }
+          />
+        </>
+      )}
+
+      {ajustes.categoriasConArancel.map((c) => (
+        <FormArancel
+          key={`${c.id}-${c.arancel}`}
+          idBase={`cfg-arancel-${c.id}`}
+          titulo={`Arancel de Fútbol 7 · ${c.nombre}`}
+          ayuda={
+            c.arancel === null
+              ? `Cargá el arancel de ${c.nombre}: mientras no esté, sus partidos no se cobran.`
+              : `Cambiarlo recalcula las cuentas de ${c.nombre} de Fútbol 7.`
+          }
+          arancelActual={c.arancel}
+          onGuardar={(arancel) =>
+            acciones.actualizarCategoria(
+              c.id,
+              { arancel },
+              `Arancel de Fútbol 7 · ${c.nombre} guardado: ${formatearPesos(arancel)} por equipo y partido.`
+            )
+          }
+        />
+      ))}
+
+      {ajustes.criterios && <SeccionCriterios db={db} filtro={filtro} acciones={acciones} />}
+    </>
+  );
+}
+
+// Criterios de desempate (valen para las dos modalidades), con la vista previa de la zona elegida
+function SeccionCriterios({ db, filtro, acciones }) {
   const [guardando, setGuardando] = useState(false);
   const criterios = db.configuracion.criteriosDesempate;
   const esOrdenPorDefecto = criterios.join() === CRITERIOS_POR_DEFECTO.join();
@@ -143,85 +200,67 @@ export function AdminConfiguracion({ db, acciones, filtro }) {
   };
 
   return (
-    <>
-      <FormNombreCampeonato
-        key={db.configuracion.nombreCampeonato}
-        nombreActual={db.configuracion.nombreCampeonato}
-        onGuardar={(nombre) =>
-          acciones.actualizarConfiguracion({ nombreCampeonato: nombre }, 'Nombre del campeonato guardado.')
-        }
-      />
+    <section className="panel" aria-labelledby="titulo-criterios">
+      <div className="panel__cab">
+        <h3 id="titulo-criterios" className="panel__titulo">Criterios de desempate</h3>
+        {!esOrdenPorDefecto && (
+          <button
+            type="button"
+            className="enlace"
+            disabled={guardando}
+            onClick={() => guardarCriterios([...CRITERIOS_POR_DEFECTO], 'Se restableció el orden de desempate.')}
+          >
+            Restablecer orden
+          </button>
+        )}
+      </div>
+      <p className="panel__texto">
+        La tabla se ordena por el primer criterio. Si dos equipos quedan iguales, se usa el siguiente, y así hasta
+        el último. Si empatan en todo, se ordenan por nombre.
+      </p>
+      <ol className="criterios">
+        {criterios.map((c, i) => (
+          <li key={c} className="criterio">
+            <span className="criterio__num" aria-hidden="true">{i + 1}</span>
+            <div className="criterio__texto">
+              <strong>{CRITERIOS[c].nombre}</strong>
+              <span>{CRITERIOS[c].detalle}</span>
+            </div>
+            <div className="criterio__botones">
+              <button
+                type="button"
+                className="btn-icono"
+                aria-label={`Subir ${CRITERIOS[c].nombre}`}
+                disabled={guardando || i === 0}
+                onClick={() => mover(i, -1)}
+              >
+                <Icono nombre="arriba" tamano={18} />
+              </button>
+              <button
+                type="button"
+                className="btn-icono"
+                aria-label={`Bajar ${CRITERIOS[c].nombre}`}
+                disabled={guardando || i === criterios.length - 1}
+                onClick={() => mover(i, 1)}
+              >
+                <Icono nombre="abajo" tamano={18} />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ol>
 
-      <FormArancel
-        key={db.configuracion.arancel}
-        arancelActual={db.configuracion.arancel}
-        onGuardar={(arancel) =>
-          acciones.actualizarConfiguracion({ arancel }, `Arancel guardado: ${formatearPesos(arancel)} por equipo y partido.`)
-        }
-      />
-
-      <section className="panel" aria-labelledby="titulo-criterios">
+      <div className="vista-previa">
         <div className="panel__cab">
-          <h3 id="titulo-criterios" className="panel__titulo">Criterios de desempate</h3>
-          {!esOrdenPorDefecto && (
-            <button
-              type="button"
-              className="enlace"
-              disabled={guardando}
-              onClick={() => guardarCriterios([...CRITERIOS_POR_DEFECTO], 'Se restableció el orden de desempate.')}
-            >
-              Restablecer orden
-            </button>
-          )}
+          <h4 className="panel__titulo">Vista previa</h4>
+          <span className="panel__meta">
+            {categoria.nombre}, {zona.nombre}
+          </span>
         </div>
-        <p className="panel__texto">
-          La tabla se ordena por el primer criterio. Si dos equipos quedan iguales, se usa el siguiente, y así hasta
-          el último. Si empatan en todo, se ordenan por nombre.
-        </p>
-        <ol className="criterios">
-          {criterios.map((c, i) => (
-            <li key={c} className="criterio">
-              <span className="criterio__num" aria-hidden="true">{i + 1}</span>
-              <div className="criterio__texto">
-                <strong>{CRITERIOS[c].nombre}</strong>
-                <span>{CRITERIOS[c].detalle}</span>
-              </div>
-              <div className="criterio__botones">
-                <button
-                  type="button"
-                  className="btn-icono"
-                  aria-label={`Subir ${CRITERIOS[c].nombre}`}
-                  disabled={guardando || i === 0}
-                  onClick={() => mover(i, -1)}
-                >
-                  <Icono nombre="arriba" tamano={18} />
-                </button>
-                <button
-                  type="button"
-                  className="btn-icono"
-                  aria-label={`Bajar ${CRITERIOS[c].nombre}`}
-                  disabled={guardando || i === criterios.length - 1}
-                  onClick={() => mover(i, 1)}
-                >
-                  <Icono nombre="abajo" tamano={18} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <div className="vista-previa">
-          <div className="panel__cab">
-            <h4 className="panel__titulo">Vista previa</h4>
-            <span className="panel__meta">
-              {categoria.nombre}, {zona.nombre}
-            </span>
-          </div>
-          <FiltroCategoriaZona db={db} filtro={filtro} />
-          <TablaPosiciones filas={filas} etiqueta="Vista previa de la tabla" />
-          <NotasDesempate filas={filas} criterios={criterios} />
-        </div>
-      </section>
-    </>
+        <FiltroCategoriaZona db={db} filtro={filtro} />
+        <TablaPosiciones filas={filas} etiqueta="Vista previa de la tabla" />
+        <NotasDesempate filas={filas} criterios={criterios} />
+      </div>
+    </section>
   );
 }

@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { FiltroCategoriaZona } from '../../componentes/Segmentado.jsx';
 import { zonasDeCategoria } from '../../logica/consultas.js';
-import { calcularCuentas, coincideNombre, estadoSaldo, formatearPesos } from '../../logica/cuentas.js';
+import { arancelDe, calcularCuentas, coincideNombre, estadoSaldo, formatearPesos } from '../../logica/cuentas.js';
 import { CuentaEquipo } from './CuentaEquipo.jsx';
 
 export function AdminCuentas({ db, acciones, filtro, equipoId, onEquipo, busqueda = '', onBuscar }) {
@@ -22,8 +22,9 @@ export function AdminCuentas({ db, acciones, filtro, equipoId, onEquipo, busqued
         partidos: db.partidos,
         movimientos: db.movimientos,
         arancel: db.configuracion.arancel,
+        arancelDe: arancelDe(db),
       }),
-    [db.equipos, db.partidos, db.movimientos, db.configuracion.arancel]
+    [db]
   );
 
   const elegido = equipoId === null ? null : db.equipos.find((e) => e.id === equipoId);

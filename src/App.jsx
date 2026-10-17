@@ -64,6 +64,8 @@ export function App({ simulacion = SIMULACION }) {
   }));
   const [uiAdmin, setUiAdmin] = useState({
     seccion: null, // la primera del panel: Cargar
+    modalidad: null, // la del filtro del superadmin (null: Todas); las cuentas fijas usan la suya
+    ultimaModalidad: 'f11', // la última concreta elegida: Cargar no tiene Todas
     categoriaId: null,
     zonaId: null,
     fecha: null,

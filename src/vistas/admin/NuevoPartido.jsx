@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { validarLugar } from '../../logica/lugar.js';
+import { modalidadDeCategoria } from '../../logica/modalidades.js';
 import { CamposLugar, LUGAR_VACIO, lugarParaGuardar } from './CamposLugar.jsx';
 
 export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, acciones }) {
@@ -13,6 +14,7 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
   const [lugar, setLugar] = useState(LUGAR_VACIO);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const modalidad = modalidadDeCategoria(categoria);
 
   // Solo se ofrecen los equipos en juego que todavía no juegan en esta fecha
   const ocupados = new Set(partidos.filter((p) => p.fecha === fecha).flatMap((p) => [p.localId, p.visitanteId]));
@@ -25,7 +27,7 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
       setError('Elegí el equipo local y el visitante.');
       return;
     }
-    const validado = validarLugar(lugarParaGuardar(lugar));
+    const validado = validarLugar(lugarParaGuardar(lugar), modalidad);
     if (validado.error) {
       setError(validado.error);
       return;
@@ -110,6 +112,7 @@ export function NuevoPartido({ categoria, fecha, zonas, equipos, partidos, accio
       <CamposLugar
         idBase={`nuevo-${fecha}`}
         lugar={lugar}
+        modalidad={modalidad}
         invalido={Boolean(error) && Boolean(localId && visitanteId)}
         onCambiar={(nuevo) => {
           setLugar(nuevo);

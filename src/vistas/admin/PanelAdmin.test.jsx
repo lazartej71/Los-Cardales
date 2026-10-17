@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
+import { conFutbol7 } from '../../datos/datosEjemploFutbol7.js';
 import { PanelAdmin } from './PanelAdmin.jsx';
 import { PantallaLogin } from './PantallaLogin.jsx';
 
@@ -354,5 +355,74 @@ describe('login', () => {
     expect(html).not.toContain('type="email"');
     expect(html).toContain('type="password"');
     expect(html).not.toContain('1234');
+  });
+});
+
+describe('panel por modalidad', () => {
+  const dibujarCon = (seccion, db, ui = {}) =>
+    renderToString(
+      <PanelAdmin
+        db={db}
+        acciones={acciones}
+        ui={{ seccion, categoriaId: null, zonaId: null, fecha: null, equipoCuentaId: null, busquedaCuentas: '', partidoAbiertoId: null, modalidad: null, ultimaModalidad: 'f11', ...ui }}
+        setUi={nada}
+        usuario="cuenta1"
+        onSalir={nada}
+      />
+    );
+  const deCuenta = (modalidad, rol = 'admin') => ({ ...conFutbol7(), modalidad, rol });
+
+  it.each(['cargar', 'resultados', 'cuentas', 'sanciones', 'equipos', 'configuracion'])(
+    'sin Fútbol 7 cargado, %s se ve como siempre (sin filtro ni banner)',
+    (seccion) => {
+      const html = dibujar(seccion);
+      expect(html).not.toContain('banner-modalidad');
+      expect(html).not.toContain('filtro-modalidad');
+    }
+  );
+
+  it('la cuenta de Gaby ve solo Fútbol 7, con el banner y su rol', () => {
+    const html = dibujarCon('cuentas', deCuenta('f7'));
+    expect(html).toContain('F7 A2');
+    expect(html).not.toContain('Libre A1');
+    expect(html).toContain('banner-modalidad');
+    expect(html).toContain('FÚTBOL 7');
+    expect(html).toContain('Organizador F7');
+    expect(html).not.toContain('filtro-modalidad');
+  });
+
+  it('en Ajustes, Gaby ve el arancel de cada categoría de F7 y nada de F11', () => {
+    const html = dibujarCon('configuracion', deCuenta('f7'));
+    expect(html).toContain('Arancel de Fútbol 7 · Libre');
+    expect(html).not.toContain('Criterios de desempate');
+    expect(html).not.toContain('Nombre del campeonato');
+  });
+
+  it('en Ajustes, Franco ve el nombre y el arancel de F11, sin los criterios', () => {
+    const html = dibujarCon('configuracion', deCuenta('f11'));
+    expect(html).toContain('Nombre del campeonato');
+    expect(html).toContain('Arancel por equipo y partido');
+    expect(html).not.toContain('Criterios de desempate');
+    expect(html).not.toContain('Arancel de Fútbol 7');
+    expect(html).toContain('Organizador F11');
+  });
+
+  it('el superadmin tiene el filtro; con Todas, cada categoría dice su modalidad', () => {
+    const html = dibujarCon('resultados', deCuenta(null, 'superadmin'));
+    expect(html).toContain('filtro-modalidad');
+    expect(html).toContain('>Todas<');
+    expect(html).toContain('F7 · Libre');
+    expect(html).toContain('F11 · Libre');
+    expect(html).not.toContain('banner-modalidad');
+  });
+
+  it('el superadmin en Cargar con Todas pasa a la última modalidad y lo avisa', () => {
+    expect(dibujarCon('cargar', deCuenta(null, 'superadmin'))).toContain('Cargar no tiene Todas: estás en Fútbol 11.');
+  });
+
+  it('si lo elegido era de Fútbol 11, la cuenta de Gaby ve la primera categoría de F7', () => {
+    const html = dibujarCon('resultados', deCuenta('f7'), { categoriaId: 1, zonaId: 1 });
+    expect(html).toContain('F7 A1');
+    expect(html).not.toContain('Libre A1');
   });
 });

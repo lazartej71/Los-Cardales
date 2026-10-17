@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import {
+  arancelDe,
   calcularCuentas,
   estadoSaldo,
   formatearMiles,
@@ -20,15 +21,25 @@ import {
 const conMedio = { efectivo: 'en efectivo', transferencia: 'por transferencia' };
 
 export function BloqueArancel({ db, partido, local, visitante, acciones }) {
-  const arancel = db.configuracion.arancel;
+  // El de la categoría del partido: en Fútbol 7 puede no estar cargado todavía (null)
+  const delPartido = arancelDe(db);
+  const arancel = delPartido(partido);
   const equipos = [local, visitante];
-  const cuentas = calcularCuentas({ equipos, partidos: db.partidos, movimientos: db.movimientos, arancel });
+  const cuentas = calcularCuentas({
+    equipos,
+    partidos: db.partidos,
+    movimientos: db.movimientos,
+    arancel: db.configuracion.arancel,
+    arancelDe: delPartido,
+  });
   const resumen = equipos.map((e) => `${e.nombre} ${estadoSaldo(cuentas.get(e.id).saldo).texto}`).join(' · ');
 
   return (
     <details className="bloque">
       <summary className="bloque__cab">
-        <span className="bloque__titulo">{`Arancel (${formatearPesos(arancel)} por equipo)`}</span>
+        <span className="bloque__titulo">
+          {arancel === null ? 'Arancel (sin cargar)' : `Arancel (${formatearPesos(arancel)} por equipo)`}
+        </span>
         <span className="bloque__resumen">{resumen}</span>
       </summary>
       <div className="bloque__cuerpo">

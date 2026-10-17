@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import {
+  arancelDe,
   describirPartidoEnCuenta,
   detalleCuenta,
   estadoSaldo,
@@ -28,6 +29,7 @@ export function CuentaEquipo({ db, equipo, acciones, onVolver }) {
     partidos: db.partidos,
     movimientos: db.movimientos,
     arancel: db.configuracion.arancel,
+    arancelDe: arancelDe(db),
   });
   const estado = estadoSaldo(detalle.saldo);
   const nombreDe = (id) => db.equipos.find((e) => e.id === id)?.nombre ?? '';

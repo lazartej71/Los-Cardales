@@ -9,6 +9,7 @@ import { Icono } from '../../componentes/Icono.jsx';
 import { Pill } from '../../componentes/Marcador.jsx';
 import { Stepper } from '../../componentes/Stepper.jsx';
 import { estadoPartido } from '../../logica/consultas.js';
+import { modalidadDePartido } from '../../logica/modalidades.js';
 import { tieneResultado } from '../../logica/tabla.js';
 import { validarGoles } from '../../logica/validaciones.js';
 import { BloqueArancel } from './BloqueArancel.jsx';
@@ -198,7 +199,9 @@ export function EditorPartido({
       )}
 
       {/* Un reprogramado ya jugado no se mueve: se jugó en su día especial */}
-      {!recortado && !(partido.dia && !partido.postergado) && <BloqueLugar partido={partido} acciones={acciones} />}
+      {!recortado && !(partido.dia && !partido.postergado) && (
+        <BloqueLugar partido={partido} acciones={acciones} modalidad={modalidadDePartido(db, partido)} />
+      )}
       <BloqueTarjetas db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} conAviso={!veedor} />
       <BloqueArancel db={db} partido={partido} local={local} visitante={visitante} acciones={acciones} />
     </article>

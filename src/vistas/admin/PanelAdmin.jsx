@@ -1,13 +1,18 @@
 /**
- * Estructura del panel de administración.
+ * Estructura del panel de administración. Con Fútbol 7 cargado, cada sección (menos Control) ve los datos
+ * de la modalidad activa: la de la cuenta (Franco, Gaby) o la que elige el superadmin en el filtro.
  */
 
 import { useEffect } from 'react';
+import { BannerModalidad } from '../../componentes/BannerModalidad.jsx';
 import { CuentaActual } from '../../componentes/CuentaActual.jsx';
+import { FiltroModalidad } from '../../componentes/FiltroModalidad.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
 import { zonaElegida } from '../../logica/consultas.js';
 import { estadoExpulsion } from '../../logica/expulsiones.js';
+import { ajustesDeCuenta, filtrarPorModalidad, hayFutbol7 } from '../../logica/modalidades.js';
+import { modalidadDelPanel } from '../../logica/panelModalidad.js';
 import { AdminConfiguracion } from './AdminConfiguracion.jsx';
 import { AdminControl } from './AdminControl.jsx';
 import { AdminCuentas } from './AdminCuentas.jsx';
@@ -33,10 +38,20 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
   const cambiar = (cambios) => setUi((u) => ({ ...u, ...cambios }));
   const secciones = db.rol === 'superadmin' ? [...SECCIONES_ADMIN, SECCION_CONTROL] : SECCIONES_ADMIN;
   const actual = [...secciones, SECCION_AJUSTES].find((s) => s.id === ui.seccion) || secciones[0];
-  const pendientesTribunal = db.expulsiones.filter((e) => estadoExpulsion(e).tipo === 'pendiente').length;
-  const categorias = [...db.categorias].sort((a, b) => a.orden - b.orden);
+  const cuenta = db.modalidad ?? null;
+  const panel = modalidadDelPanel({
+    cuenta,
+    elegida: ui.modalidad ?? null,
+    ultima: ui.ultimaModalidad ?? 'f11',
+    seccion: actual.id,
+    hayF7: hayFutbol7(db.categorias),
+  });
+  // Lo que ven las secciones: solo la modalidad activa (Control ve todo)
+  const visible = filtrarPorModalidad(db, panel.activa);
+  const pendientesTribunal = visible.expulsiones.filter((e) => estadoExpulsion(e).tipo === 'pendiente').length;
+  const categorias = [...visible.categorias].sort((a, b) => a.orden - b.orden);
   const categoria = categorias.find((c) => c.id === ui.categoriaId) || categorias[0] || null;
-  const zona = categoria ? zonaElegida(db.zonas, categoria.id, ui.zonaId) : null;
+  const zona = categoria ? zonaElegida(visible.zonas, categoria.id, ui.zonaId) : null;
   const equipoCuentaId = ui.equipoCuentaId ?? null;
 
   // Categoría y zona elegidas: se comparten entre las secciones del panel
@@ -47,17 +62,30 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
     onZona: (id) => cambiar({ zonaId: id }),
   };
 
+  // Otra modalidad (superadmin): vuelve a la primera categoría y cierra lo abierto
+  const cambiarModalidad = (modalidad) =>
+    setUi((u) => ({
+      ...u,
+      modalidad,
+      ultimaModalidad: modalidad === 'todas' ? (u.ultimaModalidad ?? 'f11') : modalidad,
+      categoriaId: null,
+      zonaId: null,
+      fecha: null,
+      equipoCuentaId: null,
+      partidoAbiertoId: null,
+    }));
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [actual.id, equipoCuentaId]);
 
-  const comunes = { db, acciones, filtro };
+  const comunes = { db: visible, acciones, filtro };
   let contenido;
   if (actual.id === 'control') {
     contenido = <AdminControl db={db} acciones={acciones} />;
   } else if (actual.id === 'cargar') {
     // Resultado, W.O., rojas y arancel por cancha; postergar, borrar y el lugar se hacen en Partidos
-    contenido = <CargaPorCancha db={db} acciones={acciones} encabezado={actual.titulo} almacen={almacen} admin />;
+    contenido = <CargaPorCancha db={visible} acciones={acciones} encabezado={actual.titulo} almacen={almacen} admin />;
   } else if (!categoria || !zona) {
     contenido = <p className="vacio-texto">Todavía no hay categorías cargadas en la base.</p>;
   } else if (actual.id === 'resultados') {
@@ -85,22 +113,25 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
   } else if (actual.id === 'equipos') {
     contenido = <AdminEquipos {...comunes} />;
   } else {
-    contenido = <AdminConfiguracion {...comunes} />;
+    contenido = <AdminConfiguracion {...comunes} ajustes={ajustesDeCuenta(db, cuenta)} />;
   }
 
+  const concreta = panel.activa !== 'todas';
   return (
-    <div className="admin">
+    <div className="admin" data-modalidad={panel.banner && concreta ? panel.activa : undefined}>
       <header className="admin-cabecera">
         <div className="contenedor admin-cabecera__inner">
           <div className="admin-cabecera__marca">
             <Logo className="admin-cabecera__logo" />
             <div>
-              <p className="admin-cabecera__sub">{db.configuracion.nombreCampeonato}</p>
+              <p className="admin-cabecera__sub">
+                {panel.activa === 'f7' ? 'Fútbol 7' : db.configuracion.nombreCampeonato}
+              </p>
               <h1 className="admin-cabecera__titulo">Panel de administración</h1>
             </div>
           </div>
           <div className="admin-cabecera__acciones">
-            <CuentaActual usuario={usuario} rol={db.rol} />
+            <CuentaActual usuario={usuario} rol={db.rol} modalidad={cuenta} />
             <button
               type="button"
               className="btn-cabecera"
@@ -142,6 +173,9 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
         </nav>
 
         <main className="admin-main">
+          {panel.conFiltro && <FiltroModalidad valor={panel.activa} onCambiar={cambiarModalidad} />}
+          {panel.banner && concreta && <BannerModalidad modalidad={panel.activa} />}
+          {panel.aviso && <p className="admin-intro aviso-modalidad">{panel.aviso}</p>}
           {/* Cargar arma su propio título, con la fecha en juego */}
           {actual.id !== 'cargar' && <h2 className="admin-main__titulo">{actual.titulo}</h2>}
           {contenido}
