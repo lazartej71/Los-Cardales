@@ -2,12 +2,15 @@
  * Un partido en el panel: resultado (o W.O.), postergar o borrar, lugar y hora, tarjetas y arancel.
  * veedor: solo resultado, W.O., rojas (sin aviso por WhatsApp) y arancel.
  * soloCarga (pestaña Cargar): resultado, W.O., rojas (con aviso) y arancel; postergar, borrar y el lugar, en Partidos.
+ * El resultado y el W.O. se guardan después de confirmarlos en una hoja con la modalidad bien grande.
+ * registroSinGuardar (Cargar y Veedores): anota si quedaron goles tocados sin guardar.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Pill } from '../../componentes/Marcador.jsx';
 import { Stepper } from '../../componentes/Stepper.jsx';
+import { resumenConfirmacion } from '../../logica/confirmacion.js';
 import { estadoPartido } from '../../logica/consultas.js';
 import { modalidadDePartido } from '../../logica/modalidades.js';
 import { tieneResultado } from '../../logica/tabla.js';
@@ -15,6 +18,7 @@ import { validarGoles } from '../../logica/validaciones.js';
 import { BloqueArancel } from './BloqueArancel.jsx';
 import { BloqueLugar } from './BloqueLugar.jsx';
 import { BloqueTarjetas } from './BloqueTarjetas.jsx';
+import { HojaConfirmacion } from './HojaConfirmacion.jsx';
 
 export function EditorPartido({
   db,
@@ -29,6 +33,7 @@ export function EditorPartido({
   veedor = false,
   soloCarga = false,
   titulo = `Fecha ${partido.fecha}, partido ${numero}`,
+  registroSinGuardar = null,
 }) {
   const inicial = (v) => (v === null ? '' : String(v));
   const [golesLocal, setGolesLocal] = useState(inicial(partido.golesLocal));
@@ -36,9 +41,17 @@ export function EditorPartido({
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
+  // El resultado o W.O. que espera confirmación: { golesLocal, golesVisitante } o { ausente }
+  const [porConfirmar, setPorConfirmar] = useState(null);
   const jugado = tieneResultado(partido);
   const sinCambios =
     golesLocal === inicial(partido.golesLocal) && golesVisitante === inicial(partido.golesVisitante);
+
+  useEffect(() => {
+    if (!registroSinGuardar) return undefined;
+    registroSinGuardar.marcar(partido.id, !sinCambios);
+    return () => registroSinGuardar.marcar(partido.id, false);
+  }, [registroSinGuardar, partido.id, sinCambios]);
   const idBase = `partido-${partido.id}`;
   const cruce = `${local.nombre} vs ${visitante.nombre}`;
   const [ausente, presente] =
@@ -60,8 +73,7 @@ export function EditorPartido({
       return;
     }
     setError('');
-    const mensaje = `Resultado guardado: ${local.nombre} ${gl}–${gv} ${visitante.nombre}. La tabla ya se actualizó.`;
-    ejecutar(() => acciones.guardarResultado(partido.id, gl, gv, mensaje));
+    setPorConfirmar({ golesLocal: gl, golesVisitante: gv });
   };
   const quitar = () =>
     ejecutar(() => acciones.quitarResultado(partido.id, 'Resultado quitado. El partido volvió a quedar pendiente.'));
@@ -70,10 +82,21 @@ export function EditorPartido({
     ejecutar(() => acciones.marcarPostergado(partido.id, !partido.postergado, mensaje));
   };
   const borrar = () => ejecutar(() => acciones.borrarPartido(partido.id, `Se borró el partido ${cruce}.`));
-  const marcarAusente = (lado) => {
-    const [falto, gano] = lado === 'local' ? [local, visitante] : [visitante, local];
-    const mensaje = `W.O. guardado: no se presentó ${falto.nombre}. ${gano.nombre} gana 3 a 0.`;
-    ejecutar(() => acciones.marcarAusente(partido.id, lado, mensaje));
+  const marcarAusente = (lado) => setPorConfirmar({ ausente: lado });
+
+  // Confirmado en la hoja: se guarda el resultado o el W.O.
+  const confirmar = async () => {
+    const cambio = porConfirmar;
+    if (cambio.ausente) {
+      const [falto, gano] = cambio.ausente === 'local' ? [local, visitante] : [visitante, local];
+      const mensaje = `W.O. guardado: no se presentó ${falto.nombre}. ${gano.nombre} gana 3 a 0.`;
+      await ejecutar(() => acciones.marcarAusente(partido.id, cambio.ausente, mensaje));
+    } else {
+      const { golesLocal: gl, golesVisitante: gv } = cambio;
+      const mensaje = `Resultado guardado: ${local.nombre} ${gl}–${gv} ${visitante.nombre}. La tabla ya se actualizó.`;
+      await ejecutar(() => acciones.guardarResultado(partido.id, gl, gv, mensaje));
+    }
+    setPorConfirmar(null);
   };
 
   const lados = [
@@ -185,6 +208,15 @@ export function EditorPartido({
           )
         )}
       </div>
+
+      {porConfirmar && (
+        <HojaConfirmacion
+          resumen={resumenConfirmacion(db, partido, porConfirmar)}
+          guardando={guardando}
+          onConfirmar={confirmar}
+          onVolver={() => setPorConfirmar(null)}
+        />
+      )}
 
       {confirmarBorrado && (
         <div className="confirmar" role="alert">

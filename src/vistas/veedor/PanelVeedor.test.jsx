@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
+import { conFutbol7 } from '../../datos/datosEjemploFutbol7.js';
 import { guardarCancha, leerCanchaGuardada } from './canchaGuardada.js';
 import { PanelVeedor } from './PanelVeedor.jsx';
 
@@ -172,5 +173,36 @@ describe('cancha recordada en el celular', () => {
     expect(leerCanchaGuardada(roto)).toEqual({});
     expect(() => guardarCancha(roto, { predio: 'los_cardales', cancha: 2 })).not.toThrow();
     expect(leerCanchaGuardada(null)).toEqual({});
+  });
+});
+
+describe('veedores con Fútbol 7', () => {
+  const dibujarVeedor = (db) =>
+    renderToString(<PanelVeedor db={db} acciones={acciones} almacen={null} usuario="veedor1" onSalir={() => {}} />);
+
+  it('un veedor sin modalidad elige primero Fútbol 11 o Fútbol 7', () => {
+    const html = dibujarVeedor({ ...conFutbol7(), rol: 'veedor', modalidad: null });
+    expect(html).toContain('Elegí la modalidad');
+    expect(html).toContain('>Fútbol 11<');
+    expect(html).toContain('>Fútbol 7<');
+  });
+
+  it('un veedor de F7 va directo a los predios de F7', () => {
+    const html = dibujarVeedor({ ...conFutbol7(), rol: 'veedor', modalidad: 'f7' });
+    expect(html).toContain('Elegí el predio');
+    expect(html).toContain('Veedores · Fútbol 7 · Fecha 1');
+    expect(html).toContain('Veedor F7');
+  });
+
+  it('lo guardado con la modalidad: un guardado viejo es de F11, y una cancha que no es de la modalidad no se usa', () => {
+    const almacen = (valor) => ({ getItem: () => JSON.stringify(valor) });
+    expect(leerCanchaGuardada(almacen({ modalidad: 'f7', predio: 'cura_borges', cancha: 23 }))).toEqual({
+      modo: 'fecha',
+      modalidad: 'f7',
+      predio: 'cura_borges',
+      cancha: 23,
+    });
+    expect(leerCanchaGuardada(almacen({ modalidad: 'f7', predio: 'cura_borges', cancha: 9 })).cancha).toBeNull();
+    expect(leerCanchaGuardada(almacen({ predio: 'cura_borges', cancha: 9 })).cancha).toBe(9);
   });
 });

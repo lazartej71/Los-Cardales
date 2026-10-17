@@ -7,13 +7,18 @@
  * encabezado: "Veedores" o "Cargar resultados" (el título suma la fecha o "Postergados"). Si una categoría
  * va una fecha adelante, el título dice las dos ("Fechas 4 y 5") y cada partido, la suya.
  * inicial: { modo, predio, cancha, abierto } para arrancar en un paso (si no, lo que recuerda el celular).
+ * Con Fútbol 7 cargado trabaja en una modalidad: la que recibe (panel, veedor de una modalidad) o, si no
+ * recibe ninguna (veedor sin modalidad), la que se elige en un primer paso. Se ven sus canchas y partidos.
+ * registroSinGuardar: antes de cambiar de cancha o cerrar un partido con goles sin guardar, pregunta.
  */
 
 import { useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
-import { PREDIOS } from '../../datos/constantes.js';
+import { MODALIDADES, PREDIOS } from '../../datos/constantes.js';
 import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
-import { canchasDe, nombrePredio } from '../../logica/lugar.js';
+import { canchasDe, nombreCancha, nombrePredio } from '../../logica/lugar.js';
+import { filtrarPorModalidad, hayFutbol7, nombreModalidad } from '../../logica/modalidades.js';
+import { confirmarDescarte } from '../../logica/sinGuardar.js';
 import { tieneResultado } from '../../logica/tabla.js';
 import {
   fechasDeVeedores,
@@ -33,33 +38,88 @@ function textoResumen({ total, porCargar }) {
   return `${total} ${total === 1 ? 'partido' : 'partidos'} · ${porCargar ? `${porCargar} por cargar` : 'todos cargados'}`;
 }
 
-export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen = null, admin = false }) {
-  const [eleccion, setEleccion] = useState(() => ({
-    modo: 'fecha',
-    predio: null,
-    cancha: null,
-    abierto: null,
-    ...leerCanchaGuardada(almacen),
-    ...inicial,
-  }));
-  const { modo, predio, cancha, abierto } = eleccion;
+export function CargaPorCancha({
+  db: dbCompleta,
+  acciones,
+  encabezado,
+  inicial = {},
+  almacen = null,
+  admin = false,
+  modalidad = null,
+  registroSinGuardar = null,
+}) {
+  const [eleccion, setEleccion] = useState(() => {
+    const guardada = leerCanchaGuardada(almacen);
+    // Un predio guardado sin modalidad es de antes de Fútbol 7: de Fútbol 11
+    const deGuardada = guardada.modalidad ?? (guardada.predio ? 'f11' : null);
+    return {
+      modo: 'fecha',
+      predio: null,
+      cancha: null,
+      abierto: null,
+      ...guardada,
+      modalidad: deGuardada ?? modalidad ?? null,
+      ...inicial,
+    };
+  });
+  const conFutbol7 = hayFutbol7(dbCompleta.categorias);
+  // Un veedor sin modalidad elige primero en cuál carga
+  const falteModalidad = !modalidad && conFutbol7 && !eleccion.modalidad;
+  const activa = modalidad ?? (conFutbol7 ? (eleccion.modalidad ?? 'f11') : 'f11');
+  // El predio y la cancha elegidos (o guardados) son de una modalidad: en la otra no sirven
+  const deEstaModalidad = !falteModalidad && (eleccion.modalidad ?? 'f11') === activa;
+  const { modo, abierto } = eleccion;
+  const predio = deEstaModalidad ? eleccion.predio : null;
+  const cancha = predio ? eleccion.cancha : null;
+  const db = filtrarPorModalidad(dbCompleta, activa);
   const fechas = fechasDeVeedores(db.partidos);
   const postergados = modo === 'postergados';
   const reprogramados = partidosDeVeedor(db.partidos, 'postergados');
 
   const elegir = (cambios) => {
-    const nueva = { ...eleccion, abierto: null, ...cambios };
+    if (!confirmarDescarte(registroSinGuardar)) return;
+    const nueva = { ...eleccion, modalidad: activa, predio, cancha, abierto: null, ...cambios };
     setEleccion(nueva);
     guardarCancha(almacen, nueva);
     window.scrollTo(0, 0);
   };
+  const abrir = (id) => {
+    if (!confirmarDescarte(registroSinGuardar)) return;
+    setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }));
+  };
 
   let contenido;
-  if (!predio) {
+  if (falteModalidad) {
+    contenido = (
+      <>
+        <p className="admin-intro">Elegí la modalidad.</p>
+        <div className="veedor-opciones">
+          {MODALIDADES.map((m) => {
+            const resumen = resumenPartidos(partidosDeVeedor(filtrarPorModalidad(dbCompleta, m.id).partidos, modo));
+            return (
+              <Opcion
+                key={m.id}
+                titulo={m.nombre}
+                detalle={textoResumen(resumen)}
+                onElegir={() => elegir({ modalidad: m.id, predio: null, cancha: null })}
+              />
+            );
+          })}
+        </div>
+      </>
+    );
+  } else if (!predio) {
     contenido = (
       <>
         {postergados && (
           <Barra texto="Volver" lugar="Postergados" onVolver={() => elegir({ modo: 'fecha', predio: null, cancha: null })} />
+        )}
+        {!postergados && !modalidad && conFutbol7 && (
+          <Barra
+            texto="Modalidad"
+            lugar={nombreModalidad(activa)}
+            onVolver={() => elegir({ modalidad: null, predio: null, cancha: null })}
+          />
         )}
         <p className="admin-intro">Elegí el predio donde estás.</p>
         <div className="veedor-opciones">
@@ -96,12 +156,12 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
         />
         <p className="admin-intro">{`Elegí la cancha de ${nombrePredio(predio)}.`}</p>
         <div className="veedor-opciones veedor-opciones--canchas">
-          {canchasDe(predio).map((numero) => {
+          {canchasDe(predio, activa).map((numero) => {
             const resumen = resumenPartidos(partidosDeCancha(db.partidos, predio, numero, modo));
             return (
               <Opcion
                 key={numero}
-                titulo={`Cancha ${numero}`}
+                titulo={nombreCancha(numero)}
                 detalle={textoResumen(resumen)}
                 apagada={resumen.total === 0}
                 onElegir={() => elegir({ cancha: numero })}
@@ -116,7 +176,7 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
       <>
         <Barra
           texto="Cambiar cancha"
-          lugar={`${nombrePredio(predio)} · Cancha ${cancha}`}
+          lugar={`${nombrePredio(predio)} · ${nombreCancha(cancha)}`}
           onVolver={() => elegir({ cancha: null })}
         />
         <PartidosDeCancha
@@ -125,21 +185,24 @@ export function CargaPorCancha({ db, acciones, encabezado, inicial = {}, almacen
           postergados={postergados}
           fechas={fechas}
           abierto={abierto}
-          onAbrir={(id) => setEleccion((e) => ({ ...e, abierto: e.abierto === id ? null : id }))}
+          onAbrir={abrir}
           acciones={acciones}
           admin={admin}
+          registroSinGuardar={registroSinGuardar}
         />
       </>
     );
   }
 
+  // Con Fútbol 7 cargado, el título dice la modalidad: "Cargar resultados · Fútbol 7 · Fecha 3"
+  const conModalidad = conFutbol7 && !falteModalidad ? `${encabezado} · ${nombreModalidad(activa)}` : encabezado;
+  let titulo = `${conModalidad} · ${fechas.length > 1 ? 'Fechas' : 'Fecha'} ${listaDeFechas(fechas)}`;
+  if (falteModalidad) titulo = encabezado;
+  else if (postergados) titulo = `${conModalidad} · Postergados`;
+
   return (
     <>
-      <h2 className="admin-main__titulo">
-        {postergados
-          ? `${encabezado} · Postergados`
-          : `${encabezado} · ${fechas.length > 1 ? 'Fechas' : 'Fecha'} ${listaDeFechas(fechas)}`}
-      </h2>
+      <h2 className="admin-main__titulo">{titulo}</h2>
       {contenido}
     </>
   );
@@ -172,7 +235,7 @@ function Barra({ texto, lugar, onVolver }) {
   );
 }
 
-function PartidosDeCancha({ db, partidos, postergados, fechas, abierto, onAbrir, acciones, admin }) {
+function PartidosDeCancha({ db, partidos, postergados, fechas, abierto, onAbrir, acciones, admin, registroSinGuardar }) {
   const variasFechas = fechas.length > 1;
   if (!partidos.length) {
     const enFecha = `${variasFechas ? 'las fechas' : 'la fecha'} ${listaDeFechas(fechas)}`;
@@ -216,6 +279,7 @@ function PartidosDeCancha({ db, partidos, postergados, fechas, abierto, onAbrir,
         onCambio={() => {}}
         veedor={!admin}
         soloCarga
+        registroSinGuardar={registroSinGuardar}
         titulo={`${categoria(p)} · ${postergados ? 'postergado de la ' : ''}fecha ${p.fecha}`}
       />
     </RenglonPartido>

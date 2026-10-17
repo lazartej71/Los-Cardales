@@ -3,7 +3,7 @@
  * de la modalidad activa: la de la cuenta (Franco, Gaby) o la que elige el superadmin en el filtro.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BannerModalidad } from '../../componentes/BannerModalidad.jsx';
 import { CuentaActual } from '../../componentes/CuentaActual.jsx';
 import { FiltroModalidad } from '../../componentes/FiltroModalidad.jsx';
@@ -13,6 +13,7 @@ import { zonaElegida } from '../../logica/consultas.js';
 import { estadoExpulsion } from '../../logica/expulsiones.js';
 import { ajustesDeCuenta, filtrarPorModalidad, hayFutbol7 } from '../../logica/modalidades.js';
 import { modalidadDelPanel } from '../../logica/panelModalidad.js';
+import { confirmarDescarte, crearRegistroSinGuardar } from '../../logica/sinGuardar.js';
 import { AdminConfiguracion } from './AdminConfiguracion.jsx';
 import { AdminControl } from './AdminControl.jsx';
 import { AdminCuentas } from './AdminCuentas.jsx';
@@ -62,8 +63,12 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
     onZona: (id) => cambiar({ zonaId: id }),
   };
 
+  // Goles tocados y sin guardar en Cargar: se pregunta antes de pasar a la otra modalidad
+  const [sinGuardar] = useState(crearRegistroSinGuardar);
+
   // Otra modalidad (superadmin): vuelve a la primera categoría y cierra lo abierto
-  const cambiarModalidad = (modalidad) =>
+  const cambiarModalidad = (modalidad) => {
+    if (!confirmarDescarte(sinGuardar)) return;
     setUi((u) => ({
       ...u,
       modalidad,
@@ -74,6 +79,7 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
       equipoCuentaId: null,
       partidoAbiertoId: null,
     }));
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -85,7 +91,17 @@ export function PanelAdmin({ db, acciones, ui, setUi, almacen = null, usuario = 
     contenido = <AdminControl db={db} acciones={acciones} />;
   } else if (actual.id === 'cargar') {
     // Resultado, W.O., rojas y arancel por cancha; postergar, borrar y el lugar se hacen en Partidos
-    contenido = <CargaPorCancha db={visible} acciones={acciones} encabezado={actual.titulo} almacen={almacen} admin />;
+    contenido = (
+      <CargaPorCancha
+        db={visible}
+        acciones={acciones}
+        encabezado={actual.titulo}
+        almacen={almacen}
+        modalidad={panel.activa === 'todas' ? null : panel.activa}
+        registroSinGuardar={sinGuardar}
+        admin
+      />
+    );
   } else if (!categoria || !zona) {
     contenido = <p className="vacio-texto">Todavía no hay categorías cargadas en la base.</p>;
   } else if (actual.id === 'resultados') {

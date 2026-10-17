@@ -29,7 +29,7 @@
    ========================================================= */
 .admin-cabecera { position: relative; background: var(--noche-profunda); color: #ffffff; }
 .admin-cabecera::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--degrade);
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--acento-degrade);
 }
 .admin-cabecera__inner {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -487,3 +487,26 @@
 }
 .banner-modalidad strong { letter-spacing: 0.04em; }
 .aviso-modalidad { color: var(--acento-fuerte); }
+
+/* Hoja de confirmación del resultado: sube desde abajo, con la modalidad bien grande */
+.hoja-fondo {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(2, 4, 16, 0.72);
+}
+.hoja {
+  width: min(100%, 520px); display: grid; gap: 8px;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--superficie-2); border: 1px solid var(--acento-borde); border-bottom: 0;
+  border-radius: var(--radio) var(--radio) 0 0; box-shadow: var(--sombra-nav);
+}
+.hoja__modalidad {
+  font-family: var(--fuente-titulo); font-size: 28px; letter-spacing: 0.04em; color: var(--acento-fuerte);
+}
+.hoja__marcador { font-size: 19px; line-height: 1.25; }
+.hoja__detalle { color: var(--tinta-2); }
+.hoja__botones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+@media (min-width: 960px) {
+  .hoja-fondo { align-items: center; }
+  .hoja { border-bottom: 1px solid var(--acento-borde); border-radius: var(--radio); }
+}

@@ -1,6 +1,7 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
+import { conFutbol7 } from '../../datos/datosEjemploFutbol7.js';
 import { CargaPorCancha } from './CargaPorCancha.jsx';
 
 const acciones = new Proxy({}, { get: () => async () => true });
@@ -80,5 +81,29 @@ describe('carga por predio y cancha', () => {
     const inicial = { predio: 'los_cardales', cancha: 2, abierto: jugado.id };
     expect(dibujar({ admin: true, inicial }, db)).toContain('>Avisar</button>');
     expect(dibujar({ inicial }, db)).not.toContain('>Avisar</button>');
+  });
+});
+
+describe('Cargar en Fútbol 7', () => {
+  const dibujarF7 = (props) => dibujar({ modalidad: 'f7', ...props }, conFutbol7());
+
+  it('el título dice la modalidad y se ofrecen las canchas de F7 del predio', () => {
+    const html = dibujarF7({ inicial: { predio: 'cura_borges' } });
+    expect(html).toContain('>Cargar resultados · Fútbol 7 · Fecha 1</h2>');
+    expect(html).toContain('>Cancha 1<');
+    expect(html).toContain('>Cancha 3<');
+    expect(html).not.toContain('>Cancha 9<');
+  });
+
+  it('en una cancha de F7 se ven sus partidos y no los de F11', () => {
+    const html = dibujarF7({ inicial: { predio: 'los_cardales', cancha: 21 } });
+    expect(html).toContain('Los Cardales · Cancha 1');
+    expect(html).toContain('F7 A1');
+    expect(html).not.toContain('Libre A1');
+  });
+
+  it('un predio y una cancha guardados de F11 no se usan en F7: vuelve a elegir el predio', () => {
+    const almacen = { getItem: () => JSON.stringify({ modo: 'fecha', predio: 'cura_borges', cancha: 9 }), setItem: () => {} };
+    expect(dibujarF7({ almacen })).toContain('Elegí el predio');
   });
 });
