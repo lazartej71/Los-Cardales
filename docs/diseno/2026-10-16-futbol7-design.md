@@ -1,6 +1,6 @@
 # Diseño: Fútbol 7 en la misma app
 
-Fecha: 2026-10-16. Estado: **aprobado por el usuario el 16/10**; se implementa en `feature/futbol-7`. Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
+Fecha: 2026-10-16. Estado: **aprobado por el usuario el 16/10 e implementado en `feature/futbol-7`** (etapas 1 a 7 y 9). Solo falta la etapa 8: cargar en `datos/futbol7-partidos.csv` los resultados de las fechas 1 a 3 y generar la migración 10b (el generador ya está hecho y probado). Incluye las respuestas del usuario del 16/10 y los datos que pasó Gaby (equipos, canchas y arancel). Faltan tu OK sobre el documento, la confirmación de las canchas y lo ya jugado de F7 (ver "Lo que falta para cerrar el diseño").
 
 ## Objetivo
 

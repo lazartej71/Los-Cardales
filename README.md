@@ -1,6 +1,9 @@
 # Los Cardales Fútbol
 
-App web mobile-first del campeonato de fútbol amateur, con cinco categorías: Libre, +30, +35, +40 y +45.
+App web mobile-first del campeonato de fútbol amateur, con dos modalidades:
+
+- **Fútbol 11** (organiza Franco): Libre, +30, +35, +40 y +45.
+- **Fútbol 7** (organiza Gaby): Libre (zonas A y B) y +30. Se suma con las migraciones 10a y 10b (ver "Fútbol 7").
 
 - **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido (y arriba, aparte, los postergados que se recuperan en un día especial), y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
 - **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`). El panel conviene instalarlo desde `admin.loscardalesfutbol.com`: en Android, si la app pública ya está instalada, Chrome no deja instalar `www…/admin` porque queda dentro de ella.
@@ -61,9 +64,9 @@ index.html, admin.html  las dos páginas (vista pública y panel), cada una con 
 
 ## Base de datos
 
-**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql`, `supabase/migracion-3-predios.sql`, `supabase/migracion-4-cancha-6-cura-borges.sql`, `supabase/migracion-5-control.sql`, `supabase/migracion-6-visitas.sql`, `supabase/migracion-7-veedores.sql`, `supabase/migracion-8-escudos.sql` y `supabase/migracion-9-bajas.sql`.
+**Cargarla desde cero.** En el SQL Editor de Supabase, ejecutar en orden `supabase/esquema.sql`, `supabase/datos-iniciales.sql`, `supabase/migracion-2-cuentas.sql`, `supabase/migracion-3-predios.sql`, `supabase/migracion-4-cancha-6-cura-borges.sql`, `supabase/migracion-5-control.sql`, `supabase/migracion-6-visitas.sql`, `supabase/migracion-7-veedores.sql`, `supabase/migracion-8-escudos.sql`, `supabase/migracion-9-bajas.sql`, `supabase/migracion-10a-futbol7.sql` y `supabase/migracion-10b-futbol7-datos.sql`.
 
-**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. La 6 (`migracion-6-visitas.sql`) cuenta cuántas personas entran por día. La 7 (`migracion-7-veedores.sql`) agrega el rol de veedor (con sus reglas en la base), el tipo de cada roja, el pago de un partido en dos partes (uno por medio de pago) y el día en que se recupera un postergado. La 8 (`migracion-8-escudos.sql`) agrega el escudo de cada equipo: la columna `equipos.escudo`, el bucket público `escudos` de Storage y las reglas para que solo el superadmin los suba, cambie o quite. La 9 (`migracion-9-bajas.sql`) agrega la baja de un equipo (`equipos.baja`): el dado de baja deja de aparecer en la tabla y no puede jugar partidos nuevos, pero lo ya jugado queda como está. Además da de baja a GOB GUTIERREZ, LA MALABIA y BARRIO BELGRANO, y crea CHIVERO F.C, LA AGUADITA y CLUB PASAJE UNIDOS en sus zonas. Cada migración se corre antes de publicar el código que la usa.
+**Actualizar una base ya cargada.** Ejecutar solo las migraciones que falten, en orden. La 2 (`migracion-2-cuentas.sql`) agrega las tarjetas, el W.O. y las cuentas de los equipos. Solo suma columnas y tablas, así que no toca los datos. La 3 (`migracion-3-predios.sql`) agrega el predio, la cancha y la hora de cada partido; los partidos que ya estaban quedan sin lugar y se completan desde el panel. La 4 (`migracion-4-cancha-6-cura-borges.sql`) suma la cancha 6 de Cura Borges. La 5 (`migracion-5-control.sql`) agrega los roles de los admins y el registro de actividad, y pasa a superadmin la cuenta `ljdev`. La 6 (`migracion-6-visitas.sql`) cuenta cuántas personas entran por día. La 7 (`migracion-7-veedores.sql`) agrega el rol de veedor (con sus reglas en la base), el tipo de cada roja, el pago de un partido en dos partes (uno por medio de pago) y el día en que se recupera un postergado. La 8 (`migracion-8-escudos.sql`) agrega el escudo de cada equipo: la columna `equipos.escudo`, el bucket público `escudos` de Storage y las reglas para que solo el superadmin los suba, cambie o quite. La 9 (`migracion-9-bajas.sql`) agrega la baja de un equipo (`equipos.baja`): el dado de baja deja de aparecer en la tabla y no puede jugar partidos nuevos, pero lo ya jugado queda como está. Además da de baja a GOB GUTIERREZ, LA MALABIA y BARRIO BELGRANO, y crea CHIVERO F.C, LA AGUADITA y CLUB PASAJE UNIDOS en sus zonas. La 10a (`migracion-10a-futbol7.sql`) prepara Fútbol 7: la modalidad y el arancel de cada categoría, las canchas de Fútbol 7, la modalidad fija de cada cuenta y sus reglas (deja a `franco1` en Fútbol 11); no toca datos. La 10b (`migracion-10b-futbol7-datos.sql`) carga los datos de Fútbol 7 y **no se escribe a mano**: la genera `node scripts/generar-futbol7.mjs --cobrado-el AAAA-MM-DD` desde `datos/futbol7-equipos.csv` y `datos/futbol7-partidos.csv`. Cada migración se corre antes de publicar el código que la usa, salvo la 10b, que va después (ver "Fútbol 7").
 
 **Probarla en la compu.** `npm test` incluye `supabase/base.test.js`, que corre el esquema, los datos y todas las migraciones en un Postgres local (PGlite) y revisa los permisos, las reglas y los triggers.
 
@@ -97,6 +100,33 @@ El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el res
 **Visitas:** la pestaña Control muestra cuántas personas entraron hoy, ayer, en los últimos 7 días (con barras) y en total. Cada navegador avisa una sola vez por día al abrir la vista pública (no cuentan el panel ni la simulación) y en Supabase queda solo un número por día, sin datos de la persona. Para más detalle (países, dispositivos) está Vercel Web Analytics, activado en el proyecto los-cardales → **Analytics**.
 
 **Escudos:** los sube el superadmin en **Equipos**. En la tarjeta de cada equipo toca **Subir escudo** y elige la imagen grande (PNG, JPG o WebP). La app recorta los bordes vacíos y la achica sola a 128 px antes de subirla, así queda en unos 10 KB. Antes de guardarla se ve cómo queda. Si el logo trae fondo propio (un JPG, o un PNG con fondo blanco), lo pone dentro de un círculo blanco para que no se vea un cuadrado. Los escudos se ven en Posiciones, Fixture, Resultados, los partidos del panel y Veedores. Mientras ningún equipo de una lista tiene escudo, esa lista se ve como siempre. Las imágenes van al bucket `escudos` de Supabase Storage y la base guarda solo el nombre del archivo.
+
+**Fútbol 7.** Es parte del mismo sitio, panel y base. Cada categoría es de una modalidad (`categorias.modalidad`) y de ahí la heredan zonas, equipos y partidos.
+
+- **Vista pública:** con Fútbol 7 cargado aparece el botón **F11 | F7** en la cabecera, y el celular recuerda la elección. En Fútbol 7 todo toma el celeste y la cabecera dice "Fútbol 7".
+- **Cada cuenta ve su modalidad** (`administradores.modalidad`):
+  - Franco (`f11`) ve y toca solo Fútbol 11, incluidas cuentas, delegados y suspendidos;
+  - Gaby (`f7`) ve y toca solo Fútbol 7;
+  - una cuenta sin modalidad (el superadmin) ve las dos y tiene el filtro Todas / Fútbol 11 / Fútbol 7 (en Cargar no hay Todas).
+
+  La base lo controla también con sus reglas.
+- **Aranceles:** Fútbol 11 usa el de Ajustes (lo cambia Franco). Fútbol 7 tiene uno por categoría (Libre $65.000 y +30 $60.000) y los cambia Gaby en Ajustes. Los criterios de desempate valen para las dos y los cambia solo el superadmin.
+- **Canchas:** Fútbol 7 tiene canchas propias, que en pantalla se ven como "Cancha 1", "Cancha 2"…: Los Cardales 1 y 2, y Cura Borges 1, 2 y 3. En la base llevan 21 y más, así nunca chocan con las de Fútbol 11.
+- **Antes de guardar un resultado o un W.O.**, una hoja muestra la modalidad bien grande para confirmar. Si se tocaron los goles y se cambia de cancha o de modalidad sin guardar, pregunta si se descarta.
+
+**Publicar Fútbol 7 (en este orden):**
+
+1. Correr `supabase/migracion-10a-futbol7.sql` en Supabase. El sitio publicado sigue igual.
+2. Publicar el código (pasar a `main`). Sin datos de Fútbol 7, el sitio se ve como siempre.
+3. Generar y correr `supabase/migracion-10b-futbol7-datos.sql`. Desde ahí aparece el botón F11 | F7.
+4. Crear la cuenta de Gaby (pasos 1 y 2 de "Crear una cuenta de admin", con el usuario `gaby1`) y en el SQL Editor:
+   ```sql
+   insert into public.administradores (user_id, nombre, modalidad)
+   select id, 'Gaby', 'f7' from auth.users where email = 'gaby1@loscardalesfutbol.com';
+   ```
+5. Subir los escudos de los equipos de Fútbol 7 (los sube el superadmin, en Equipos).
+
+En la simulación (`npm run simulacion`), mientras la base real no tenga Fútbol 7, se suman en memoria los equipos de `datos/futbol7-equipos.csv` con una fecha de prueba. "Ver como" ofrece también "Organizador F11 (Franco)" y "Organizador F7 (Gaby)".
 
 **Quitar a un admin:** `delete from public.administradores where user_id = (select id from auth.users where email = 'usuario@loscardalesfutbol.com');`
 
