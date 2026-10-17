@@ -18,6 +18,17 @@
   --sobre-marca: #1a0f00;
   --naranja: #ff8a00;
 
+  /* Acento de la modalidad: en Fútbol 11 es la marca (se ve como siempre); en Fútbol 7, celeste */
+  --acento: var(--marca);
+  --acento-fuerte: var(--marca-fuerte);
+  --acento-suave: var(--marca-suave);
+  --acento-borde: var(--marca-borde);
+  --acento-degrade: var(--degrade);
+  --acento-boton: var(--degrade-boton);
+  --sobre-acento: var(--sobre-marca);
+  --acento-sombra: rgba(255, 140, 0, 0.3);
+  --acento-puntos: var(--tinta);
+
   /* Noche */
   --noche-profunda: #04071a;
   --fondo: #060a22;
@@ -69,6 +80,20 @@
     radial-gradient(1.5px 1.5px at 120px 160px, rgba(200, 215, 255, 0.7), transparent 70%);
 }
 
+/* Fútbol 7: el acento pasa al celeste. El foco, blanco: el celeste no se vería sobre un botón celeste. */
+[data-modalidad="f7"] {
+  --acento: var(--info);
+  --acento-fuerte: #b3dfff;
+  --acento-suave: var(--info-suave);
+  --acento-borde: #2a5a8a;
+  --acento-degrade: linear-gradient(90deg, #d6efff, #7cc8ff 50%, #3b9cf0);
+  --acento-boton: linear-gradient(135deg, #b3e3ff, #7cc8ff);
+  --sobre-acento: #04142a;
+  --acento-sombra: rgba(124, 200, 255, 0.3);
+  --acento-puntos: var(--info);
+  --foco: #ffffff;
+}
+
 /* =========================================================
    Base
    ========================================================= */
@@ -114,7 +139,7 @@ p { margin: 0; }
 }
 /* Cinta con el degradé del logo, como las de la Champions */
 .cabecera::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--degrade);
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--acento-degrade);
 }
 .cabecera__inner {
   position: relative; z-index: 1;
@@ -129,6 +154,34 @@ p { margin: 0; }
   margin-top: 10px;
   font-family: var(--fuente-titulo); font-weight: 400;
   font-size: clamp(18px, 5vw, 24px); line-height: 1.1; letter-spacing: 0.03em; text-transform: uppercase;
+}
+/* Nombre y conmutador F11 | F7 en la misma fila; si no entra, el nombre se achica */
+.cabecera__fila {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  max-width: 100%; min-width: 0;
+}
+.cabecera__fila .cabecera__titulo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cabecera__fila .conmutador { margin-top: 10px; }
+
+/* Conmutador de modalidad: dos botones de al menos 44 px */
+.conmutador {
+  display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px;
+  background: var(--superficie); border: 1px solid var(--linea-fuerte); border-radius: 999px;
+}
+.conmutador__btn {
+  min-width: 48px; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 999px; background: transparent; color: var(--tinta-suave);
+  font-family: var(--fuente-titulo); font-weight: 400; font-size: 15px; letter-spacing: 0.04em;
+}
+.conmutador__btn:hover { color: var(--tinta); }
+.conmutador__btn[aria-pressed="true"] { background: var(--acento-boton); color: var(--sobre-acento); }
+
+/* Chip de la modalidad junto al título de cada sección */
+.chip-modalidad {
+  display: inline-flex; align-items: center; gap: 4px; margin-right: auto;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--acento-borde);
+  background: var(--acento-suave); color: var(--acento-fuerte);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
 }
 @media (min-width: 960px) {
   .cabecera__inner { padding-block: 30px 32px; }
@@ -162,8 +215,8 @@ p { margin: 0; }
 }
 .seg__btn:hover { background: var(--superficie-2); color: var(--tinta); }
 .seg__btn[aria-pressed="true"] {
-  background: var(--degrade-boton); color: var(--sobre-marca);
-  box-shadow: 0 4px 16px rgba(255, 140, 0, 0.3);
+  background: var(--acento-boton); color: var(--sobre-acento);
+  box-shadow: 0 4px 16px var(--acento-sombra);
 }
 
 /* Celular: cada categoría toma el ancho de su nombre, así "LIBRE" no se corta */
@@ -181,7 +234,7 @@ p { margin: 0; }
 .seg--zona .seg__btn[aria-pressed="true"] { background: none; box-shadow: none; color: var(--tinta); }
 .seg--zona .seg__btn[aria-pressed="true"]::after {
   content: ""; position: absolute; left: 18%; right: 18%; bottom: 0; height: 3px;
-  border-radius: 3px 3px 0 0; background: var(--degrade);
+  border-radius: 3px 3px 0 0; background: var(--acento-degrade);
 }
 @media (min-width: 960px) {
   .seg--zona .seg__btn { flex: 0 0 auto; padding: 0 18px; }
@@ -244,11 +297,11 @@ p { margin: 0; }
   color: var(--tinta-suave); font-size: 12.5px; font-weight: 600;
 }
 .nav-inferior__btn[aria-pressed="true"],
-.nav-inferior__btn[aria-current="page"] { color: var(--marca-fuerte); }
+.nav-inferior__btn[aria-current="page"] { color: var(--acento-fuerte); }
 .nav-inferior__btn[aria-pressed="true"]::before,
 .nav-inferior__btn[aria-current="page"]::before {
   content: ""; position: absolute; top: 0; left: 26%; right: 26%; height: 3px;
-  border-radius: 0 0 3px 3px; background: var(--degrade);
+  border-radius: 0 0 3px 3px; background: var(--acento-degrade);
 }
 @media (min-width: 960px) {
   .nav-inferior { display: none; }

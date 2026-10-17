@@ -2,6 +2,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CRITERIOS_POR_DEFECTO } from '../../datos/constantes.js';
 import { crearDatosEjemplo } from '../../datos/datosEjemplo.js';
+import { conFutbol7 } from '../../datos/datosEjemploFutbol7.js';
 import { VistaPublica } from './VistaPublica.jsx';
 
 const ui = (cambios = {}) => ({
@@ -247,5 +248,42 @@ describe('escudos en la vista pública', () => {
     expect(html).not.toContain('partido-linea--escudos');
     expect(html).not.toContain('resultado--escudos');
     expect(html).not.toContain('equipo-nombre');
+  });
+});
+
+describe('Fútbol 11 y Fútbol 7', () => {
+  it('sin Fútbol 7 cargado se ve como siempre: sin conmutador ni chip', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).not.toContain('conmutador');
+    expect(html).not.toContain('chip-modalidad');
+    expect(html).toContain('data-modalidad="f11"');
+    expect(html).toContain('Campeonato de Fútbol');
+  });
+
+  it('en Fútbol 7 muestra sus categorías y equipos, con el título y el acento de F7', () => {
+    const html = dibujar(conFutbol7(), { modalidad: 'f7' });
+    expect(html).toContain('data-modalidad="f7"');
+    expect(html).toMatch(/<h1 class="cabecera__titulo">Fútbol 7<\/h1>/);
+    expect(html).toMatch(/aria-label="Fútbol 7" aria-pressed="true"/);
+    expect(html).toContain('F7 A1');
+    expect(html).not.toContain('Libre A1');
+    // Una sola categoría (la Libre de F7): no aparece el selector de +35
+    expect(html).not.toContain('+35');
+    expect(html).toContain('FÚTBOL 7');
+  });
+
+  it('si lo elegido era de Fútbol 11, en Fútbol 7 vuelve a su primera categoría', () => {
+    const html = dibujar(conFutbol7(), { modalidad: 'f7', categoriaId: 1, zonaId: 1 });
+    expect(html).toContain('F7 A1');
+    expect(html).not.toContain('Libre A1');
+  });
+
+  it('en Fútbol 11, con F7 cargado, el chip dice FÚTBOL 11 y el título es el del campeonato', () => {
+    const html = dibujar(conFutbol7(), { modalidad: 'f11' });
+    expect(html).toContain('FÚTBOL 11');
+    expect(html).toMatch(/<h1 class="cabecera__titulo">Campeonato de Fútbol<\/h1>/);
+    expect(html).toMatch(/aria-label="Fútbol 11" aria-pressed="true"/);
+    expect(html).toContain('Libre A1');
+    expect(html).not.toContain('F7 A1');
   });
 });

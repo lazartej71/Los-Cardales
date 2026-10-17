@@ -27,7 +27,7 @@
   font-family: var(--fuente); font-size: 15.5px; font-weight: 600; color: var(--tinta);
 }
 .tabla thead .col-equipo { font-size: 12.5px; color: var(--tinta-suave); }
-.tabla .col-pts { padding-right: 14px; font-size: 19px; font-weight: 700; color: var(--tinta); }
+.tabla .col-pts { padding-right: 14px; font-size: 19px; font-weight: 700; color: var(--acento-puntos); }
 .tabla thead .col-pts { font-size: 12.5px; font-weight: 700; color: var(--tinta); }
 .fila--top > * { background: var(--fila-top); }
 .fila--flash > * { animation: destello 1.8s ease-out; }

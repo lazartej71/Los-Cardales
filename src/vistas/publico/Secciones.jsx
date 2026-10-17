@@ -28,7 +28,7 @@ function EtiquetaPendiente({ partido }) {
 // Si algún equipo de estos partidos tiene escudo: si no, la lista se ve como siempre
 const conEscudosEn = (partidos, info) => hayEscudos(equiposDePartidos(partidos, info.equipoDe));
 
-export function SeccionPosiciones({ activa, filas, criterios, partidos, conTablaInicial }) {
+export function SeccionPosiciones({ activa, filas, criterios, partidos, conTablaInicial, chip = null }) {
   const fechasJugadas = partidos.filter(tieneResultado).map((p) => p.fecha);
   const ultima = Math.max(conTablaInicial ? 1 : 0, ...fechasJugadas);
   return (
@@ -38,6 +38,7 @@ export function SeccionPosiciones({ activa, filas, criterios, partidos, conTabla
     >
       <div className="seccion__cab">
         <h2 id="titulo-posiciones" className="seccion__titulo">Posiciones</h2>
+        {chip}
         <span className="seccion__meta">{ultima > 0 ? `Hasta la fecha ${ultima}` : 'Todavía sin partidos jugados'}</span>
       </div>
       <TablaPosiciones filas={filas} />
@@ -56,13 +57,14 @@ function reprogramadosPorJugar(fechas) {
 
 // Cada fecha se pliega: viene abierta solo la que se está jugando. Arriba, aparte y abiertos, los
 // postergados que se recuperan en un día especial (no son una fecha más)
-export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial }) {
+export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial, chip = null }) {
   const reprogramados = reprogramadosPorJugar(fechas);
   const escudosReprogramados = conEscudosEn(reprogramados, info);
   return (
     <section className={`seccion seccion--fixture${activa ? ' seccion--activa' : ''}`} aria-labelledby="titulo-fixture">
       <div className="seccion__cab">
         <h2 id="titulo-fixture" className="seccion__titulo">Fixture</h2>
+        {chip}
       </div>
       {fechas.length === 0 && <p className="vacio-texto">Todavía no hay partidos programados.</p>}
       {reprogramados.length > 0 && (
@@ -178,7 +180,7 @@ function LineaPartido({ partido, info, conEscudos = false }) {
   );
 }
 
-export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTablaInicial }) {
+export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTablaInicial, chip = null }) {
   const actual = fechas.find((f) => f.fecha === fecha) || fechas[0];
   const jugados = actual ? actual.partidos.filter(tieneResultado) : [];
   const goles = jugados.reduce((total, p) => total + p.golesLocal + p.golesVisitante, 0);
@@ -201,6 +203,7 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
     >
       <div className="seccion__cab">
         <h2 id="titulo-resultados" className="seccion__titulo">Resultados por fecha</h2>
+        {chip}
       </div>
       {fechas.length > 0 && (
         <Segmentado

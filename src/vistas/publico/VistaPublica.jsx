@@ -1,8 +1,12 @@
 /**
  * Vista pública (sin login). Nunca muestra expulsados, suspendidos ni teléfonos.
+ * Con Fútbol 7 cargado, el conmutador de la cabecera elige la modalidad (el celular la recuerda) y la
+ * vista toma su acento (data-modalidad) y su chip. Sin Fútbol 7, se ve como siempre.
  */
 
 import { useMemo, useRef } from 'react';
+import { ChipModalidad } from '../../componentes/ChipModalidad.jsx';
+import { ConmutadorModalidad } from '../../componentes/ConmutadorModalidad.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
@@ -16,6 +20,7 @@ import {
   zonaElegida,
   zonasDeCategoria,
 } from '../../logica/consultas.js';
+import { categoriasDeModalidad, guardarModalidad, hayFutbol7 } from '../../logica/modalidades.js';
 import { calcularTabla } from '../../logica/tabla.js';
 import { SeccionFixture, SeccionPosiciones, SeccionResultados } from './Secciones.jsx';
 
@@ -25,9 +30,11 @@ const SECCIONES_PUBLICAS = [
   { id: 'resultados', etiqueta: 'Resultados', icono: 'marcador' },
 ];
 
-export function VistaPublica({ db, ui, setUi }) {
+export function VistaPublica({ db, ui, setUi, almacen = null }) {
   const cambiar = (cambios) => setUi((u) => ({ ...u, ...cambios }));
-  const categorias = useMemo(() => [...db.categorias].sort((a, b) => a.orden - b.orden), [db.categorias]);
+  const conFutbol7 = hayFutbol7(db.categorias);
+  const modalidad = conFutbol7 ? (ui.modalidad ?? 'f11') : 'f11';
+  const categorias = useMemo(() => categoriasDeModalidad(db.categorias, modalidad), [db.categorias, modalidad]);
   const categoria = categorias.find((c) => c.id === ui.categoriaId) || categorias[0] || null;
   const zonas = useMemo(() => (categoria ? zonasDeCategoria(db.zonas, categoria.id) : []), [db.zonas, categoria]);
   const zona = categoria ? zonaElegida(db.zonas, categoria.id, ui.zonaId) : null;
@@ -71,12 +78,22 @@ export function VistaPublica({ db, ui, setUi }) {
     window.scrollTo(0, refPortada.current ? refPortada.current.offsetHeight : 0);
   };
 
+  // Otra modalidad: su primera categoría y zona, la fecha en juego y la misma sección
+  const cambiarModalidad = (nueva) => {
+    cambiar({ modalidad: nueva, categoriaId: null, zonaId: null, fecha: null });
+    guardarModalidad(almacen, nueva);
+  };
+  const chip = conFutbol7 ? <ChipModalidad modalidad={modalidad} /> : null;
+
   return (
-    <div className="publico">
+    <div className="publico" data-modalidad={modalidad}>
       <header className="cabecera" ref={refPortada}>
         <div className="contenedor cabecera__inner">
           <Logo className="cabecera__logo" />
-          <h1 className="cabecera__titulo">{db.configuracion.nombreCampeonato}</h1>
+          <div className="cabecera__fila">
+            <h1 className="cabecera__titulo">{modalidad === 'f7' ? 'Fútbol 7' : db.configuracion.nombreCampeonato}</h1>
+            {conFutbol7 && <ConmutadorModalidad valor={modalidad} onCambiar={cambiarModalidad} />}
+          </div>
         </div>
       </header>
 
@@ -114,6 +131,7 @@ export function VistaPublica({ db, ui, setUi }) {
                 criterios={criterios}
                 partidos={partidos}
                 conTablaInicial={conTablaInicial}
+                chip={chip}
               />
               <SeccionFixture
                 key={zona.id}
@@ -122,6 +140,7 @@ export function VistaPublica({ db, ui, setUi }) {
                 fechaEnJuego={enJuego}
                 info={info}
                 conTablaInicial={conTablaInicial}
+                chip={chip}
               />
               <SeccionResultados
                 activa={ui.seccion === 'resultados'}
@@ -130,6 +149,7 @@ export function VistaPublica({ db, ui, setUi }) {
                 onFecha={(f) => cambiar({ fecha: f })}
                 info={info}
                 conTablaInicial={conTablaInicial}
+                chip={chip}
               />
             </div>
           </main>

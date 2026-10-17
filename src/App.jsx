@@ -18,6 +18,7 @@ import { useRutaAdmin } from './hooks/useRutaAdmin.js';
 import { usuarioDeEmail, useSesion } from './hooks/useSesion.js';
 import { useToast } from './hooks/useToast.js';
 import { hoyEnArgentina } from './logica/cuentas.js';
+import { leerModalidadGuardada } from './logica/modalidades.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
 import { PantallaLogin } from './vistas/admin/PantallaLogin.jsx';
 import { VistaPublica } from './vistas/publico/VistaPublica.jsx';
@@ -53,12 +54,14 @@ export function App({ simulacion = SIMULACION }) {
   const acciones = useAcciones({ token, recargar, avisar, onSesionInvalida: alSesionInvalida });
 
   // Lo que eligió cada vista se conserva al ir y volver entre el sitio y el panel
-  const [uiPublica, setUiPublica] = useState({
+  const [uiPublica, setUiPublica] = useState(() => ({
+    // La que eligió la persona la última vez en este celular; la primera vez, Fútbol 11
+    modalidad: leerModalidadGuardada(almacenLocal()) ?? 'f11',
     categoriaId: null,
     zonaId: null,
     seccion: 'posiciones',
     fecha: null,
-  });
+  }));
   const [uiAdmin, setUiAdmin] = useState({
     seccion: null, // la primera del panel: Cargar
     categoriaId: null,
@@ -134,7 +137,7 @@ export function App({ simulacion = SIMULACION }) {
       />
     );
   } else {
-    contenido = <VistaPublica db={db} ui={uiPublica} setUi={setUiPublica} />;
+    contenido = <VistaPublica db={db} ui={uiPublica} setUi={setUiPublica} almacen={almacenLocal()} />;
   }
 
   return (
