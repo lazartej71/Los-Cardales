@@ -120,6 +120,28 @@ describe('VistaPublica', () => {
     );
   });
 
+  it('muestra un W.O. doble sin goles ni ganador', () => {
+    const wo = {
+      id: 2,
+      categoriaId: 5,
+      fecha: 2,
+      localId: 1,
+      visitanteId: 2,
+      golesLocal: 0,
+      golesVisitante: 0,
+      postergado: false,
+      ausente: 'ambos',
+    };
+    const db = { ...zonaUnica, partidos: [...zonaUnica.partidos, wo] };
+    const fixture = dibujar(db, { seccion: 'fixture' });
+    expect(fixture).toContain('>W.O. doble<');
+    expect(fixture).not.toContain('aria-label="0 a 0"');
+    const resultados = dibujar(db, { seccion: 'resultados', fecha: 2 });
+    expect(resultados).toContain('W.O. doble: no se presentó ninguno');
+    expect(resultados).not.toContain('Terminó empatado');
+    expect(resultados).not.toContain('resultado__goles">0<');
+  });
+
   // Zona única con la fecha 1 cargada como tabla (y un postergado) y la fecha 2 armada, sin resultados
   const conFecha2Armada = () => ({
     ...zonaUnica,

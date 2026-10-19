@@ -11,6 +11,7 @@ import { pagosDePartido } from '../src/logica/cuentas.js';
 import { PESO_MAXIMO_ESCUDO } from '../src/logica/escudos.js';
 import { nombrePredio, numeroVisible, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
+import { noSePresento } from '../src/logica/tabla.js';
 import {
   modalidadDeCategoria,
   modalidadDeEquipo,
@@ -119,14 +120,19 @@ export function validarCambioPartido(datos, partidoId, cuerpo) {
 function validarCambioDe(datos, partido, cuerpo) {
   const partidoId = partido.id;
   const c = cuerpo || {};
-  // W.O.: el que no se presentó pierde 3 a 0 y no paga el arancel
+  // W.O.: el que no se presentó pierde 3 a 0 y no paga el arancel. W.O. doble ('ambos'): queda 0 a 0,
+  // los dos suman solo el partido jugado y ninguno paga
   if ('ausente' in c) {
-    if (c.ausente !== 'local' && c.ausente !== 'visitante') {
+    if (!['local', 'visitante', 'ambos'].includes(c.ausente)) {
       return fallo('Elegí cuál de los dos equipos no se presentó.');
     }
-    const ausenteId = c.ausente === 'local' ? partido.localId : partido.visitanteId;
-    const pagos = pagosDePartido(datos.movimientos || [], partidoId, ausenteId);
-    if (pagos.length) {
+    const ausentes = [
+      ['local', partido.localId],
+      ['visitante', partido.visitanteId],
+    ].filter(([lado]) => noSePresento({ ausente: c.ausente }, lado));
+    for (const [, ausenteId] of ausentes) {
+      const pagos = pagosDePartido(datos.movimientos || [], partidoId, ausenteId);
+      if (!pagos.length) continue;
       const nombre = nombreDe(datos, ausenteId);
       return fallo(
         pagos.length === 1
@@ -135,7 +141,7 @@ function validarCambioDe(datos, partido, cuerpo) {
         409
       );
     }
-    const [golesLocal, golesVisitante] = c.ausente === 'local' ? [0, 3] : [3, 0];
+    const [golesLocal, golesVisitante] = { local: [0, 3], visitante: [3, 0], ambos: [0, 0] }[c.ausente];
     return { valor: { goles_local: golesLocal, goles_visitante: golesVisitante, postergado: false, ausente: c.ausente } };
   }
   if ('golesLocal' in c || 'golesVisitante' in c) {
@@ -297,7 +303,7 @@ export function validarMovimientoNuevo(datos, cuerpo) {
     if (!partido) return fallo('Ese partido no existe.');
     const lado = partido.localId === c.equipoId ? 'local' : partido.visitanteId === c.equipoId ? 'visitante' : null;
     if (!lado) return fallo('El equipo tiene que ser uno de los dos que jugaron ese partido.');
-    if (partido.ausente === lado) return fallo(`${nombreDe(datos, c.equipoId)} no se presentó: no paga este partido.`);
+    if (noSePresento(partido, lado)) return fallo(`${nombreDe(datos, c.equipoId)} no se presentó: no paga este partido.`);
     // Un pago por medio: la otra parte del mismo partido va con el otro medio
     if (pagosDePartido(datos.movimientos || [], partidoId, c.equipoId).some((m) => m.metodo === c.metodo)) {
       return fallo(

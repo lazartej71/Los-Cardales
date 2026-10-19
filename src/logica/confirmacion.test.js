@@ -28,6 +28,12 @@ describe('resumen de la hoja de confirmación', () => {
     });
   });
 
+  it('un W.O. doble dice que no vino ninguno y que nadie suma puntos', () => {
+    expect(resumenConfirmacion(db, db.partidos[0], { ausente: 'ambos' }).marcador).toBe(
+      'No se presentó ninguno: Libre A1 y Libre A2 suman el partido jugado, sin goles ni puntos, y no pagan.'
+    );
+  });
+
   it('un cruce entre zonas dice las dos', () => {
     expect(resumenConfirmacion(db, { ...deF7, visitanteId: 105 }, { golesLocal: 0, golesVisitante: 0 }).zonas).toBe(
       'Zona A vs Zona B'

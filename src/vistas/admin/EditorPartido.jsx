@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Pill } from '../../componentes/Marcador.jsx';
 import { Stepper } from '../../componentes/Stepper.jsx';
-import { resumenConfirmacion } from '../../logica/confirmacion.js';
+import { resumenConfirmacion, TEXTO_WO_DOBLE } from '../../logica/confirmacion.js';
 import { estadoPartido } from '../../logica/consultas.js';
 import { modalidadDePartido } from '../../logica/modalidades.js';
 import { tieneResultado } from '../../logica/tabla.js';
@@ -87,7 +87,10 @@ export function EditorPartido({
   // Confirmado en la hoja: se guarda el resultado o el W.O.
   const confirmar = async () => {
     const cambio = porConfirmar;
-    if (cambio.ausente) {
+    if (cambio.ausente === 'ambos') {
+      const mensaje = `W.O. doble guardado: no se presentó ninguno. ${local.nombre} y ${visitante.nombre} ${TEXTO_WO_DOBLE}`;
+      await ejecutar(() => acciones.marcarAusente(partido.id, 'ambos', mensaje));
+    } else if (cambio.ausente) {
       const [falto, gano] = cambio.ausente === 'local' ? [local, visitante] : [visitante, local];
       const mensaje = `W.O. guardado: no se presentó ${falto.nombre}. ${gano.nombre} gana 3 a 0.`;
       await ejecutar(() => acciones.marcarAusente(partido.id, cambio.ausente, mensaje));
@@ -148,7 +151,9 @@ export function EditorPartido({
         </p>
       )}
 
-      {ausente ? (
+      {partido.ausente === 'ambos' ? (
+        <p className="editor__wo">{`No se presentó ninguno: ${local.nombre} y ${visitante.nombre} ${TEXTO_WO_DOBLE}`}</p>
+      ) : ausente ? (
         <p className="editor__wo">{`No se presentó ${ausente.nombre}: ${presente.nombre} gana 3 a 0.`}</p>
       ) : (
         !partido.postergado && (
@@ -169,6 +174,14 @@ export function EditorPartido({
                   {`No se presentó ${equipo.nombre}`}
                 </button>
               ))}
+              <button
+                type="button"
+                className="btn btn--secundario btn--chico"
+                disabled={guardando}
+                onClick={() => marcarAusente('ambos')}
+              >
+                No se presentó ninguno
+              </button>
             </div>
           </details>
         )

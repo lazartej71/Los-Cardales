@@ -9,7 +9,7 @@ import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosicion
 import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
 import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { textoDia, textoLugar } from '../../logica/lugar.js';
-import { tieneResultado } from '../../logica/tabla.js';
+import { esWoDoble, tieneResultado } from '../../logica/tabla.js';
 
 // Aclaración de la fecha que se cargó como tabla inicial (sin el detalle de los partidos)
 function NotaFechaInicial({ hayPostergados }) {
@@ -171,7 +171,7 @@ function LineaPartido({ partido, info, conEscudos = false }) {
       <span className="partido-linea__centro">
         <Marcador partido={partido} />
         {!jugado && <EtiquetaPendiente partido={partido} />}
-        {partido.ausente && <Pill tipo="wo">W.O.</Pill>}
+        {partido.ausente && <Pill tipo="wo">{esWoDoble(partido) ? 'W.O. doble' : 'W.O.'}</Pill>}
       </span>
       <span className={`partido-linea__equipo${diferencia > 0 ? ' es-perdedor' : ''}`}>
         <EquipoConEscudo id={partido.visitanteId} info={info} conEscudos={conEscudos} />
@@ -236,12 +236,11 @@ function TarjetaResultado({ partido, info, conEscudos = false }) {
     { id: partido.visitanteId, lado: 'visitante', goles: partido.golesVisitante, pierde: diferencia > 0 },
   ];
   const ganador = info.nombreDe(diferencia > 0 ? partido.localId : partido.visitanteId);
+  const doble = esWoDoble(partido);
   const ausente = partido.ausente ? info.nombreDe(partido.ausente === 'local' ? partido.localId : partido.visitanteId) : null;
-  const final = ausente
-    ? `Ganó ${ganador} por W.O.: no se presentó ${ausente}`
-    : diferencia === 0
-      ? 'Terminó empatado'
-      : `Ganó ${ganador}`;
+  let final = diferencia === 0 ? 'Terminó empatado' : `Ganó ${ganador}`;
+  if (doble) final = 'W.O. doble: no se presentó ninguno';
+  else if (ausente) final = `Ganó ${ganador} por W.O.: no se presentó ${ausente}`;
   return (
     <article className={`resultado${jugado ? '' : ' resultado--pendiente'}${conEscudos ? ' resultado--escudos' : ''}`}>
       {renglones.map((r) => (
@@ -249,7 +248,7 @@ function TarjetaResultado({ partido, info, conEscudos = false }) {
           <span className="resultado__equipo">
             <EquipoConEscudo id={r.id} info={info} conEscudos={conEscudos} />
           </span>
-          <span className="resultado__goles">{jugado ? r.goles : '–'}</span>
+          <span className="resultado__goles">{jugado && !doble ? r.goles : '–'}</span>
         </div>
       ))}
       <div className="resultado__pie">

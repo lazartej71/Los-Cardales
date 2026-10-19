@@ -7,6 +7,12 @@ import { PUNTOS } from '../datos/constantes.js';
 
 export const tieneResultado = (p) => p.golesLocal !== null && p.golesVisitante !== null;
 
+// W.O. doble: no vino ninguno. Queda 0 a 0 en la base, pero no es un empate
+export const esWoDoble = (p) => p.ausente === 'ambos';
+
+// ¿Faltó ese lado ('local' o 'visitante')? En un W.O. doble faltaron los dos
+export const noSePresento = (p, lado) => p.ausente === lado || esWoDoble(p);
+
 const filaVacia = (equipo) => ({ equipo, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0 });
 
 // Fila con lo que el equipo trae de la tabla inicial (la fecha 1 se cargó sin detalle)
@@ -48,6 +54,12 @@ function acumularEstadisticas(equipos, partidos, inicialPorEquipo = new Map()) {
   partidos.forEach((p) => {
     const local = filas.get(p.localId);
     const visitante = filas.get(p.visitanteId);
+    if (esWoDoble(p)) {
+      // Suman el partido jugado y nada más: ni resultado, ni goles, ni puntos
+      if (local) local.pj += 1;
+      if (visitante) visitante.pj += 1;
+      return;
+    }
     if (local) sumar(local, p.golesLocal, p.golesVisitante);
     if (visitante) sumar(visitante, p.golesVisitante, p.golesLocal);
   });

@@ -383,8 +383,32 @@ describe('W.O.', () => {
     });
   });
 
-  it('rechaza un ausente que no es el local ni el visitante', () => {
+  it('rechaza un ausente que no es el local, el visitante ni los dos', () => {
     expect(validarCambioPartido(datos, pendiente.id, { ausente: 'los dos' }).error).toMatch(/no se presentó/);
+  });
+
+  it('W.O. doble: no vino ninguno, queda 0 a 0', () => {
+    expect(validarCambioPartido(datos, pendiente.id, { ausente: 'ambos' })).toEqual({
+      valor: { goles_local: 0, goles_visitante: 0, postergado: false, ausente: 'ambos' },
+    });
+  });
+
+  it('no deja marcar W.O. doble si alguno de los dos ya pagó ese partido', () => {
+    for (const equipoId of [pendiente.localId, pendiente.visitanteId]) {
+      const conPago = { ...datos, movimientos: [pagoDe(equipoId, pendiente.id)] };
+      const resultado = validarCambioPartido(conPago, pendiente.id, { ausente: 'ambos' });
+      expect(resultado.estado).toBe(409);
+      expect(resultado.error).toMatch(/tiene un pago anotado/);
+    }
+  });
+
+  it('en un W.O. doble no se anota el pago de ninguno', () => {
+    const doble = { ...pendiente, golesLocal: 0, golesVisitante: 0, ausente: 'ambos' };
+    const conDoble = { ...datos, partidos: datos.partidos.map((p) => (p.id === doble.id ? doble : p)) };
+    for (const equipoId of [doble.localId, doble.visitanteId]) {
+      const pago = { tipo: 'pago', equipoId, partidoId: doble.id, monto: 1000, metodo: 'efectivo', fecha: '2026-10-18' };
+      expect(validarMovimientoNuevo(conDoble, pago).error).toMatch(/no se presentó: no paga este partido/);
+    }
   });
 
   it('no deja marcar W.O. si el que faltó ya pagó ese partido', () => {
@@ -595,6 +619,7 @@ describe('lo que puede hacer un veedor', () => {
       { golesLocal: 2, golesVisitante: 1 },
       { golesLocal: null, golesVisitante: null },
       { ausente: 'visitante' },
+      { ausente: 'ambos' },
     ]) {
       expect(permisoVeedorPartido(conLugar, enJuego.id, cuerpo)).toBeNull();
     }

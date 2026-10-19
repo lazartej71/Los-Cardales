@@ -2,7 +2,7 @@
  * Consultas sobre los datos: zonas de una categoría, partidos de un grupo de equipos, fechas, etc.
  */
 
-import { tieneResultado } from './tabla.js';
+import { esWoDoble, tieneResultado } from './tabla.js';
 
 // Por fecha y, dentro de cada fecha, por hora (los que no tienen hora van al final)
 const SIN_HORA = '99:99';
@@ -11,7 +11,7 @@ const porFechaHoraEId = (a, b) =>
 
 // Estado de un partido para mostrar en el panel: [tipo de la píldora, texto]
 export function estadoPartido(partido) {
-  if (partido.ausente) return ['wo', 'W.O.'];
+  if (partido.ausente) return ['wo', esWoDoble(partido) ? 'W.O. doble' : 'W.O.'];
   if (tieneResultado(partido)) return ['ok', 'Cargado'];
   if (partido.postergado) return ['postergado', 'Postergado'];
   return ['pendiente', 'Pendiente'];

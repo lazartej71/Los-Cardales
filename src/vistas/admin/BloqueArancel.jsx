@@ -17,6 +17,7 @@ import {
   pagosDePartido,
   sumarMontos,
 } from '../../logica/cuentas.js';
+import { noSePresento } from '../../logica/tabla.js';
 
 const conMedio = { efectivo: 'en efectivo', transferencia: 'por transferencia' };
 
@@ -72,7 +73,7 @@ function PagoDeEquipo({ partido, equipo, pagos, arancel, saldo, acciones }) {
   const lado = partido.localId === equipo.id ? 'local' : 'visitante';
   const estado = estadoSaldo(saldo);
 
-  if (partido.ausente === lado) {
+  if (noSePresento(partido, lado)) {
     return (
       <div className="pago pago--apagado">
         <p className="pago__equipo">{equipo.nombre}</p>

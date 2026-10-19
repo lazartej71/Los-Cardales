@@ -114,6 +114,12 @@ describe('calcularTabla', () => {
     expect(calcularTabla(equipos, [postergado], CRITERIOS_POR_DEFECTO).every((f) => f.pj === 0)).toBe(true);
   });
 
+  it('en un W.O. doble los dos suman solo el partido jugado: sin resultado, goles ni puntos', () => {
+    const equipos = [{ id: 1, nombre: 'BOBY' }, { id: 2, nombre: 'TALLER JUAREZ' }];
+    const filas = calcularTabla(equipos, [partido(1, 1, 2, 0, 0, { ausente: 'ambos' })], CRITERIOS_POR_DEFECTO);
+    for (const fila of filas) expect(fila).toMatchObject({ pj: 1, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, dg: 0, pts: 0 });
+  });
+
   it('el resultado entre ellos no usa la tabla inicial, que no tiene detalle', () => {
     const equipos = [{ id: 1, nombre: 'B' }, { id: 2, nombre: 'A' }];
     const igual = { pj: 1, pg: 1, pe: 0, pp: 0, gf: 1, gc: 0 };

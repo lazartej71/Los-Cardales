@@ -91,6 +91,13 @@ describe('calcularCuentas', () => {
     expect(cuentas.get(2)).toEqual({ cobrado: ARANCEL, pagado: 0, saldo: ARANCEL });
   });
 
+  it('en un W.O. doble no paga ninguno', () => {
+    const wo = [partido(9, 5, 2, 1, { golesLocal: 0, golesVisitante: 0, ausente: 'ambos' })];
+    const cuentas = calcularCuentas({ equipos, partidos: wo, movimientos: [], arancel: ARANCEL });
+    expect(cuentas.get(1)).toEqual({ cobrado: 0, pagado: 0, saldo: 0 });
+    expect(cuentas.get(2)).toEqual({ cobrado: 0, pagado: 0, saldo: 0 });
+  });
+
   it('un pago anotado en un partido sin resultado ya le cobra el arancel a ese equipo', () => {
     // Se cobra al terminar el partido: puede anotarse el pago antes de cargar el resultado
     const pendiente = [partido(9, 6, 1, 2)];
@@ -139,6 +146,9 @@ describe('motivoSinCobro', () => {
     const wo = partido(9, 5, 2, 1, { golesLocal: 3, golesVisitante: 0, ausente: 'visitante' });
     expect(motivoSinCobro(wo, 1)).toBe('ausente');
     expect(motivoSinCobro(wo, 2)).toBeNull();
+    const doble = partido(9, 5, 2, 1, { golesLocal: 0, golesVisitante: 0, ausente: 'ambos' });
+    expect(motivoSinCobro(doble, 1)).toBe('ausente');
+    expect(motivoSinCobro(doble, 2)).toBe('ausente');
   });
 });
 

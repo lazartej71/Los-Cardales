@@ -1003,3 +1003,60 @@ describe('migración 10b: los datos de Gaby', () => {
     expect(await uno(`select count(*)::int as n from public.partidos where categoria_id in (6, 7)`)).toEqual({ n: 30 });
   });
 });
+
+describe('migración 11: W.O. doble', () => {
+  let id;
+  let local;
+  let visitante;
+  const ponerWo = (goles, extra = '') =>
+    comoAdmin(`update public.partidos set ausente = 'ambos', goles_local = ${goles[0]}, goles_visitante = ${goles[1]}
+      ${extra} where id = ${id}`);
+  const pagar = (equipo) =>
+    comoAdmin(`insert into public.movimientos (equipo_id, partido_id, tipo, monto, metodo, fecha)
+      values (${equipo}, ${id}, 'pago', 1000, 'efectivo', '2026-10-18')`);
+
+  beforeAll(async () => {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    ({ local, visitante } = await uno(`select min(id)::int as local, max(id)::int as visitante
+      from (select id from public.equipos where zona_id = 1 and not baja order by id limit 2) e`));
+    ({ id } = await uno(`insert into public.partidos (categoria_id, fecha, local_id, visitante_id)
+      values (1, 60, ${local}, ${visitante}) returning id::int`));
+  });
+
+  afterAll(async () => {
+    await db.exec(`delete from public.movimientos where partido_id = ${id}; delete from public.partidos where id = ${id}`);
+  });
+
+  it('antes de la 11 no se puede marcar que no vino ninguno', async () => {
+    expect((await ponerWo([0, 0])).error).toMatch(/check/);
+  });
+
+  it('con la 11, el W.O. doble queda 0 a 0 y no puede estar postergado', async () => {
+    await db.exec(leer('./migracion-11-wo-doble.sql'));
+    expect((await ponerWo([3, 0])).error).toMatch(/partidos_wo_check/);
+    expect((await ponerWo([0, 0], ', postergado = true')).error).toMatch(/violates check constraint/);
+    expect((await ponerWo([0, 0])).error).toBeUndefined();
+    expect(await uno(`select ausente, goles_local, goles_visitante from public.partidos where id = ${id}`)).toEqual({
+      ausente: 'ambos',
+      goles_local: 0,
+      goles_visitante: 0,
+    });
+  });
+
+  it('ninguno de los dos puede anotar un pago en ese partido', async () => {
+    expect((await pagar(local)).error).toMatch(/El pago tiene que ser de un equipo que jugó ese partido/);
+    expect((await pagar(visitante)).error).toMatch(/El pago tiene que ser de un equipo que jugó ese partido/);
+  });
+
+  it('el W.O. de uno solo sigue igual: paga el que vino', async () => {
+    expect((await comoAdmin(`update public.partidos set ausente = 'visitante', goles_local = 3, goles_visitante = 0
+      where id = ${id}`)).error).toBeUndefined();
+    expect((await pagar(visitante)).error).toMatch(/El pago tiene que ser de un equipo que jugó ese partido/);
+    expect((await pagar(local)).error).toBeUndefined();
+  });
+
+  it('si se corre dos veces, no falla ni cambia nada', async () => {
+    await db.exec(leer('./migracion-11-wo-doble.sql'));
+    expect(await uno(`select ausente from public.partidos where id = ${id}`)).toEqual({ ausente: 'visitante' });
+  });
+});

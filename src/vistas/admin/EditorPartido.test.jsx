@@ -83,6 +83,20 @@ describe('editor del partido', () => {
     expect(html).not.toContain('¿No se presentó alguien?');
   });
 
+  it('ofrece marcar que no se presentó ninguno', () => {
+    expect(dibujar()).toContain('No se presentó ninguno');
+  });
+
+  it('un W.O. doble lo dice y les apaga el pago a los dos', () => {
+    const html = dibujar({ golesLocal: 0, golesVisitante: 0, ausente: 'ambos' });
+    expect(html).toContain(
+      'No se presentó ninguno: Libre A1 y Libre A2 suman el partido jugado, sin goles ni puntos, y no pagan.'
+    );
+    expect(html.match(/No se presentó: no paga\./g)).toHaveLength(2);
+    expect(html).toContain('>W.O. doble<');
+    expect(html).not.toContain('¿No se presentó alguien?');
+  });
+
   it('resume y lista las tarjetas del partido', () => {
     const tarjetas = [{ id: 1, partidoId: 1, equipoId: 1, numeroCamiseta: 7, nombreJugador: 'Pérez' }];
     const html = dibujar({}, { tarjetas });

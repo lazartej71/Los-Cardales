@@ -4,7 +4,7 @@
  */
 
 import { modalidadDeCategoria } from './modalidades.js';
-import { tieneResultado } from './tabla.js';
+import { noSePresento, tieneResultado } from './tabla.js';
 
 export const METODOS_PAGO = [
   { valor: 'efectivo', etiqueta: 'Efectivo' },
@@ -90,7 +90,7 @@ const ladoDe = (partido, equipoId) => (partido.localId === equipoId ? 'local' : 
 // todavía no esté cargado el resultado.
 export function motivoSinCobro(partido, equipoId, conPago = false) {
   if (partido.postergado) return 'postergado';
-  if (partido.ausente === ladoDe(partido, equipoId)) return 'ausente';
+  if (noSePresento(partido, ladoDe(partido, equipoId))) return 'ausente';
   if (!tieneResultado(partido) && !conPago) return 'pendiente';
   return null;
 }
