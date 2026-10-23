@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fechaEnJuego, fechaEnJuegoPorCategoria, partidosDeCategoria } from './consultas.js';
+import { fechaEnJuego, fechaEnJuegoPorCategoria, partidosDeCategoria, ultimaFechaJugada } from './consultas.js';
 
 let ultimoId = 0;
 const pendiente = (fecha, cambios = {}) => ({
@@ -78,5 +78,16 @@ describe('orden de los partidos', () => {
       { id: 4, categoriaId: 1, fecha: 1, hora: '18:00' },
     ];
     expect(partidosDeCategoria(partidos, 1).map((p) => p.id)).toEqual([4, 3, 2, 1]);
+  });
+});
+
+describe('ultimaFechaJugada', () => {
+  it('es la fecha más alta con algún resultado', () => {
+    expect(ultimaFechaJugada([jugado(2), jugado(3), pendiente(4)], false)).toBe(3);
+  });
+
+  it('con solo la tabla inicial es la fecha 1, y sin nada jugado es 0', () => {
+    expect(ultimaFechaJugada([pendiente(2)], true)).toBe(1);
+    expect(ultimaFechaJugada([pendiente(2)], false)).toBe(0);
   });
 });

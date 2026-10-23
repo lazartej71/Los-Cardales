@@ -6,7 +6,7 @@ import { Escudo } from '../../componentes/Escudo.jsx';
 import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
-import { ETIQUETA_ESTADO_FECHA, estadoFecha } from '../../logica/consultas.js';
+import { ETIQUETA_ESTADO_FECHA, estadoFecha, ultimaFechaJugada } from '../../logica/consultas.js';
 import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { textoDia, textoLugar } from '../../logica/lugar.js';
 import { esWoDoble, tieneResultado } from '../../logica/tabla.js';
@@ -29,8 +29,7 @@ function EtiquetaPendiente({ partido }) {
 const conEscudosEn = (partidos, info) => hayEscudos(equiposDePartidos(partidos, info.equipoDe));
 
 export function SeccionPosiciones({ activa, filas, criterios, partidos, conTablaInicial, chip = null }) {
-  const fechasJugadas = partidos.filter(tieneResultado).map((p) => p.fecha);
-  const ultima = Math.max(conTablaInicial ? 1 : 0, ...fechasJugadas);
+  const ultima = ultimaFechaJugada(partidos, conTablaInicial);
   return (
     <section
       className={`seccion seccion--posiciones${activa ? ' seccion--activa' : ''}`}

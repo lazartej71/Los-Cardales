@@ -62,6 +62,10 @@ export function fechasConTablaInicial(fechas, conTablaInicial) {
   return [{ fecha: 1, partidos: [] }, ...fechas];
 }
 
+// La fecha más alta con algún resultado ("Hasta la fecha N"): 1 si solo está la tabla inicial, 0 sin nada jugado
+export const ultimaFechaJugada = (partidos, conTablaInicial) =>
+  Math.max(conTablaInicial ? 1 : 0, ...partidos.filter(tieneResultado).map((p) => p.fecha));
+
 // Los postergados no cuentan para saber si la fecha se jugó
 export function estadoFecha(partidos) {
   const activos = partidos.filter((p) => !p.postergado);
