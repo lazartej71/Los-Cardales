@@ -238,6 +238,49 @@ describe('VistaPublica', () => {
   });
 });
 
+describe('tabla pública', () => {
+  it('abre en Resumen, con el selector de vistas', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).toContain('aria-label="Vista de la tabla"');
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Resumen</);
+    expect(html).toContain('data-vista="resumen"');
+  });
+
+  it('en Racha muestra los últimos resultados de cada equipo', () => {
+    const html = dibujar(crearDatosEjemplo(), { vistaTabla: 'racha' });
+    expect(html).toContain('data-vista="racha"');
+    expect(html).toContain('aria-label="Últimos resultados: ganó, empató"');
+    expect(html).toContain('class="racha__r racha__r--v"');
+  });
+
+  it('una sola frase de desempate reemplaza a las notas', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).toContain(
+      'Si dos equipos empatan en puntos, se ordenan por diferencia de gol, después por goles a favor y después por el resultado entre ellos.'
+    );
+    expect(html).not.toContain('queda arriba de');
+  });
+
+  it('las flechitas dicen quién subió y quién bajó desde la fecha anterior', () => {
+    const db = {
+      ...zonaUnica,
+      equipos: [
+        { id: 1, zonaId: 10, nombre: 'ALFA' },
+        { id: 2, zonaId: 10, nombre: 'BETA' },
+        { id: 3, zonaId: 10, nombre: 'GAMA' },
+      ],
+      tablaInicial: [],
+      partidos: [
+        { id: 1, categoriaId: 5, fecha: 1, localId: 1, visitanteId: 2, golesLocal: 1, golesVisitante: 0, postergado: false },
+        { id: 2, categoriaId: 5, fecha: 2, localId: 3, visitanteId: 1, golesLocal: 2, golesVisitante: 0, postergado: false },
+      ],
+    };
+    const html = dibujar(db);
+    expect(html).toContain('Subió 1 puesto');
+    expect(html).toContain('Bajó 1 puesto');
+  });
+});
+
 describe('escudos en la vista pública', () => {
   it('la tabla muestra el escudo de cada equipo y las iniciales de los que no tienen', () => {
     const db = conEscudos('Libre A1');

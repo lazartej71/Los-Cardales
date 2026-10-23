@@ -5,8 +5,9 @@
 import { Escudo } from '../../componentes/Escudo.jsx';
 import { Marcador, Pill } from '../../componentes/Marcador.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
-import { NotasDesempate, TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
+import { TablaPosiciones } from '../../componentes/TablaPosiciones.jsx';
 import { ETIQUETA_ESTADO_FECHA, estadoFecha, ultimaFechaJugada } from '../../logica/consultas.js';
+import { fraseDesempate } from '../../logica/desempate.js';
 import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { textoDia, textoLugar } from '../../logica/lugar.js';
 import { esWoDoble, tieneResultado } from '../../logica/tabla.js';
@@ -28,8 +29,28 @@ function EtiquetaPendiente({ partido }) {
 // Si algún equipo de estos partidos tiene escudo: si no, la lista se ve como siempre
 const conEscudosEn = (partidos, info) => hayEscudos(equiposDePartidos(partidos, info.equipoDe));
 
-export function SeccionPosiciones({ activa, filas, criterios, partidos, conTablaInicial, chip = null }) {
+// Vistas de la tabla en el celular (en pantallas anchas se ve siempre la completa)
+const VISTAS_TABLA = [
+  { valor: 'resumen', etiqueta: 'Resumen' },
+  { valor: 'completa', etiqueta: 'Completa' },
+  { valor: 'racha', etiqueta: 'Racha' },
+];
+
+export function SeccionPosiciones({
+  activa,
+  filas,
+  criterios,
+  partidos,
+  conTablaInicial,
+  chip = null,
+  vista = 'resumen',
+  onVista,
+  rachas,
+  movimientos,
+}) {
   const ultima = ultimaFechaJugada(partidos, conTablaInicial);
+  // La regla de desempate, una sola vez y siempre igual (el panel sigue mostrando las notas por pareja)
+  const frase = fraseDesempate(criterios);
   return (
     <section
       className={`seccion seccion--posiciones${activa ? ' seccion--activa' : ''}`}
@@ -40,8 +61,17 @@ export function SeccionPosiciones({ activa, filas, criterios, partidos, conTabla
         {chip}
         <span className="seccion__meta">{ultima > 0 ? `Hasta la fecha ${ultima}` : 'Todavía sin partidos jugados'}</span>
       </div>
-      <TablaPosiciones filas={filas} />
-      <NotasDesempate filas={filas} criterios={criterios} />
+      <div className="vistas-tabla">
+        <Segmentado
+          variante="vistas"
+          etiquetaGrupo="Vista de la tabla"
+          opciones={VISTAS_TABLA}
+          valor={vista}
+          onCambiar={onVista}
+        />
+      </div>
+      <TablaPosiciones filas={filas} vista={vista} rachas={rachas} movimientos={movimientos} />
+      {frase && <p className="frase-desempate">{frase}</p>}
     </section>
   );
 }

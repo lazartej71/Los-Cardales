@@ -17,10 +17,13 @@ import {
   fechasConTablaInicial,
   partidosDeEquipos,
   tieneTablaInicial,
+  ultimaFechaJugada,
   zonaElegida,
   zonasDeCategoria,
 } from '../../logica/consultas.js';
 import { categoriasDeModalidad, guardarModalidad, hayFutbol7 } from '../../logica/modalidades.js';
+import { movimientosDePuestos } from '../../logica/movimiento.js';
+import { rachaDeEquipo } from '../../logica/racha.js';
 import { calcularTabla } from '../../logica/tabla.js';
 import { SeccionFixture, SeccionPosiciones, SeccionResultados } from './Secciones.jsx';
 
@@ -48,6 +51,23 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
     [equipos, partidos, criterios, db.tablaInicial]
   );
   const conTablaInicial = tieneTablaInicial(db.tablaInicial, equipos);
+  // Vista de la tabla en el celular, racha de cada equipo y cuántos puestos se movió desde la fecha anterior
+  const vistaTabla = ui.vistaTabla ?? 'resumen';
+  const rachas = useMemo(
+    () => new Map(filas.map((f) => [f.equipo.id, rachaDeEquipo(f.equipo.id, partidos)])),
+    [filas, partidos]
+  );
+  const movimientos = useMemo(
+    () =>
+      movimientosDePuestos(filas, {
+        equipos,
+        partidos,
+        criterios,
+        tablaInicial: db.tablaInicial,
+        ultimaFecha: ultimaFechaJugada(partidos, conTablaInicial),
+      }),
+    [filas, equipos, partidos, criterios, db.tablaInicial, conTablaInicial]
+  );
   const fechas = useMemo(
     () => fechasConTablaInicial(agruparPorFecha(partidos), conTablaInicial),
     [partidos, conTablaInicial]
@@ -131,6 +151,10 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
                 partidos={partidos}
                 conTablaInicial={conTablaInicial}
                 chip={chip}
+                vista={vistaTabla}
+                onVista={(v) => cambiar({ vistaTabla: v })}
+                rachas={rachas}
+                movimientos={movimientos}
               />
               <SeccionFixture
                 key={zona.id}

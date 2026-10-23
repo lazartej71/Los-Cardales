@@ -61,6 +61,7 @@ export function App({ simulacion = SIMULACION }) {
     zonaId: null,
     seccion: 'posiciones',
     fecha: null,
+    vistaTabla: 'resumen', // la vista de la tabla en el celular: Resumen, Completa o Racha
   }));
   const [uiAdmin, setUiAdmin] = useState({
     seccion: null, // la primera del panel: Cargar

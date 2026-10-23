@@ -63,6 +63,35 @@ img.escudo { display: block; object-fit: contain; }
   .pos { width: 22px; height: 22px; font-size: 14px; }
 }
 
+/* Tabla pública: en el celular cada vista muestra sus columnas; en pantallas anchas, siempre la completa */
+.vistas-tabla { margin-bottom: 12px; }
+@media (max-width: 959px) {
+  [data-vista="resumen"] .col-detalle,
+  [data-vista="racha"] :is(.col-detalle, .col-resumen) { display: none; }
+}
+@media (min-width: 960px) {
+  .vistas-tabla, .tabla .col-racha { display: none; }
+}
+.racha { display: inline-flex; gap: 3px; vertical-align: middle; }
+.racha__r {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  font-family: var(--fuente); font-size: 11px; font-weight: 800; line-height: 1; color: var(--fondo);
+}
+.racha__r--v { background: var(--exito); }
+.racha__r--e { background: var(--tinta-suave); }
+.racha__r--d { background: var(--roja); color: var(--sobre-roja); }
+/* Subió o bajó desde la fecha anterior */
+.mov { display: inline-block; margin-left: 2px; font-size: 10px; line-height: 1; vertical-align: middle; }
+.mov--sube { color: var(--exito); }
+.mov--baja { color: var(--roja); }
+/* Celular: la columna del puesto crece para la flechita, así no pisa el nombre */
+@media (max-width: 479px) {
+  .tabla-scroll[data-vista] .tabla .col-pos { width: 42px; padding-left: 6px; }
+  .tabla-scroll[data-vista] .tabla .col-equipo { left: 42px; }
+}
+.frase-desempate { margin-top: 10px; font-size: 13px; color: var(--tinta-suave); }
+
+/* Notas de desempate por pareja: solo en el panel */
 .notas {
   list-style: none; margin: 12px 0 0; padding: 10px 12px; display: grid; gap: 6px;
   background: var(--superficie-2); border-radius: var(--radio-chico);

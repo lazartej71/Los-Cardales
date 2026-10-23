@@ -237,6 +237,12 @@ p { margin: 0; }
   .seg--zona .seg__btn { flex: 0 0 auto; padding: 0 18px; }
 }
 
+/* Vistas de la tabla pública (Resumen, Completa, Racha): letra común, como los botones de modalidad */
+.seg--vistas .seg__btn {
+  min-height: 44px; font-family: var(--fuente); font-size: 15px; font-weight: 700;
+  letter-spacing: 0; text-transform: none;
+}
+
 /* Chips (fechas, filtros) */
 .seg--chips { background: none; border: 0; padding: 0; gap: 8px; flex-wrap: wrap; border-radius: 0; }
 .seg--chips .seg__btn {
