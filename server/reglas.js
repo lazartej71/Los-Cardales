@@ -11,7 +11,7 @@ import { pagosDePartido } from '../src/logica/cuentas.js';
 import { PESO_MAXIMO_ESCUDO } from '../src/logica/escudos.js';
 import { nombrePredio, numeroVisible, textoDia, validarLugar } from '../src/logica/lugar.js';
 import { soloDigitos } from '../src/logica/expulsiones.js';
-import { noSePresento } from '../src/logica/tabla.js';
+import { noSePresento, tieneResultado } from '../src/logica/tabla.js';
 import {
   modalidadDeCategoria,
   modalidadDeEquipo,
@@ -48,25 +48,61 @@ function categoriaDeEquipo(datos, equipoId) {
   return zona ? zona.categoriaId : null;
 }
 
-// ¿Otro partido no postergado de la fecha ya usa esa cancha a esa hora?
-const canchaOcupada = (datos, fecha, { predio, cancha, hora }, partidoId = null) =>
-  datos.partidos.some(
+/**
+ * La próxima fecha que juega cada categoría (Map categoriaId → fecha): la primera con partidos por jugar
+ * desde la última que tiene resultados (un partido viejo que quedó sin cargar no cuenta), o la siguiente
+ * a esa. Las categorías pueden ir desfasadas: Libre recuperó una fecha y juega su 6 el mismo sábado que
+ * las demás su 5.
+ */
+function proximaFechaPorCategoria(partidos) {
+  const ultimaJugada = new Map();
+  for (const p of partidos.filter(tieneResultado)) {
+    ultimaJugada.set(p.categoriaId, Math.max(ultimaJugada.get(p.categoriaId) ?? 0, p.fecha));
+  }
+  const proxima = new Map();
+  for (const p of partidos.filter((p) => !p.postergado && !tieneResultado(p))) {
+    if (p.fecha < (ultimaJugada.get(p.categoriaId) ?? 0)) continue;
+    proxima.set(p.categoriaId, Math.min(proxima.get(p.categoriaId) ?? Infinity, p.fecha));
+  }
+  for (const [categoriaId, fecha] of ultimaJugada) if (!proxima.has(categoriaId)) proxima.set(categoriaId, fecha + 1);
+  return proxima;
+}
+
+// La jornada de un partido: cuántas fechas está por delante de la próxima de su categoría (0: el sábado
+// que viene). Dos partidos se juegan el mismo día si están en la misma jornada, aunque no en la misma fecha.
+function jornadas(datos) {
+  const proxima = proximaFechaPorCategoria(datos.partidos);
+  return (categoriaId, fecha) => fecha - (proxima.get(categoriaId) ?? fecha);
+}
+
+// ¿Otro partido por jugar de esa jornada ya usa esa cancha a esa hora? Los postergados y los que ya
+// se jugaron no la ocupan. Devuelve ese partido, o undefined.
+function canchaOcupada(datos, { categoriaId, fecha }, { predio, cancha, hora }, partidoId = null) {
+  const jornada = jornadas(datos);
+  const buscada = jornada(categoriaId, fecha);
+  return datos.partidos.find(
     (p) =>
       p.id !== partidoId &&
       !p.postergado &&
-      p.fecha === fecha &&
+      !tieneResultado(p) &&
       p.predio === predio &&
       p.cancha === cancha &&
-      p.hora === hora
+      p.hora === hora &&
+      jornada(p.categoriaId, p.fecha) === buscada
   );
-const textoOcupada = (fecha, { predio, cancha, hora }) =>
-  `La cancha ${numeroVisible(cancha)} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} en la fecha ${fecha}.`;
+}
+function textoOcupada(datos, ocupante, { predio, cancha, hora }) {
+  const categoria = datos.categorias.find((c) => c.id === ocupante.categoriaId)?.nombre ?? '';
+  const cruce = `${nombreDe(datos, ocupante.localId)} vs ${nombreDe(datos, ocupante.visitanteId)}`;
+  return `La cancha ${numeroVisible(cancha)} de ${nombrePredio(predio)} ya tiene un partido a las ${hora} ese día: ${cruce} (${categoria}, fecha ${ocupante.fecha}).`;
+}
 
-// Lugar y hora válidos (una cancha de la modalidad) y con la cancha libre en esa fecha (los postergados no la ocupan)
-function validarLugarLibre(datos, fecha, cuerpo, partidoId = null, modalidad = 'f11') {
+// Lugar y hora válidos (una cancha de la modalidad) y con la cancha libre en esa jornada
+function validarLugarLibre(datos, partido, cuerpo, partidoId = null, modalidad = 'f11') {
   const lugar = validarLugar(cuerpo, modalidad);
   if (lugar.error) return fallo(lugar.error);
-  if (canchaOcupada(datos, fecha, lugar.valor, partidoId)) return fallo(textoOcupada(fecha, lugar.valor), 409);
+  const ocupante = canchaOcupada(datos, partido, lugar.valor, partidoId);
+  if (ocupante) return fallo(textoOcupada(datos, ocupante, lugar.valor), 409);
   return lugar;
 }
 
@@ -76,8 +112,9 @@ function validarLugarLibre(datos, fecha, cuerpo, partidoId = null, modalidad = '
 function validarVuelveAJugarse(datos, partido, resultado) {
   const vuelve =
     partido.postergado && resultado.valor && resultado.valor.postergado === false && partido.predio && !partido.dia;
-  if (vuelve && canchaOcupada(datos, partido.fecha, partido, partido.id)) {
-    return fallo(`${textoOcupada(partido.fecha, partido).slice(0, -1)}: cambiale el lugar o la hora a este partido.`, 409);
+  const ocupante = vuelve && canchaOcupada(datos, partido, partido, partido.id);
+  if (ocupante) {
+    return fallo(`${textoOcupada(datos, ocupante, partido).slice(0, -1)}: cambiale el lugar o la hora a este partido.`, 409);
   }
   return resultado;
 }
@@ -106,7 +143,7 @@ export function validarPartidoNuevo(datos, cuerpo) {
       return fallo(`${nombre} ya tiene un partido en la fecha ${fecha}.`, 409);
     }
   }
-  const lugar = validarLugarLibre(datos, fecha, cuerpo, null, modalidadDeCategoria(categoria));
+  const lugar = validarLugarLibre(datos, { categoriaId, fecha }, cuerpo, null, modalidadDeCategoria(categoria));
   if (lugar.error) return lugar;
   return { valor: { categoria_id: categoriaId, fecha, local_id: localId, visitante_id: visitanteId, ...lugar.valor } };
 }
@@ -160,7 +197,7 @@ function validarCambioDe(datos, partido, cuerpo) {
   }
   if ('dia' in c) return validarReprogramacion(datos, partido, c);
   if ('predio' in c || 'cancha' in c || 'hora' in c) {
-    return validarLugarLibre(datos, partido.fecha, c, partidoId, modalidadDePartido(datos, partido));
+    return validarLugarLibre(datos, partido, c, partidoId, modalidadDePartido(datos, partido));
   }
   if ('postergado' in c) {
     if (typeof c.postergado !== 'boolean') return fallo('Indicá si el partido queda postergado o no.');

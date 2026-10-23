@@ -1060,3 +1060,35 @@ describe('migración 11: W.O. doble', () => {
     expect(await uno(`select ausente from public.partidos where id = ${id}`)).toEqual({ ausente: 'visitante' });
   });
 });
+
+describe('migración 12: la cancha ocupada se controla por jornada', () => {
+  const ids = [];
+  // Un partido de la fecha 59 de la categoría, en la cancha 2 de Los Cardales a las 10:00
+  const crear = async (categoria, goles = 'null, null') => {
+    const r = await comoAdmin(`insert into public.partidos
+        (categoria_id, fecha, local_id, visitante_id, goles_local, goles_visitante, predio, cancha, hora)
+      select ${categoria}, 59, min(e.id), max(e.id), ${goles}, 'los_cardales', 2, '10:00'
+      from (select e.id from public.equipos e join public.zonas z on z.id = e.zona_id
+        where z.categoria_id = ${categoria} and not e.baja order by e.id limit 2) e returning id`);
+    if (r.filas) ids.push(r.filas[0].id);
+    return r;
+  };
+
+  afterAll(async () => {
+    await db.exec(`delete from public.partidos where id in (${ids.join(',') || 0})`);
+  });
+
+  it('antes de la 12, la fecha 5 de una categoría choca con la fecha 5 de otra aunque ya se haya jugado', async () => {
+    expect((await crear(1, '2, 0')).error).toBeUndefined();
+    expect((await crear(2)).error).toMatch(/partidos_cancha_ocupada_idx/);
+  });
+
+  it('con la 12, la base ya no compara por número de fecha (lo controla la app, por jornada)', async () => {
+    await db.exec(leer('./migracion-12-cancha-por-jornada.sql'));
+    expect((await crear(2)).error).toBeUndefined();
+  });
+
+  it('si se corre dos veces, no falla', async () => {
+    await db.exec(leer('./migracion-12-cancha-por-jornada.sql'));
+  });
+});

@@ -72,15 +72,70 @@ describe('validarPartidoNuevo', () => {
     expect(validarPartidoNuevo(datos, nuevo({ hora: '1340' })).error).toBe('Escribí la hora como 13:40.');
   });
 
-  it('no deja dos partidos en la misma cancha a la misma hora de la misma fecha', () => {
+  it('no deja dos partidos en la misma cancha a la misma hora de la misma jornada', () => {
     const resultado = validarPartidoNuevo(conOcupada(), nuevo());
     expect(resultado.estado).toBe(409);
-    expect(resultado.error).toBe('La cancha 2 de Los Cardales ya tiene un partido a las 13:40 en la fecha 4.');
+    expect(resultado.error).toBe(
+      'La cancha 2 de Los Cardales ya tiene un partido a las 13:40 ese día: +35 A1 vs +35 A2 (+35, fecha 4).'
+    );
     expect(validarPartidoNuevo(conOcupada(), nuevo({ hora: '15:10' })).valor).toBeTruthy();
   });
 
   it('un postergado no ocupa la cancha', () => {
     expect(validarPartidoNuevo(conOcupada({ postergado: true }), nuevo()).valor).toBeTruthy();
+  });
+
+  it('un partido que ya se jugó no ocupa la cancha', () => {
+    expect(validarPartidoNuevo(conOcupada({ golesLocal: 1, golesVisitante: 0 }), nuevo()).valor).toBeTruthy();
+  });
+
+  describe('categorías desfasadas: se compara por jornada, no por número de fecha', () => {
+    // Libre recuperó una fecha: ya jugó la 5 y este sábado juega la 6; +35 ya jugó la 4 y juega la 5
+    const partidoDe = (id, categoriaId, fecha, local, visitante, cambios = {}) => ({
+      id,
+      categoriaId,
+      fecha,
+      localId: equipo(local),
+      visitanteId: equipo(visitante),
+      golesLocal: null,
+      golesVisitante: null,
+      postergado: false,
+      predio: null,
+      cancha: null,
+      hora: null,
+      ...cambios,
+    });
+    const desfasadas = {
+      ...datos,
+      partidos: [
+        partidoDe(701, 1, 5, 'Libre A1', 'Libre A2', { golesLocal: 2, golesVisitante: 0, ...LUGAR }),
+        partidoDe(702, 1, 6, 'Libre A3', 'Libre A4', { predio: 'los_cardales', cancha: 3, hora: '15:10' }),
+        partidoDe(703, 2, 4, '+35 A1', '+35 A2', { golesLocal: 1, golesVisitante: 1 }),
+      ],
+    };
+    const deMas35 = (lugar) => ({ categoriaId: 2, fecha: 5, localId: equipo('+35 A1'), visitanteId: equipo('+35 A2'), ...lugar });
+
+    it('la fecha 5 de +35 no choca con la fecha 5 de Libre, que ya se jugó', () => {
+      expect(validarPartidoNuevo(desfasadas, deMas35(LUGAR)).valor).toBeTruthy();
+    });
+
+    it('la fecha 5 de +35 choca con la fecha 6 de Libre, que se juega el mismo sábado', () => {
+      expect(validarPartidoNuevo(desfasadas, deMas35({ predio: 'los_cardales', cancha: 3, hora: '15:10' }))).toEqual({
+        error: 'La cancha 3 de Los Cardales ya tiene un partido a las 15:10 ese día: Libre A3 vs Libre A4 (Libre, fecha 6).',
+        estado: 409,
+      });
+    });
+
+    it('una fecha que se carga por adelantado no choca con la del sábado', () => {
+      const adelantada = { ...deMas35({ predio: 'los_cardales', cancha: 3, hora: '15:10' }), fecha: 6 };
+      expect(validarPartidoNuevo(desfasadas, adelantada).valor).toBeTruthy();
+    });
+
+    it('un partido viejo sin resultado no corre la jornada de su categoría', () => {
+      const viejo = partidoDe(704, 2, 2, '+35 A3', '+35 A4');
+      const conViejo = { ...desfasadas, partidos: [...desfasadas.partidos, viejo] };
+      expect(validarPartidoNuevo(conViejo, deMas35({ predio: 'los_cardales', cancha: 3, hora: '15:10' })).estado).toBe(409);
+    });
   });
 
   it('rechaza un equipo de otra categoría', () => {
@@ -154,7 +209,7 @@ describe('validarCambioPartido', () => {
     const resultado = validarCambioPartido(db, 501, { postergado: false });
     expect(resultado.estado).toBe(409);
     expect(resultado.error).toBe(
-      'La cancha 2 de Los Cardales ya tiene un partido a las 13:40 en la fecha 4: cambiale el lugar o la hora a este partido.'
+      'La cancha 2 de Los Cardales ya tiene un partido a las 13:40 ese día: +35 A1 vs +35 A2 (+35, fecha 4): cambiale el lugar o la hora a este partido.'
     );
     // Cargarle el resultado también lo saca de postergado
     expect(validarCambioPartido(db, 501, { golesLocal: 1, golesVisitante: 0 }).estado).toBe(409);
@@ -758,15 +813,21 @@ describe('Fútbol 7: modalidad de la cuenta, canchas y arancel', () => {
   });
 
   it('la cancha ocupada se nombra con su número de F7', () => {
-    const sin202 = { ...f7, partidos: f7.partidos.filter((p) => p.id !== 202) };
-    const choca = validarPartidoNuevo(sin202, {
+    // Sin el 202, y con el 201 (cancha 1 de Los Cardales) todavía sin resultado
+    const partidos = f7.partidos
+      .filter((p) => p.id !== 202)
+      .map((p) => (p.id === 201 ? { ...p, golesLocal: null, golesVisitante: null } : p));
+    const choca = validarPartidoNuevo({ ...f7, partidos }, {
       categoriaId: 10,
       fecha: 1,
       localId: 103,
       visitanteId: 104,
       ...lugar('los_cardales', 21, '15:30'),
     });
-    expect(choca).toEqual({ error: 'La cancha 1 de Los Cardales ya tiene un partido a las 15:30 en la fecha 1.', estado: 409 });
+    expect(choca).toEqual({
+      error: 'La cancha 1 de Los Cardales ya tiene un partido a las 15:30 ese día: F7 A1 vs F7 A2 (Libre, fecha 1).',
+      estado: 409,
+    });
   });
 
   it('el lugar de un partido de F7 se cambia a otra cancha de F7', () => {
