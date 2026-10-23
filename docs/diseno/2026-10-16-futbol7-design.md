@@ -50,10 +50,10 @@ Del prompt, salvo lo que se cambió el 16/10 (marcado):
 
 | Tema | Decisión |
 | --- | --- |
-| Modalidad en la vista pública | Conmutador **F11 \| F7** en la cabecera, a la derecha del nombre. Un toque para cambiar. |
+| Modalidad en la vista pública | Conmutador **F11 \| F7** en la cabecera, a la derecha del nombre. Un toque para cambiar. (Cambió el 23/10: dos botones anchos debajo del nombre, y el título es siempre el del campeonato. Ver `2026-10-23-vista-publica-design.md`.) |
 | Recordar la elección | El celular recuerda la última modalidad (`localStorage`, con el cuidado de `almacenLocal()`). La primera vez abre en F11. |
 | Navegación | Se mantiene Categoría → Zona y la barra Posiciones / Fixture / Resultados. Las categorías dependen de la modalidad; la zona aparece solo si hay más de una. |
-| Nombre (16/10) | Fútbol 7 es parte del mismo campeonato y no tiene nombre propio. En F7 la cabecera dice "Fútbol 7"; en F11 sigue el nombre del campeonato (hoy "Copa GP"). |
+| Nombre (16/10) | Fútbol 7 es parte del mismo campeonato y no tiene nombre propio. En F7 la cabecera dice "Fútbol 7"; en F11 sigue el nombre del campeonato (hoy "Copa GP"). (Cambió el 23/10: dos botones anchos debajo del nombre, y el título es siempre el del campeonato. Ver `2026-10-23-vista-publica-design.md`.) |
 | Distinción visual | F11 conserva `--marca` (`#ffb21a`) y F7 usa `--info` (`#7cc8ff`). Una variable de acento cambia según la modalidad. Hay un chip con ícono junto al título de cada sección. Logo, botón primario, tipografías y radios no cambian. |
 | **Permisos (cambia el 16/10)** | Cada organizador ve y toca **solo su modalidad**: Franco, F11; Gaby, F7. Eso incluye partidos, equipos, cuentas, suspendidos y su arancel. El superadmin ve todo. La restricción va **también en la base** (reglas RLS), como con los veedores. El prompt decía "sin permisos por modalidad"; cambió porque son dos organizadores. |
 | **Cuentas (cambia el 16/10)** | **Separadas:** cada equipo tiene su cuenta, como hoy en F11, y cada organizador cobra lo suyo. **No** hay cuenta única por club ni vínculo entre clubes: un club que juega las dos modalidades tiene un equipo en cada una, sin relación en la base. |
@@ -203,7 +203,7 @@ Gaby cobra distinto según la categoría (Libre $65.000, +30 $60.000), así que 
 
 ### Vista pública
 
-- **Cabecera:** el nombre y, a su derecha, el conmutador **F11 | F7**: botones con `aria-pressed`, de al menos 44 px de alto.
+- **Cabecera:** el nombre y, a su derecha, el conmutador **F11 | F7**: botones con `aria-pressed`, de al menos 44 px de alto. (Cambió el 23/10: dos botones anchos debajo del nombre, y el título es siempre el del campeonato. Ver `2026-10-23-vista-publica-design.md`.)
   - En el celular van en la misma fila y el nombre se achica si no entra (a confirmar con las maquetas).
   - En F7, el nombre dice "Fútbol 7".
 - **Cambiar de modalidad:**

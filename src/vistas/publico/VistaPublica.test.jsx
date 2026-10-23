@@ -284,11 +284,12 @@ describe('Fútbol 11 y Fútbol 7', () => {
     expect(html).toContain('Campeonato de Fútbol');
   });
 
-  it('en Fútbol 7 muestra sus categorías y equipos, con el título y el acento de F7', () => {
+  it('en Fútbol 7 muestra sus categorías y equipos, con el nombre del campeonato y el acento de F7', () => {
     const html = dibujar(conFutbol7(), { modalidad: 'f7' });
     expect(html).toContain('data-modalidad="f7"');
-    expect(html).toMatch(/<h1 class="cabecera__titulo">Fútbol 7<\/h1>/);
-    expect(html).toMatch(/aria-label="Fútbol 7" aria-pressed="true"/);
+    expect(html).toMatch(/<h1 class="cabecera__titulo">Campeonato de Fútbol<\/h1>/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Fútbol 7</);
+    expect(html).toMatch(/aria-pressed="false"[^>]*>Fútbol 11</);
     expect(html).toContain('F7 A1');
     expect(html).not.toContain('Libre A1');
     // Una sola categoría (la Libre de F7): no aparece el selector de +35
@@ -306,7 +307,7 @@ describe('Fútbol 11 y Fútbol 7', () => {
     const html = dibujar(conFutbol7(), { modalidad: 'f11' });
     expect(html).toContain('FÚTBOL 11');
     expect(html).toMatch(/<h1 class="cabecera__titulo">Campeonato de Fútbol<\/h1>/);
-    expect(html).toMatch(/aria-label="Fútbol 11" aria-pressed="true"/);
+    expect(html).toMatch(/aria-pressed="true"[^>]*>Fútbol 11</);
     expect(html).toContain('Libre A1');
     expect(html).not.toContain('F7 A1');
   });

@@ -155,26 +155,23 @@ p { margin: 0; }
   font-family: var(--fuente-titulo); font-weight: 400;
   font-size: clamp(18px, 5vw, 24px); line-height: 1.1; letter-spacing: 0.03em; text-transform: uppercase;
 }
-/* Nombre y conmutador F11 | F7 en la misma fila; si no entra, el nombre se achica */
-.cabecera__fila {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  max-width: 100%; min-width: 0;
-}
-.cabecera__fila .cabecera__titulo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cabecera__fila .conmutador { margin-top: 10px; }
-
-/* Conmutador de modalidad: dos botones de al menos 44 px */
+/* Modalidad: dos botones anchos debajo del nombre. Letra común y sin mayúsculas, para no
+   confundirse con la barra de categorías */
 .conmutador {
-  display: inline-flex; flex: 0 0 auto; gap: 2px; padding: 3px;
-  background: var(--superficie); border: 1px solid var(--linea-fuerte); border-radius: 999px;
+  display: flex; gap: 4px; width: min(100%, 420px); margin-top: 14px; padding: 4px;
+  background: var(--superficie); border: 1px solid var(--linea-fuerte); border-radius: 14px;
 }
 .conmutador__btn {
-  min-width: 48px; min-height: 44px; padding: 0 12px;
-  border: 0; border-radius: 999px; background: transparent; color: var(--tinta-suave);
-  font-family: var(--fuente-titulo); font-weight: 400; font-size: 15px; letter-spacing: 0.04em;
+  flex: 1 1 0; min-height: 46px;
+  border: 0; border-radius: 10px; background: transparent; color: var(--tinta-suave);
+  font-family: var(--fuente); font-size: 16px; font-weight: 700;
+  transition: background-color 0.15s, color 0.15s;
 }
 .conmutador__btn:hover { color: var(--tinta); }
-.conmutador__btn[aria-pressed="true"] { background: var(--acento-boton); color: var(--sobre-acento); }
+.conmutador__btn[aria-pressed="true"] {
+  background: var(--acento-boton); color: var(--sobre-acento);
+  box-shadow: 0 4px 16px var(--acento-sombra);
+}
 
 /* Chip de la modalidad junto al título de cada sección */
 .chip-modalidad {

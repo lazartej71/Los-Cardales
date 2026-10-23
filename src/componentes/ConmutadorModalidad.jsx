@@ -1,5 +1,6 @@
 /**
- * Conmutador F11 | F7 de la cabecera pública: un toque para pasar de una modalidad a la otra.
+ * Botones Fútbol 11 | Fútbol 7 de la cabecera pública, a lo ancho y debajo del nombre: un toque para
+ * pasar de una modalidad a la otra.
  */
 
 import { MODALIDADES } from '../datos/constantes.js';
@@ -12,11 +13,10 @@ export function ConmutadorModalidad({ valor, onCambiar }) {
           key={m.id}
           type="button"
           className="conmutador__btn"
-          aria-label={m.nombre}
           aria-pressed={m.id === valor}
           onClick={() => onCambiar(m.id)}
         >
-          {m.corto}
+          {m.nombre}
         </button>
       ))}
     </div>

@@ -1,7 +1,7 @@
 /**
  * Vista pública (sin login). Nunca muestra expulsados, suspendidos ni teléfonos.
- * Con Fútbol 7 cargado, el conmutador de la cabecera elige la modalidad (el celular la recuerda) y la
- * vista toma su acento (data-modalidad) y su chip. Sin Fútbol 7, se ve como siempre.
+ * Con Fútbol 7 cargado, los botones Fútbol 11 | Fútbol 7 de la cabecera eligen la modalidad (el celular
+ * la recuerda) y la vista toma su acento (data-modalidad) y su chip. Sin Fútbol 7, se ve como siempre.
  */
 
 import { useMemo, useRef } from 'react';
@@ -90,15 +90,9 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
       <header className="cabecera" ref={refPortada}>
         <div className="contenedor cabecera__inner">
           <Logo className="cabecera__logo" />
-          {conFutbol7 ? (
-            // Nombre y conmutador en la misma fila (si no entra, el nombre se achica)
-            <div className="cabecera__fila">
-              <h1 className="cabecera__titulo">{modalidad === 'f7' ? 'Fútbol 7' : db.configuracion.nombreCampeonato}</h1>
-              <ConmutadorModalidad valor={modalidad} onCambiar={cambiarModalidad} />
-            </div>
-          ) : (
-            <h1 className="cabecera__titulo">{db.configuracion.nombreCampeonato}</h1>
-          )}
+          {/* El nombre del campeonato en las dos modalidades: el botón activo ya dice cuál se ve */}
+          <h1 className="cabecera__titulo">{db.configuracion.nombreCampeonato}</h1>
+          {conFutbol7 && <ConmutadorModalidad valor={modalidad} onCambiar={cambiarModalidad} />}
         </div>
       </header>
 

@@ -103,7 +103,7 @@ El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el res
 
 **Fútbol 7.** Es parte del mismo sitio, panel y base. Cada categoría es de una modalidad (`categorias.modalidad`) y de ahí la heredan zonas, equipos y partidos.
 
-- **Vista pública:** con Fútbol 7 cargado aparece el botón **F11 | F7** en la cabecera, y el celular recuerda la elección. En Fútbol 7 todo toma el celeste y la cabecera dice "Fútbol 7".
+- **Vista pública:** con Fútbol 7 cargado aparecen debajo del nombre del campeonato dos botones, **Fútbol 11** y **Fútbol 7**, y el celular recuerda la elección. En Fútbol 7 todo toma el celeste; el título sigue siendo el nombre del campeonato.
 - **Cada cuenta ve su modalidad** (`administradores.modalidad`):
   - Franco (`f11`) ve y toca solo Fútbol 11, incluidas cuentas, delegados y suspendidos;
   - Gaby (`f7`) ve y toca solo Fútbol 7;
@@ -118,7 +118,7 @@ El veedor ingresa con su usuario (`veedor1`). La base solo le deja cargar el res
 
 1. Correr `supabase/migracion-10a-futbol7.sql` en Supabase. El sitio publicado sigue igual.
 2. Publicar el código (pasar a `main`). Sin datos de Fútbol 7, el sitio se ve como siempre.
-3. Generar y correr `supabase/migracion-10b-futbol7-datos.sql`. Desde ahí aparece el botón F11 | F7.
+3. Generar y correr `supabase/migracion-10b-futbol7-datos.sql`. Desde ahí aparecen los botones Fútbol 11 y Fútbol 7.
 4. Crear la cuenta de Gaby (pasos 1 y 2 de "Crear una cuenta de admin", con el usuario `gaby1`) y en el SQL Editor:
    ```sql
    insert into public.administradores (user_id, nombre, modalidad)
