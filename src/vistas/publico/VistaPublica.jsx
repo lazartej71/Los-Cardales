@@ -9,6 +9,7 @@ import { ChipModalidad } from '../../componentes/ChipModalidad.jsx';
 import { ConmutadorModalidad } from '../../componentes/ConmutadorModalidad.jsx';
 import { Icono } from '../../componentes/Icono.jsx';
 import { Logo } from '../../componentes/Logo.jsx';
+import { PieSitio } from '../../componentes/PieSitio.jsx';
 import { Segmentado } from '../../componentes/Segmentado.jsx';
 import {
   agruparPorFecha,
@@ -219,6 +220,8 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
           </nav>
         </>
       )}
+
+      <PieSitio />
     </div>
   );
 }

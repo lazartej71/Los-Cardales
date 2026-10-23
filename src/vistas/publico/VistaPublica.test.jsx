@@ -46,6 +46,7 @@ describe('VistaPublica', () => {
     const html = dibujar(crearDatosEjemplo());
     expect(html).toContain('Libre A3');
     expect(html).toContain('Zona B');
+    expect(html).toContain('Seguí al campeonato');
   });
 
   it('no muestra el aviso para instalar la app', () => {
@@ -99,6 +100,7 @@ describe('VistaPublica', () => {
   it('avisa si todavía no hay categorías cargadas', () => {
     const vacia = { ...zonaUnica, categorias: [], zonas: [], equipos: [], partidos: [], tablaInicial: [] };
     expect(dibujar(vacia)).toContain('Todavía no hay categorías cargadas');
+    expect(dibujar(vacia)).toContain('Seguí al campeonato');
   });
 
   it('muestra un W.O. y quién no se presentó', () => {

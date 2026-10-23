@@ -91,6 +91,21 @@ const ICONOS = {
   ),
   // Mi equipo: el CSS la rellena cuando el equipo está marcado
   estrella: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  // Redes del pie: trazos simples, el nombre va escrito debajo
+  facebook: <path d="M15.5 3.5H13a3.5 3.5 0 0 0-3.5 3.5v3H7v3.5h2.5v7h3.5v-7h2.6l.5-3.5H13V7.6a1 1 0 0 1 1-1h1.5z" />,
+  instagram: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M17.2 6.8v.01" />
+    </>
+  ),
+  whatsapp: (
+    <>
+      <path d="M3.5 20.5l1.3-4.3a8.5 8.5 0 1 1 3.1 3.1z" />
+      <path d="M9 8.5c.3 3.2 3 5.9 6.3 6.3l1-1.4-2.1-1-.9.8a5 5 0 0 1-2.6-2.6l.8-.9-1-2.1z" />
+    </>
+  ),
 };
 
 export function Icono({ nombre, tamano = 20 }) {

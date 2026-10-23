@@ -37,6 +37,13 @@ export const MODALIDADES = [
   { id: 'f7', nombre: 'Fútbol 7', corto: 'F7', chip: 'FÚTBOL 7' },
 ];
 
+// Redes del campeonato (las pasó el usuario el 23/10). Una sin url no se muestra en el pie.
+export const REDES = [
+  { id: 'facebook', nombre: 'Facebook', url: 'https://www.facebook.com/loscardalesfutbol' },
+  { id: 'instagram', nombre: 'Instagram', url: 'https://www.instagram.com/loscardalesfut/' },
+  { id: 'whatsapp', nombre: 'WhatsApp', url: 'https://wa.me/5493814490189' },
+];
+
 // Predios donde se juega y sus canchas (las migraciones 3, 4 y 10a repiten estas listas en la base).
 // Las de Fútbol 7 son otras canchas: en la base llevan 21 y más, y se ven como 1, 2, 3.
 export const PREDIOS = [

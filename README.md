@@ -5,7 +5,7 @@ App web mobile-first del campeonato de fútbol amateur, con dos modalidades:
 - **Fútbol 11** (organiza Franco): Libre, +30, +35, +40 y +45.
 - **Fútbol 7** (organiza Gaby): Libre (zonas A y B) y +30. Se suma con las migraciones 10a y 10b (ver "Fútbol 7").
 
-- **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido (y arriba, aparte, los postergados que se recuperan en un día especial), y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos.
+- **Vista pública:** tabla de posiciones que se calcula sola, fixture con predio, cancha y hora de cada partido (y arriba, aparte, los postergados que se recuperan en un día especial), y resultados por fecha. Nunca muestra expulsados, suspendidos ni teléfonos. Arriba, los botones Fútbol 11 y Fútbol 7; la tabla tiene vistas Resumen, Completa y Racha, flechitas de quién subió o bajó y una frase con el orden de desempate; cada persona puede marcar **su equipo** (queda guardado en su celular) y al final está el pie con Facebook, Instagram y WhatsApp.
 - **Instalar como app:** la vista pública y el panel se instalan por separado (cada uno con su manifiesto en `public/`). El panel conviene instalarlo desde `admin.loscardalesfutbol.com`: en Android, si la app pública ya está instalada, Chrome no deja instalar `www…/admin` porque queda dentro de ella.
 - **Panel de administración:** se abre en `/admin` (por ejemplo `https://www.loscardalesfutbol.com/admin`; el link viejo `/#admin` lleva ahí). Desde ahí:
   - se arman los partidos de cada fecha y se reprograman los postergados para el día especial en que se recuperan (día, predio, cancha y hora; siguen postergados hasta que se cargan y suman en su fecha original);
