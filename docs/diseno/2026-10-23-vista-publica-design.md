@@ -45,7 +45,7 @@ Se miraron en celular las tablas de la Champions League, la Premier League, Prom
 - Se respeta `prefers-reduced-motion` (ya hay una regla global).
 - La barra inferior fija mide 64 px (`--nav-alto`) y solo existe en celular. Nada que quede al final de la página puede quedar tapado por ella.
 - Los textos van en español rioplatense con voseo ("Seguí al campeonato", "Tocá tu equipo").
-- Las pruebas existentes (hoy 428) siguen pasando. Lo nuevo lleva sus pruebas, en el estilo del proyecto (funciones puras en `src/logica/` y `renderToString` para los componentes).
+- Las pruebas existentes (hoy 621) siguen pasando. Lo nuevo lleva sus pruebas, en el estilo del proyecto (funciones puras en `src/logica/` y `renderToString` para los componentes).
 - Cada paso termina con un commit y un push a `dev`. El pasaje de `dev` a `main` lo hace o lo pide el usuario.
 
 ## Qué se hace
