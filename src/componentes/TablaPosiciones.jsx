@@ -120,7 +120,7 @@ export function TablaPosiciones({
                           type="button"
                           className="estrella"
                           aria-pressed={mia}
-                          aria-label={`${mia ? 'Dejar de seguir a' : 'Seguir a'} ${f.equipo.nombre}`}
+                          aria-label={`Seguir a ${f.equipo.nombre}`}
                           onClick={() => onMiEquipo(f.equipo.id)}
                         >
                           <Icono nombre="estrella" tamano={18} />

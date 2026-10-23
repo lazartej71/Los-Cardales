@@ -47,6 +47,8 @@ describe('VistaPublica', () => {
     expect(html).toContain('Libre A3');
     expect(html).toContain('Zona B');
     expect(html).toContain('Seguí al campeonato');
+    // Con la barra inferior, el pie deja el espacio para que no lo tape
+    expect(html).toContain('class="pie pie--con-barra"');
   });
 
   it('no muestra el aviso para instalar la app', () => {
@@ -101,6 +103,8 @@ describe('VistaPublica', () => {
     const vacia = { ...zonaUnica, categorias: [], zonas: [], equipos: [], partidos: [], tablaInicial: [] };
     expect(dibujar(vacia)).toContain('Todavía no hay categorías cargadas');
     expect(dibujar(vacia)).toContain('Seguí al campeonato');
+    // Sin categorías no hay barra inferior: el pie no deja espacio de más
+    expect(dibujar(vacia)).toContain('class="pie"');
   });
 
   it('muestra un W.O. y quién no se presentó', () => {
@@ -298,9 +302,9 @@ describe('Mi equipo', () => {
     expect(html).toContain('Tu equipo');
     expect(html).toContain('2.º · 4 puntos');
     expect(html).toContain('Fecha 3 · vs Libre A4');
-    expect(html).toMatch(
-      /aria-pressed="true"[^>]*aria-label="Dejar de seguir a Libre A1"|aria-label="Dejar de seguir a Libre A1"[^>]*aria-pressed="true"/
-    );
+    // La etiqueta no cambia: el estado lo dice aria-pressed (si no, se anuncia "Dejar de seguir…, presionado")
+    expect(html).toMatch(/aria-pressed="true"[^>]*aria-label="Seguir a Libre A1"/);
+    expect(html).not.toContain('Dejar de seguir');
     expect(html).toContain('fila--mia');
     expect(html).not.toContain('Tocá la estrella de tu equipo para seguirlo.');
   });

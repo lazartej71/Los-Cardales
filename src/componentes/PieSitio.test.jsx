@@ -14,6 +14,11 @@ describe('PieSitio', () => {
     expect(html).toContain('© 2026 Los Cardales');
   });
 
+  it('con la barra inferior del celular deja su espacio sin depender de :has()', () => {
+    expect(renderToString(<PieSitio anio={2026} conBarra />)).toContain('class="pie pie--con-barra"');
+    expect(renderToString(<PieSitio anio={2026} />)).toContain('class="pie"');
+  });
+
   it('una red sin dirección no aparece', () => {
     const html = renderToString(<PieSitio anio={2026} redes={[{ ...REDES[0], url: '' }, REDES[1]]} />);
     expect(html).not.toContain('Facebook');

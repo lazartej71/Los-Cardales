@@ -295,7 +295,8 @@ p { margin: 0; }
 .pie::before {
   content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--acento-degrade);
 }
-.publico:has(.nav-inferior) .pie {
+/* Con la barra inferior fija del celular, el pie le deja su espacio (sin depender de :has()) */
+.pie--con-barra {
   padding-bottom: calc(var(--nav-alto) + 24px + env(safe-area-inset-bottom, 0px));
 }
 .pie__titulo {
@@ -339,7 +340,7 @@ p { margin: 0; }
 }
 @media (min-width: 960px) {
   .nav-inferior { display: none; }
-  .publico:has(.nav-inferior) .pie { padding-bottom: 24px; }
+  .pie--con-barra { padding-bottom: 24px; }
 }
 
 /* Cartel de la simulación (npm run simulacion): queda fijo arriba y corre la barra de categorías */

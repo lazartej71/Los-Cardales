@@ -221,7 +221,8 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
         </>
       )}
 
-      <PieSitio />
+      {/* Con categoría y zona está la barra inferior del celular: el pie le deja su espacio */}
+      <PieSitio conBarra={Boolean(categoria && zona)} />
     </div>
   );
 }

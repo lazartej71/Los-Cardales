@@ -1,16 +1,17 @@
 /**
  * Pie de la vista pública: las redes del campeonato (cada una abre en otra pestaña) y el año.
+ * conBarra: en el celular, la barra inferior fija está debajo y el pie le deja su espacio.
  */
 
 import { REDES } from '../datos/constantes.js';
 import { hoyEnArgentina } from '../logica/cuentas.js';
 import { Icono } from './Icono.jsx';
 
-export function PieSitio({ redes = REDES, anio = Number(hoyEnArgentina().slice(0, 4)) }) {
+export function PieSitio({ redes = REDES, anio = Number(hoyEnArgentina().slice(0, 4)), conBarra = false }) {
   // Una red sin dirección no se muestra: no hay botones que no llevan a ningún lado
   const conDireccion = redes.filter((r) => r.url);
   return (
-    <footer className="pie">
+    <footer className={conBarra ? 'pie pie--con-barra' : 'pie'}>
       <div className="contenedor">
         <p className="pie__titulo">Seguí al campeonato</p>
         {conDireccion.length > 0 && (

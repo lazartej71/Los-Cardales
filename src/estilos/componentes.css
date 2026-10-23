@@ -95,9 +95,9 @@ img.escudo { display: block; object-fit: contain; }
 .equipo-celda .estrella {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px;
   margin-block: -12px; margin-left: auto; margin-right: -10px; padding: 0;
-  border: 0; background: none; color: var(--linea-fuerte);
+  border: 0; background: none; color: var(--tinta-suave);
 }
-.estrella:hover { color: var(--tinta-suave); }
+.estrella:hover { color: var(--tinta); }
 .estrella[aria-pressed="true"] { color: var(--acento); }
 .estrella[aria-pressed="true"] svg { fill: currentColor; }
 .estrella:focus-visible { outline-offset: -6px; }
@@ -105,7 +105,8 @@ img.escudo { display: block; object-fit: contain; }
 @media (max-width: 479px) {
   [data-vista="completa"] .estrella { display: none; }
 }
-.fila--mia > * { background: var(--acento-suave); }
+/* .tabla adelante: si no, pierde contra el fondo de .tabla th/td */
+.tabla .fila--mia > * { background: var(--acento-suave); }
 .tabla .fila--mia .col-equipo { color: var(--acento-fuerte); }
 .mi-equipo {
   display: grid; gap: 2px; width: 100%; margin-bottom: 12px; padding: 10px 12px; text-align: left;
@@ -117,7 +118,8 @@ img.escudo { display: block; object-fit: contain; }
 .mi-equipo__puesto { font-size: 14px; color: var(--tinta-2); }
 .mi-equipo__proximo { font-size: 14px; font-weight: 600; color: var(--acento-fuerte); }
 li.partido--mio { padding-left: 10px; box-shadow: inset 3px 0 0 var(--acento); }
-.resultado--mio { border-left: 3px solid var(--acento); }
+/* .resultado.resultado--mio: si no, el borde de .resultado (más abajo en el archivo) le gana */
+.resultado.resultado--mio { border-left: 3px solid var(--acento); }
 
 /* Notas de desempate por pareja: solo en el panel */
 .notas {
