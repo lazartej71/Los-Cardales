@@ -18,6 +18,7 @@ import { useRutaAdmin } from './hooks/useRutaAdmin.js';
 import { usuarioDeEmail, useSesion } from './hooks/useSesion.js';
 import { useToast } from './hooks/useToast.js';
 import { hoyEnArgentina } from './logica/cuentas.js';
+import { leerMiEquipoGuardado } from './logica/miEquipo.js';
 import { leerModalidadGuardada } from './logica/modalidades.js';
 import { PanelAdmin } from './vistas/admin/PanelAdmin.jsx';
 import { PantallaLogin } from './vistas/admin/PantallaLogin.jsx';
@@ -62,6 +63,7 @@ export function App({ simulacion = SIMULACION }) {
     seccion: 'posiciones',
     fecha: null,
     vistaTabla: 'resumen', // la vista de la tabla en el celular: Resumen, Completa o Racha
+    miEquipo: leerMiEquipoGuardado(almacenLocal()), // el equipo que sigue la persona, uno por modalidad
   }));
   const [uiAdmin, setUiAdmin] = useState({
     seccion: null, // la primera del panel: Cargar

@@ -21,11 +21,14 @@ import {
   zonaElegida,
   zonasDeCategoria,
 } from '../../logica/consultas.js';
+import { alternarMiEquipo, guardarMiEquipo, resumenMiEquipo } from '../../logica/miEquipo.js';
 import { categoriasDeModalidad, guardarModalidad, hayFutbol7 } from '../../logica/modalidades.js';
 import { movimientosDePuestos } from '../../logica/movimiento.js';
 import { rachaDeEquipo } from '../../logica/racha.js';
 import { calcularTabla } from '../../logica/tabla.js';
 import { SeccionFixture, SeccionPosiciones, SeccionResultados } from './Secciones.jsx';
+
+const SIN_EQUIPO = { f11: null, f7: null };
 
 const SECCIONES_PUBLICAS = [
   { id: 'posiciones', etiqueta: 'Posiciones', icono: 'podio' },
@@ -86,6 +89,22 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
       },
     };
   }, [db.equipos, db.zonas, zona]);
+
+  // Mi equipo: el que la persona sigue en esta modalidad. Si ya no existe o se dio de baja, se ignora.
+  const miEquipo = ui.miEquipo ?? SIN_EQUIPO;
+  const equipoSeguido = miEquipo[modalidad] ?? null;
+  const resumenEquipo = useMemo(
+    () => (equipoSeguido ? resumenMiEquipo(db, equipoSeguido, modalidad) : null),
+    [db, equipoSeguido, modalidad]
+  );
+  const miEquipoId = resumenEquipo ? equipoSeguido : null;
+  const alternarEquipo = (equipoId) => {
+    const nuevo = alternarMiEquipo(miEquipo, modalidad, equipoId);
+    cambiar({ miEquipo: nuevo });
+    guardarMiEquipo(almacen, nuevo);
+  };
+  const irAMiEquipo = () =>
+    cambiar({ categoriaId: resumenEquipo.zona.categoriaId, zonaId: resumenEquipo.zona.id, fecha: null });
 
   // Resultados arranca en la fecha que se está jugando (salvo que la persona haya elegido otra)
   const enJuego = fechaEnJuego(fechas);
@@ -155,6 +174,11 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
                 onVista={(v) => cambiar({ vistaTabla: v })}
                 rachas={rachas}
                 movimientos={movimientos}
+                resumenEquipo={resumenEquipo}
+                miEquipoId={miEquipoId}
+                onMiEquipo={alternarEquipo}
+                onIrAMiEquipo={irAMiEquipo}
+                nombreDe={info.nombreDe}
               />
               <SeccionFixture
                 key={zona.id}
@@ -164,6 +188,7 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
                 info={info}
                 conTablaInicial={conTablaInicial}
                 chip={chip}
+                miEquipoId={miEquipoId}
               />
               <SeccionResultados
                 activa={ui.seccion === 'resultados'}
@@ -173,6 +198,7 @@ export function VistaPublica({ db, ui, setUi, almacen = null }) {
                 info={info}
                 conTablaInicial={conTablaInicial}
                 chip={chip}
+                miEquipoId={miEquipoId}
               />
             </div>
           </main>

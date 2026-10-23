@@ -65,9 +65,19 @@ function Movimiento({ puestos }) {
 
 /* ---------- Tabla de posiciones ----------
    resaltar: { ids: Set, version } para destacar las filas que cambiaron.
-   Solo en la vista pública: vista ('resumen' | 'completa' | 'racha'), rachas (Map equipoId → ['V', 'E'…])
-   y movimientos (Map equipoId → puestos que subió o bajó). Sin ellas se ve como siempre. */
-export function TablaPosiciones({ filas, resaltar, etiqueta = 'Tabla de posiciones', vista, rachas, movimientos }) {
+   Solo en la vista pública: vista ('resumen' | 'completa' | 'racha'), rachas (Map equipoId → ['V', 'E'…]),
+   movimientos (Map equipoId → puestos que subió o bajó), miEquipoId y onMiEquipo (la estrella de cada
+   equipo). Sin ellas se ve como siempre. */
+export function TablaPosiciones({
+  filas,
+  resaltar,
+  etiqueta = 'Tabla de posiciones',
+  vista,
+  rachas,
+  movimientos,
+  miEquipoId = null,
+  onMiEquipo,
+}) {
   // Escudos solo si algún equipo de la tabla tiene: si no, se ve como siempre
   const conEscudos = hayEscudos(filas.map((f) => f.equipo));
   const conRacha = vista === 'racha' && Boolean(rachas);
@@ -90,7 +100,10 @@ export function TablaPosiciones({ filas, resaltar, etiqueta = 'Tabla de posicion
         <tbody>
           {filas.map((f) => {
             const destacada = resaltar && resaltar.ids.has(f.equipo.id);
-            const clases = [f.pos <= 2 ? 'fila--top' : '', destacada ? 'fila--flash' : ''].join(' ').trim();
+            const mia = miEquipoId !== null && f.equipo.id === miEquipoId;
+            const clases = [f.pos <= 2 ? 'fila--top' : '', destacada ? 'fila--flash' : '', mia ? 'fila--mia' : '']
+              .join(' ')
+              .trim();
             return (
               <tr key={destacada ? `${f.equipo.id}-${resaltar.version}` : f.equipo.id} className={clases || undefined}>
                 <td className="col-pos">
@@ -98,10 +111,21 @@ export function TablaPosiciones({ filas, resaltar, etiqueta = 'Tabla de posicion
                   {movimientos && <Movimiento puestos={movimientos.get(f.equipo.id)} />}
                 </td>
                 <th scope="row" className="col-equipo" title={f.equipo.nombre}>
-                  {conEscudos ? (
+                  {conEscudos || onMiEquipo ? (
                     <span className="equipo-celda">
-                      <Escudo equipo={f.equipo} />
+                      {conEscudos && <Escudo equipo={f.equipo} />}
                       <span className="equipo-celda__nombre">{f.equipo.nombre}</span>
+                      {onMiEquipo && (
+                        <button
+                          type="button"
+                          className="estrella"
+                          aria-pressed={mia}
+                          aria-label={`${mia ? 'Dejar de seguir a' : 'Seguir a'} ${f.equipo.nombre}`}
+                          onClick={() => onMiEquipo(f.equipo.id)}
+                        >
+                          <Icono nombre="estrella" tamano={18} />
+                        </button>
+                      )}
                     </span>
                   ) : (
                     f.equipo.nombre

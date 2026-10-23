@@ -89,6 +89,8 @@ const ICONOS = {
       <path d="M12 11v5.5M12 7.5v.5" />
     </>
   ),
+  // Mi equipo: el CSS la rellena cuando el equipo está marcado
+  estrella: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
 };
 
 export function Icono({ nombre, tamano = 20 }) {

@@ -281,6 +281,43 @@ describe('tabla pública', () => {
   });
 });
 
+describe('Mi equipo', () => {
+  const conMiEquipo = (id) => ({ miEquipo: { f11: id, f7: null } });
+
+  it('cada equipo tiene su estrella y, sin equipo marcado, se explica para qué sirve', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).toContain('aria-label="Seguir a Libre A1"');
+    expect(html).toContain('Tocá la estrella de tu equipo para seguirlo.');
+    expect(html).not.toContain('Tu equipo');
+  });
+
+  it('con un equipo marcado: tarjeta con su puesto y su próximo partido, y la fila resaltada', () => {
+    const html = dibujar(crearDatosEjemplo(), conMiEquipo(1));
+    expect(html).toContain('Tu equipo');
+    expect(html).toContain('2.º · 4 puntos');
+    expect(html).toContain('Fecha 3 · vs Libre A4');
+    expect(html).toMatch(
+      /aria-pressed="true"[^>]*aria-label="Dejar de seguir a Libre A1"|aria-label="Dejar de seguir a Libre A1"[^>]*aria-pressed="true"/
+    );
+    expect(html).toContain('fila--mia');
+    expect(html).not.toContain('Tocá la estrella de tu equipo para seguirlo.');
+  });
+
+  it('resalta su partido en el fixture y en resultados', () => {
+    expect(dibujar(crearDatosEjemplo(), { ...conMiEquipo(1), seccion: 'fixture' })).toContain('partido--mio');
+    expect(dibujar(crearDatosEjemplo(), { ...conMiEquipo(1), seccion: 'resultados', fecha: 1 })).toContain(
+      'resultado--mio'
+    );
+  });
+
+  it('sin tarjeta si el equipo marcado es de la otra modalidad o se dio de baja', () => {
+    expect(dibujar(conFutbol7(), { modalidad: 'f11', miEquipo: { f11: null, f7: 101 } })).not.toContain('Tu equipo');
+    const db = crearDatosEjemplo();
+    db.equipos = db.equipos.map((e) => (e.id === 1 ? { ...e, baja: true } : e));
+    expect(dibujar(db, conMiEquipo(1))).not.toContain('Tu equipo');
+  });
+});
+
 describe('escudos en la vista pública', () => {
   it('la tabla muestra el escudo de cada equipo y las iniciales de los que no tienen', () => {
     const db = conEscudos('Libre A1');
@@ -296,7 +333,7 @@ describe('escudos en la vista pública', () => {
   it('si ningún equipo de la zona tiene escudo, la tabla se ve como siempre', () => {
     const html = dibujar(conEscudos('Libre B1'));
     expect(html).toContain('class="tabla"');
-    expect(html).not.toContain('equipo-celda');
+    expect(html).not.toContain('class="escudo');
   });
 
   it('el fixture y los resultados llevan los escudos si algún equipo de la fecha tiene', () => {

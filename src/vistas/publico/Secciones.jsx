@@ -11,6 +11,11 @@ import { fraseDesempate } from '../../logica/desempate.js';
 import { equiposDePartidos, hayEscudos } from '../../logica/escudos.js';
 import { textoDia, textoLugar } from '../../logica/lugar.js';
 import { esWoDoble, tieneResultado } from '../../logica/tabla.js';
+import { TarjetaMiEquipo } from './TarjetaMiEquipo.jsx';
+
+// ¿Juega el equipo que sigue la persona? (para resaltar su partido)
+const esDeMiEquipo = (partido, miEquipoId) =>
+  miEquipoId !== null && (partido.localId === miEquipoId || partido.visitanteId === miEquipoId);
 
 // Aclaración de la fecha que se cargó como tabla inicial (sin el detalle de los partidos)
 function NotaFechaInicial({ hayPostergados }) {
@@ -47,6 +52,11 @@ export function SeccionPosiciones({
   onVista,
   rachas,
   movimientos,
+  resumenEquipo = null,
+  miEquipoId = null,
+  onMiEquipo,
+  onIrAMiEquipo,
+  nombreDe,
 }) {
   const ultima = ultimaFechaJugada(partidos, conTablaInicial);
   // La regla de desempate, una sola vez y siempre igual (el panel sigue mostrando las notas por pareja)
@@ -61,6 +71,7 @@ export function SeccionPosiciones({
         {chip}
         <span className="seccion__meta">{ultima > 0 ? `Hasta la fecha ${ultima}` : 'Todavía sin partidos jugados'}</span>
       </div>
+      {resumenEquipo && <TarjetaMiEquipo resumen={resumenEquipo} nombreDe={nombreDe} onIr={onIrAMiEquipo} />}
       <div className="vistas-tabla">
         <Segmentado
           variante="vistas"
@@ -70,8 +81,16 @@ export function SeccionPosiciones({
           onCambiar={onVista}
         />
       </div>
-      <TablaPosiciones filas={filas} vista={vista} rachas={rachas} movimientos={movimientos} />
+      <TablaPosiciones
+        filas={filas}
+        vista={vista}
+        rachas={rachas}
+        movimientos={movimientos}
+        miEquipoId={miEquipoId}
+        onMiEquipo={onMiEquipo}
+      />
       {frase && <p className="frase-desempate">{frase}</p>}
+      {!resumenEquipo && <p className="frase-desempate">Tocá la estrella de tu equipo para seguirlo.</p>}
     </section>
   );
 }
@@ -86,9 +105,10 @@ function reprogramadosPorJugar(fechas) {
 
 // Cada fecha se pliega: viene abierta solo la que se está jugando. Arriba, aparte y abiertos, los
 // postergados que se recuperan en un día especial (no son una fecha más)
-export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial, chip = null }) {
+export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaInicial, chip = null, miEquipoId = null }) {
   const reprogramados = reprogramadosPorJugar(fechas);
   const escudosReprogramados = conEscudosEn(reprogramados, info);
+  const claseMio = (p) => (esDeMiEquipo(p, miEquipoId) ? 'partido--mio' : undefined);
   return (
     <section className={`seccion seccion--fixture${activa ? ' seccion--activa' : ''}`} aria-labelledby="titulo-fixture">
       <div className="seccion__cab">
@@ -104,7 +124,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
           </summary>
           <ul className="lista-partidos">
             {reprogramados.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className={claseMio(p)}>
                 <p className="partido-origen">{`Postergado de la fecha ${p.fecha}`}</p>
                 <LineaPartido partido={p} info={info} conEscudos={escudosReprogramados} />
                 <p className="lugar">
@@ -129,7 +149,7 @@ export function SeccionFixture({ activa, fechas, fechaEnJuego, info, conTablaIni
             {partidos.length > 0 && (
               <ul className="lista-partidos">
                 {partidos.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.id} className={claseMio(p)}>
                     <LineaPartido partido={p} info={info} conEscudos={conEscudos} />
                     <EtiquetaLugar partido={p} />
                   </li>
@@ -209,7 +229,16 @@ function LineaPartido({ partido, info, conEscudos = false }) {
   );
 }
 
-export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTablaInicial, chip = null }) {
+export function SeccionResultados({
+  activa,
+  fechas,
+  fecha,
+  onFecha,
+  info,
+  conTablaInicial,
+  chip = null,
+  miEquipoId = null,
+}) {
   const actual = fechas.find((f) => f.fecha === fecha) || fechas[0];
   const jugados = actual ? actual.partidos.filter(tieneResultado) : [];
   const goles = jugados.reduce((total, p) => total + p.golesLocal + p.golesVisitante, 0);
@@ -248,7 +277,13 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
       {actual && actual.partidos.length > 0 && (
         <div className="resultados-lista">
           {actual.partidos.map((p) => (
-            <TarjetaResultado key={p.id} partido={p} info={info} conEscudos={conEscudos} />
+            <TarjetaResultado
+              key={p.id}
+              partido={p}
+              info={info}
+              conEscudos={conEscudos}
+              mio={esDeMiEquipo(p, miEquipoId)}
+            />
           ))}
         </div>
       )}
@@ -257,7 +292,7 @@ export function SeccionResultados({ activa, fechas, fecha, onFecha, info, conTab
 }
 
 // Resultado con estilo de tablero: un renglón por equipo con sus goles
-function TarjetaResultado({ partido, info, conEscudos = false }) {
+function TarjetaResultado({ partido, info, conEscudos = false, mio = false }) {
   const jugado = tieneResultado(partido);
   const diferencia = jugado ? partido.golesLocal - partido.golesVisitante : 0;
   const renglones = [
@@ -271,7 +306,9 @@ function TarjetaResultado({ partido, info, conEscudos = false }) {
   if (doble) final = 'W.O. doble: no se presentó ninguno';
   else if (ausente) final = `Ganó ${ganador} por W.O.: no se presentó ${ausente}`;
   return (
-    <article className={`resultado${jugado ? '' : ' resultado--pendiente'}${conEscudos ? ' resultado--escudos' : ''}`}>
+    <article
+      className={`resultado${jugado ? '' : ' resultado--pendiente'}${conEscudos ? ' resultado--escudos' : ''}${mio ? ' resultado--mio' : ''}`}
+    >
       {renglones.map((r) => (
         <div key={r.lado} className={`resultado__fila${jugado && r.pierde ? ' resultado__fila--perdedor' : ''}`}>
           <span className="resultado__equipo">
