@@ -101,9 +101,11 @@ img.escudo { display: block; object-fit: contain; }
 .estrella[aria-pressed="true"] { color: var(--acento); }
 .estrella[aria-pressed="true"] svg { fill: currentColor; }
 .estrella:focus-visible { outline-offset: -6px; }
-/* En la vista Completa del celular no hay lugar: se marca desde Resumen o Racha */
+/* En la vista Completa del celular no hay lugar: se marca desde Resumen o Racha. Sin estrella, tampoco
+   va el aviso que invita a tocarla */
 @media (max-width: 479px) {
-  [data-vista="completa"] .estrella { display: none; }
+  [data-vista="completa"] .estrella,
+  .tabla-scroll[data-vista="completa"] ~ .ayuda-estrella { display: none; }
 }
 /* .tabla adelante: si no, pierde contra el fondo de .tabla th/td */
 .tabla .fila--mia > * { background: var(--acento-suave); }

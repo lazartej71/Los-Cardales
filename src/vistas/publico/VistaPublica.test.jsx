@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { CRITERIOS_POR_DEFECTO } from '../../datos/constantes.js';
@@ -307,6 +308,16 @@ describe('Mi equipo', () => {
     expect(html).not.toContain('Dejar de seguir');
     expect(html).toContain('fila--mia');
     expect(html).not.toContain('Tocá la estrella de tu equipo para seguirlo.');
+  });
+
+  it('en la vista Completa del celular, donde no hay estrella, el aviso tampoco se ve', () => {
+    const html = dibujar(crearDatosEjemplo());
+    expect(html).toContain('<p class="frase-desempate ayuda-estrella">Tocá la estrella de tu equipo para seguirlo.</p>');
+    // La misma regla que esconde la estrella esconde el aviso (renderToString no aplica el CSS)
+    const css = readFileSync(new URL('../../estilos/componentes.css', import.meta.url), 'utf8');
+    expect(css).toMatch(
+      /\[data-vista="completa"\] \.estrella,\s*\.tabla-scroll\[data-vista="completa"\] ~ \.ayuda-estrella \{ display: none; \}/
+    );
   });
 
   it('resalta su partido en el fixture y en resultados', () => {

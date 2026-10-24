@@ -90,7 +90,7 @@ export function SeccionPosiciones({
         onMiEquipo={onMiEquipo}
       />
       {frase && <p className="frase-desempate">{frase}</p>}
-      {!resumenEquipo && <p className="frase-desempate">Tocá la estrella de tu equipo para seguirlo.</p>}
+      {!resumenEquipo && <p className="frase-desempate ayuda-estrella">Tocá la estrella de tu equipo para seguirlo.</p>}
     </section>
   );
 }
